@@ -43,6 +43,9 @@ public class WorkRecordController {
                 }
                 r.setWorkerNames(String.join(",", names));
             }
+            if (r.getQualifiedQty() != null && r.getHours() != null) {
+                r.setHourSubtotal(r.getQualifiedQty() * r.getHours());
+            }
         }
         return repository.saveAll(records);
     }
@@ -61,7 +64,7 @@ public class WorkRecordController {
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
-                String notification = getString(row, col.get("产品代码"));
+                String productCode = getString(row, col.get("产品代码"));
                 String productName = getString(row, col.get("所属产品"));
                 String drawing = getString(row, col.get("代号"));
                 String partName = getString(row, col.get("名称"));
@@ -76,13 +79,18 @@ public class WorkRecordController {
                     Double hours = getDouble(row, col.get(hKey));
                     if (process == null && hours == null) { idx++; continue; }
                     WorkRecord wr = new WorkRecord();
-                    wr.setNotificationNumber(notification);
+                    wr.setNotificationNumber(productCode);
+                    wr.setProductCode(productCode);
                     wr.setProductName(productName);
                     wr.setDrawingNumber(drawing);
                     wr.setPartName(partName);
                     wr.setPlanQty(qty);
                     wr.setProcessName(process);
-                    wr.setProcessCode(processService.getCode(process));
+                    String code = processService.getCode(process);
+                    wr.setProcessCode(code);
+                    if (drawing != null && productCode != null && code != null) {
+                        wr.setBarcode(drawing + "-" + productCode + "-" + code);
+                    }
                     wr.setHours(hours);
                     result.add(wr);
                     idx++;

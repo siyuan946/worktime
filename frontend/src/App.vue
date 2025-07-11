@@ -21,8 +21,10 @@
             <th>工序代码</th>
             <th>工序</th>
             <th>工时</th>
+            <th>条形码</th>
             <th>人员代码</th>
             <th>合格数</th>
+            <th>工时小计</th>
             <th>开始时间</th>
             <th>结束时间</th>
             <th>检验员</th>
@@ -40,8 +42,10 @@
             <td>{{ r.processCode }}</td>
             <td>{{ r.processName }}</td>
             <td>{{ r.hours }}</td>
+            <td>{{ r.barcode }}</td>
             <td><input v-model="r.workerCodes" placeholder="工号,空格分隔"/></td>
-            <td><input v-model.number="r.qualifiedQty" type="number" style="width:60px"/></td>
+            <td><input v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:60px"/></td>
+            <td>{{ r.hourSubtotal }}</td>
             <td><input v-model="r.startTime" type="datetime-local"/></td>
             <td><input v-model="r.endTime" type="datetime-local"/></td>
             <td><input v-model="r.inspector" /></td>
@@ -63,6 +67,9 @@
             <th>图号</th>
             <th>工序代码</th>
             <th>工时</th>
+            <th>条形码</th>
+            <th>合格数</th>
+            <th>工时小计</th>
           </tr>
         </thead>
         <tbody>
@@ -73,6 +80,9 @@
             <td>{{ rec.drawingNumber }}</td>
             <td>{{ rec.processCode }}</td>
             <td>{{ rec.hours }}</td>
+            <td>{{ rec.barcode }}</td>
+            <td>{{ rec.qualifiedQty }}</td>
+            <td>{{ rec.hourSubtotal }}</td>
           </tr>
         </tbody>
       </table>
@@ -173,6 +183,7 @@ export default {
         ...r,
         workerCodes: '',
         qualifiedQty: null,
+        hourSubtotal: null,
         startTime: '',
         endTime: '',
         inspector: '',
@@ -231,6 +242,14 @@ export default {
     async deleteProcess(id) {
       await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
       this.fetchProcesses()
+    },
+
+    computeSubtotal(row) {
+      if (row.qualifiedQty != null && row.hours != null) {
+        row.hourSubtotal = row.qualifiedQty * row.hours
+      } else {
+        row.hourSubtotal = null
+      }
     }
   }
 }

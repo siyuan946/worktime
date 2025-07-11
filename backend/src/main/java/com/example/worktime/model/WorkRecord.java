@@ -18,6 +18,9 @@ public class WorkRecord {
     // 代号 -> 图号
     private String drawingNumber;
 
+    // 产品代号
+    private String productCode;
+
     // 名称
     private String partName;
 
@@ -30,6 +33,9 @@ public class WorkRecord {
     // 工序代码(由工序名称映射)
     private String processCode;
 
+    // 条形码
+    private String barcode;
+
     // 单件工时
     private Double hours;
 
@@ -41,6 +47,9 @@ public class WorkRecord {
 
     // 合格数量
     private Integer qualifiedQty;
+
+    // 工时小计 = 合格数量 * 单件工时
+    private Double hourSubtotal;
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
@@ -63,6 +72,9 @@ public class WorkRecord {
     public String getDrawingNumber() { return drawingNumber; }
     public void setDrawingNumber(String drawingNumber) { this.drawingNumber = drawingNumber; }
 
+    public String getProductCode() { return productCode; }
+    public void setProductCode(String productCode) { this.productCode = productCode; }
+
     public String getPartName() { return partName; }
     public void setPartName(String partName) { this.partName = partName; }
 
@@ -75,6 +87,9 @@ public class WorkRecord {
     public String getProcessCode() { return processCode; }
     public void setProcessCode(String processCode) { this.processCode = processCode; }
 
+    public String getBarcode() { return barcode; }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
+
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }
 
@@ -86,6 +101,9 @@ public class WorkRecord {
 
     public Integer getQualifiedQty() { return qualifiedQty; }
     public void setQualifiedQty(Integer qualifiedQty) { this.qualifiedQty = qualifiedQty; }
+
+    public Double getHourSubtotal() { return hourSubtotal; }
+    public void setHourSubtotal(Double hourSubtotal) { this.hourSubtotal = hourSubtotal; }
 
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
