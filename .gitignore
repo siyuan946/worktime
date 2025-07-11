@@ -29,3 +29,7 @@ backend/target/
 # Node dependencies and build output
 frontend/node_modules/
 frontend/dist/
+
+# npm lock file
+frontend/package-lock.json
+

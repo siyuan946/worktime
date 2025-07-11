@@ -2,10 +2,10 @@ package com.example.worktime.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 public class WorkTime {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,67 +22,24 @@ public class WorkTime {
     // 完成日期
     private LocalDate endDate;
 
-    // 工序名称
-    private String process;
+    @OneToMany(mappedBy = "workTime", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<WorkStep> steps;
 
-    // 工时
-    private Double hours;
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    // getters and setters omitted for brevity
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
-    public String getCode() {
-        return code;
-    }
+    public LocalDate getEndDate() { return endDate; }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    public String getProcess() {
-        return process;
-    }
-
-    public void setProcess(String process) {
-        this.process = process;
-    }
-
-    public Double getHours() {
-        return hours;
-    }
-
-    public void setHours(Double hours) {
-        this.hours = hours;
-    }
+    public List<WorkStep> getSteps() { return steps; }
+    public void setSteps(List<WorkStep> steps) { this.steps = steps; }
 }
