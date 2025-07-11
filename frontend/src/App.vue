@@ -58,6 +58,11 @@
 
     <section>
       <h2>Saved Records</h2>
+      <div style="margin-bottom:8px;">
+        <input v-model="searchBarcode" placeholder="Search barcode" />
+        <button @click="searchByBarcode">Search</button>
+        <button @click="fetch">All</button>
+      </div>
       <table border="1" cellpadding="4" cellspacing="0" style="width:100%;">
         <thead>
           <tr>
@@ -68,8 +73,10 @@
             <th>工序代码</th>
             <th>工时</th>
             <th>条形码</th>
+            <th>人员代码</th>
             <th>合格数</th>
             <th>工时小计</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -81,8 +88,19 @@
             <td>{{ rec.processCode }}</td>
             <td>{{ rec.hours }}</td>
             <td>{{ rec.barcode }}</td>
-            <td>{{ rec.qualifiedQty }}</td>
+            <td>
+              <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
+              <input v-else v-model="rec.workerCodes" style="width:80px" />
+            </td>
+            <td>
+              <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
+              <input v-else type="number" v-model.number="rec.qualifiedQty" @input="computeSubtotal(rec)" style="width:60px" />
+            </td>
             <td>{{ rec.hourSubtotal }}</td>
+            <td>
+              <button v-if="!rec.editing" @click="rec.editing=true">Edit</button>
+              <button v-else @click="updateRecord(rec)">Save</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -162,6 +180,7 @@ export default {
       file: null,
       preview: [],
       records: [],
+      searchBarcode: '',
       workers: [],
       newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' },
       processCodes: [],
@@ -199,7 +218,7 @@ export default {
     },
     async fetch() {
       const res = await axios.get('http://localhost:8080/api/workrecords')
-      this.records = res.data
+      this.records = res.data.map(r => ({...r, editing:false}))
     },
 
     async fetchWorkers() {
@@ -242,6 +261,21 @@ export default {
     async deleteProcess(id) {
       await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
       this.fetchProcesses()
+    },
+
+    async searchByBarcode() {
+      if (!this.searchBarcode) {
+        this.fetch();
+        return;
+      }
+      const res = await axios.get(`http://localhost:8080/api/workrecords/barcode/${this.searchBarcode}`)
+      this.records = res.data.map(r => ({...r, editing:false}))
+    },
+
+    async updateRecord(rec) {
+      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
+      rec.editing = false
+      this.fetch()
     },
 
     computeSubtotal(row) {

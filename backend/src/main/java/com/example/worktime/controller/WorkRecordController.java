@@ -30,6 +30,30 @@ public class WorkRecordController {
         return repository.findAll();
     }
 
+    @GetMapping("/barcode/{barcode}")
+    public List<WorkRecord> byBarcode(@PathVariable String barcode) {
+        return repository.findByBarcode(barcode);
+    }
+
+    @PutMapping("/{id}")
+    public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
+        record.setId(id);
+        if (record.getWorkerCodes() != null) {
+            String[] codes = record.getWorkerCodes().split("[,\u3001\s]+");
+            List<String> names = new ArrayList<>();
+            for (String c : codes) {
+                if (c.isBlank()) continue;
+                var w = workerService.getByCode(c.trim());
+                if (w != null) names.add(w.getName());
+            }
+            record.setWorkerNames(String.join(",", names));
+        }
+        if (record.getQualifiedQty() != null && record.getHours() != null) {
+            record.setHourSubtotal(record.getQualifiedQty() * record.getHours());
+        }
+        return repository.save(record);
+    }
+
     @PostMapping
     public List<WorkRecord> save(@RequestBody List<WorkRecord> records) {
         for (WorkRecord r : records) {
