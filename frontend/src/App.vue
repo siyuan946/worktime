@@ -1,16 +1,18 @@
 <template>
-  <div style="max-width: 800px; margin: auto;">
-    <h1>Work Time Entry</h1>
-    <section style="margin-bottom:20px;">
-      <h2>Excel Upload</h2>
-      <input type="file" @change="onFileChange">
-      <button @click="parse" :disabled="!file">Parse</button>
-      <button @click="save" :disabled="preview.length===0">Save</button>
+  <div class="container py-4">
+    <h1 class="mb-4 text-center">Work Time Entry</h1>
+    <section class="mb-4">
+      <h2 class="h5">Excel Upload</h2>
+      <div class="input-group mb-2">
+        <input class="form-control" type="file" @change="onFileChange">
+        <button class="btn btn-outline-primary" @click="parse" :disabled="!file">Parse</button>
+        <button class="btn btn-primary" @click="save" :disabled="preview.length===0">Save</button>
+      </div>
     </section>
 
     <section v-if="preview.length">
-      <h2>Preview</h2>
-      <table border="1" cellpadding="4" cellspacing="0" style="width:100%;">
+      <h2 class="h5">Preview</h2>
+      <table class="table table-bordered table-sm">
         <thead>
           <tr>
             <th>通知单号</th>
@@ -43,27 +45,27 @@
             <td>{{ r.processName }}</td>
             <td>{{ r.hours }}</td>
             <td>{{ r.barcode }}</td>
-            <td><input v-model="r.workerCodes" placeholder="工号,空格分隔"/></td>
-            <td><input v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:60px"/></td>
+            <td><input class="form-control form-control-sm" v-model="r.workerCodes" placeholder="工号,空格分隔"/></td>
+            <td><input class="form-control form-control-sm" v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:80px"/></td>
             <td>{{ r.hourSubtotal }}</td>
-            <td><input v-model="r.startTime" type="datetime-local"/></td>
-            <td><input v-model="r.endTime" type="datetime-local"/></td>
-            <td><input v-model="r.inspector" /></td>
-            <td><input v-model="r.remark1" /></td>
-            <td><input v-model="r.remark2" /></td>
+            <td><input class="form-control form-control-sm" v-model="r.startTime" type="datetime-local"/></td>
+            <td><input class="form-control form-control-sm" v-model="r.endTime" type="datetime-local"/></td>
+            <td><input class="form-control form-control-sm" v-model="r.inspector" /></td>
+            <td><input class="form-control form-control-sm" v-model="r.remark1" /></td>
+            <td><input class="form-control form-control-sm" v-model="r.remark2" /></td>
           </tr>
         </tbody>
       </table>
     </section>
 
     <section>
-      <h2>Saved Records</h2>
-      <div style="margin-bottom:8px;">
-        <input v-model="searchBarcode" placeholder="Search barcode" />
-        <button @click="searchByBarcode">Search</button>
-        <button @click="fetch">All</button>
+      <h2 class="h5">Saved Records</h2>
+      <div class="input-group mb-2" style="max-width:300px;">
+        <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="Search barcode" />
+        <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">Search</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="fetch">All</button>
       </div>
-      <table border="1" cellpadding="4" cellspacing="0" style="width:100%;">
+      <table class="table table-bordered table-sm">
         <thead>
           <tr>
             <th>ID</th>
@@ -90,16 +92,16 @@
             <td>{{ rec.barcode }}</td>
             <td>
               <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
-              <input v-else v-model="rec.workerCodes" style="width:80px" />
+              <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" style="width:80px" />
             </td>
             <td>
               <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
-              <input v-else type="number" v-model.number="rec.qualifiedQty" @input="computeSubtotal(rec)" style="width:60px" />
+              <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="computeSubtotal(rec)" style="width:80px" />
             </td>
             <td>{{ rec.hourSubtotal }}</td>
             <td>
-              <button v-if="!rec.editing" @click="rec.editing=true">Edit</button>
-              <button v-else @click="updateRecord(rec)">Save</button>
+              <button class="btn btn-sm btn-outline-primary" v-if="!rec.editing" @click="rec.editing=true">Edit</button>
+              <button class="btn btn-sm btn-primary" v-else @click="updateRecord(rec)">Save</button>
             </td>
           </tr>
         </tbody>
@@ -107,8 +109,8 @@
     </section>
 
     <section>
-      <h2>Workers</h2>
-      <table border="1" cellpadding="4" cellspacing="0" style="width:100%;">
+      <h2 class="h5">Workers</h2>
+      <table class="table table-bordered table-sm">
         <thead>
           <tr>
             <th>工号</th><th>姓名</th><th>车间</th><th>班组</th><th>入厂</th><th>离厂</th><th></th>
@@ -116,33 +118,33 @@
         </thead>
         <tbody>
           <tr v-for="w in workers" :key="w.id">
-            <td><input v-model="w.code" /></td>
-            <td><input v-model="w.name" /></td>
-            <td><input v-model="w.workshop" /></td>
-            <td><input v-model="w.team" /></td>
-            <td><input v-model="w.entryDate" type="date" /></td>
-            <td><input v-model="w.leaveDate" type="date" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.code" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.name" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.workshop" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.team" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.entryDate" type="date" /></td>
+            <td><input class="form-control form-control-sm" v-model="w.leaveDate" type="date" /></td>
             <td>
-              <button @click="updateWorker(w)">Save</button>
-              <button @click="deleteWorker(w.id)">Del</button>
+              <button class="btn btn-sm btn-outline-primary" @click="updateWorker(w)">Save</button>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteWorker(w.id)">Del</button>
             </td>
           </tr>
           <tr>
-            <td><input v-model="newWorker.code" /></td>
-            <td><input v-model="newWorker.name" /></td>
-            <td><input v-model="newWorker.workshop" /></td>
-            <td><input v-model="newWorker.team" /></td>
-            <td><input v-model="newWorker.entryDate" type="date" /></td>
-            <td><input v-model="newWorker.leaveDate" type="date" /></td>
-            <td><button @click="createWorker">Add</button></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.code" /></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.name" /></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.workshop" /></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.team" /></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" /></td>
+            <td><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" /></td>
+            <td><button class="btn btn-sm btn-primary" @click="createWorker">Add</button></td>
           </tr>
         </tbody>
       </table>
     </section>
 
     <section>
-      <h2>Process Codes</h2>
-      <table border="1" cellpadding="4" cellspacing="0" style="width:100%;">
+      <h2 class="h5">Process Codes</h2>
+      <table class="table table-bordered table-sm">
         <thead>
           <tr>
             <th>代号</th><th>工序名称</th><th>大类</th><th>内容</th><th></th>
@@ -150,21 +152,21 @@
         </thead>
         <tbody>
           <tr v-for="p in processCodes" :key="p.id">
-            <td><input v-model="p.code" /></td>
-            <td><input v-model="p.name" /></td>
-            <td><input v-model="p.category" /></td>
-            <td><input v-model="p.content" /></td>
+            <td><input class="form-control form-control-sm" v-model="p.code" /></td>
+            <td><input class="form-control form-control-sm" v-model="p.name" /></td>
+            <td><input class="form-control form-control-sm" v-model="p.category" /></td>
+            <td><input class="form-control form-control-sm" v-model="p.content" /></td>
             <td>
-              <button @click="updateProcess(p)">Save</button>
-              <button @click="deleteProcess(p.id)">Del</button>
+              <button class="btn btn-sm btn-outline-primary" @click="updateProcess(p)">Save</button>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteProcess(p.id)">Del</button>
             </td>
           </tr>
           <tr>
-            <td><input v-model="newProcess.code" /></td>
-            <td><input v-model="newProcess.name" /></td>
-            <td><input v-model="newProcess.category" /></td>
-            <td><input v-model="newProcess.content" /></td>
-            <td><button @click="createProcess">Add</button></td>
+            <td><input class="form-control form-control-sm" v-model="newProcess.code" /></td>
+            <td><input class="form-control form-control-sm" v-model="newProcess.name" /></td>
+            <td><input class="form-control form-control-sm" v-model="newProcess.category" /></td>
+            <td><input class="form-control form-control-sm" v-model="newProcess.content" /></td>
+            <td><button class="btn btn-sm btn-primary" @click="createProcess">Add</button></td>
           </tr>
         </tbody>
       </table>
@@ -314,5 +316,7 @@ export default {
 </script>
 
 <style>
-input { margin: 4px; }
+.table input {
+  margin: 2px;
+}
 </style>
