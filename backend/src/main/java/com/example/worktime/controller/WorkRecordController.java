@@ -3,6 +3,7 @@ package com.example.worktime.controller;
 import com.example.worktime.model.WorkRecord;
 import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.service.ProcessCodeService;
+import com.example.worktime.service.WorkerService;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,10 +17,12 @@ import java.util.*;
 public class WorkRecordController {
     private final WorkRecordRepository repository;
     private final ProcessCodeService processService;
+    private final WorkerService workerService;
 
-    public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService) {
+    public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService, WorkerService workerService) {
         this.repository = repository;
         this.processService = processService;
+        this.workerService = workerService;
     }
 
     @GetMapping
@@ -29,6 +32,18 @@ public class WorkRecordController {
 
     @PostMapping
     public List<WorkRecord> save(@RequestBody List<WorkRecord> records) {
+        for (WorkRecord r : records) {
+            if (r.getWorkerCodes() != null) {
+                String[] codes = r.getWorkerCodes().split("[,\u3001\s]+");
+                List<String> names = new ArrayList<>();
+                for (String c : codes) {
+                    if (c.isBlank()) continue;
+                    var w = workerService.getByCode(c.trim());
+                    if (w != null) names.add(w.getName());
+                }
+                r.setWorkerNames(String.join(",", names));
+            }
+        }
         return repository.saveAll(records);
     }
 

@@ -21,6 +21,13 @@
             <th>工序代码</th>
             <th>工序</th>
             <th>工时</th>
+            <th>人员代码</th>
+            <th>合格数</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>检验员</th>
+            <th>备注1</th>
+            <th>备注2</th>
           </tr>
         </thead>
         <tbody>
@@ -33,6 +40,13 @@
             <td>{{ r.processCode }}</td>
             <td>{{ r.processName }}</td>
             <td>{{ r.hours }}</td>
+            <td><input v-model="r.workerCodes" placeholder="工号,空格分隔"/></td>
+            <td><input v-model.number="r.qualifiedQty" type="number" style="width:60px"/></td>
+            <td><input v-model="r.startTime" type="datetime-local"/></td>
+            <td><input v-model="r.endTime" type="datetime-local"/></td>
+            <td><input v-model="r.inspector" /></td>
+            <td><input v-model="r.remark1" /></td>
+            <td><input v-model="r.remark2" /></td>
           </tr>
         </tbody>
       </table>
@@ -85,7 +99,16 @@ export default {
       const data = new FormData()
       data.append('file', this.file)
       const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
-      this.preview = res.data
+      this.preview = res.data.map(r => ({
+        ...r,
+        workerCodes: '',
+        qualifiedQty: null,
+        startTime: '',
+        endTime: '',
+        inspector: '',
+        remark1: '',
+        remark2: ''
+      }))
     },
     async save() {
       await axios.post('http://localhost:8080/api/workrecords', this.preview)
