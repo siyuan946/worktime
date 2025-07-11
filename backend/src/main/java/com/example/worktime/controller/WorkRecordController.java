@@ -5,8 +5,10 @@ import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
 import org.apache.poi.ss.usermodel.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.*;
@@ -38,38 +40,14 @@ public class WorkRecordController {
     @PutMapping("/{id}")
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
         record.setId(id);
-        if (record.getWorkerCodes() != null) {
-            String[] codes = record.getWorkerCodes().split("[,\u3001\s]+");
-            List<String> names = new ArrayList<>();
-            for (String c : codes) {
-                if (c.isBlank()) continue;
-                var w = workerService.getByCode(c.trim());
-                if (w != null) names.add(w.getName());
-            }
-            record.setWorkerNames(String.join(",", names));
-        }
-        if (record.getQualifiedQty() != null && record.getHours() != null) {
-            record.setHourSubtotal(record.getQualifiedQty() * record.getHours());
-        }
+        prepare(record);
         return repository.save(record);
     }
 
     @PostMapping
     public List<WorkRecord> save(@RequestBody List<WorkRecord> records) {
         for (WorkRecord r : records) {
-            if (r.getWorkerCodes() != null) {
-                String[] codes = r.getWorkerCodes().split("[,\u3001\s]+");
-                List<String> names = new ArrayList<>();
-                for (String c : codes) {
-                    if (c.isBlank()) continue;
-                    var w = workerService.getByCode(c.trim());
-                    if (w != null) names.add(w.getName());
-                }
-                r.setWorkerNames(String.join(",", names));
-            }
-            if (r.getQualifiedQty() != null && r.getHours() != null) {
-                r.setHourSubtotal(r.getQualifiedQty() * r.getHours());
-            }
+            prepare(r);
         }
         return repository.saveAll(records);
     }
@@ -145,5 +123,31 @@ public class WorkRecordController {
     private Integer getInt(Row row, Integer idx) {
         Double d = getDouble(row, idx);
         return d == null ? null : d.intValue();
+    }
+
+    private void prepare(WorkRecord record) {
+        validate(record);
+        if (record.getWorkerCodes() != null) {
+            String[] codes = record.getWorkerCodes().split("[,\u3001\s]+");
+            List<String> names = new ArrayList<>();
+            for (String c : codes) {
+                if (c.isBlank()) continue;
+                var w = workerService.getByCode(c.trim());
+                if (w != null) names.add(w.getName());
+            }
+            record.setWorkerNames(String.join(",", names));
+        }
+        if (record.getQualifiedQty() != null && record.getHours() != null) {
+            record.setHourSubtotal(record.getQualifiedQty() * record.getHours());
+        }
+    }
+
+    private void validate(WorkRecord record) {
+        if (record.getProcessCode() == null || record.getProcessCode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Process code required");
+        }
+        if (record.getBarcode() == null || record.getBarcode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Barcode required");
+        }
     }
 }

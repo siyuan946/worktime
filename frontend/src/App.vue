@@ -211,10 +211,14 @@ export default {
       }))
     },
     async save() {
-      await axios.post('http://localhost:8080/api/workrecords', this.preview)
-      this.preview = []
-      this.file = null
-      this.fetch()
+      try {
+        await axios.post('http://localhost:8080/api/workrecords', this.preview)
+        this.preview = []
+        this.file = null
+        this.fetch()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Save failed')
+      }
     },
     async fetch() {
       const res = await axios.get('http://localhost:8080/api/workrecords')
@@ -227,14 +231,22 @@ export default {
     },
 
     async createWorker() {
-      await axios.post('http://localhost:8080/api/workers', this.newWorker)
-      this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
-      this.fetchWorkers()
+      try {
+        await axios.post('http://localhost:8080/api/workers', this.newWorker)
+        this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
+        this.fetchWorkers()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Create worker failed')
+      }
     },
 
     async updateWorker(w) {
-      await axios.put(`http://localhost:8080/api/workers/${w.id}`, w)
-      this.fetchWorkers()
+      try {
+        await axios.put(`http://localhost:8080/api/workers/${w.id}`, w)
+        this.fetchWorkers()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Update worker failed')
+      }
     },
 
     async deleteWorker(id) {
@@ -248,14 +260,22 @@ export default {
     },
 
     async createProcess() {
-      await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
-      this.newProcess = { code: '', name: '', category: '', content: '' }
-      this.fetchProcesses()
+      try {
+        await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
+        this.newProcess = { code: '', name: '', category: '', content: '' }
+        this.fetchProcesses()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Create process failed')
+      }
     },
 
     async updateProcess(p) {
-      await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
-      this.fetchProcesses()
+      try {
+        await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
+        this.fetchProcesses()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Update process failed')
+      }
     },
 
     async deleteProcess(id) {
@@ -273,9 +293,13 @@ export default {
     },
 
     async updateRecord(rec) {
-      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
-      rec.editing = false
-      this.fetch()
+      try {
+        await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
+        rec.editing = false
+        this.fetch()
+      } catch (e) {
+        alert(e.response?.data?.message || 'Update failed')
+      }
     },
 
     computeSubtotal(row) {

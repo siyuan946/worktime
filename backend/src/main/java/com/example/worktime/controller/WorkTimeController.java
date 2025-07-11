@@ -4,8 +4,10 @@ import com.example.worktime.model.WorkStep;
 import com.example.worktime.model.WorkTime;
 import com.example.worktime.repository.WorkTimeRepository;
 import org.apache.poi.ss.usermodel.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -29,6 +31,7 @@ public class WorkTimeController {
 
     @PostMapping
     public WorkTime create(@RequestBody WorkTime workTime) {
+        validate(workTime);
         return repository.save(workTime);
     }
 
@@ -100,5 +103,14 @@ public class WorkTimeController {
             return cell.getLocalDateTimeCellValue().toLocalDate();
         }
         return LocalDate.parse(cell.toString());
+    }
+
+    private void validate(WorkTime wt) {
+        if (wt.getCode() == null || wt.getCode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code required");
+        }
+        if (wt.getName() == null || wt.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name required");
+        }
     }
 }
