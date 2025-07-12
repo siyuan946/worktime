@@ -1,10 +1,10 @@
 # Worktime Application
 
-This project is a simple work time management demo built with **Spring Boot 3.2.5**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times. Uploaded Excel files are stored for reference and records with duplicate barcodes are marked as supplemental.
+This project is a simple work time management demo built with **Spring Boot 2.7.18**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times. Uploaded Excel files are stored for reference and records with duplicate barcodes are marked as supplemental.
 
 ## Requirements
 
-- Java 17+
+- Java 8+
 - Maven 3+
 - Node.js 18+
 - MySQL 8+
@@ -40,7 +40,7 @@ The built files will be placed in `frontend/dist` and can be served by any web s
 
 ## Versions
 
-- Spring Boot **3.2.5**
+- Spring Boot **2.7.18**
 - Apache POI **5.2.5**
 - Vue **2.7.14** with Vite **5.2**
 

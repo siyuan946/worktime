@@ -1,6 +1,6 @@
 package com.example.worktime.model;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 
 /**
  * Entity for process code mapping.

@@ -6,6 +6,7 @@ import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
+import com.example.worktime.model.Worker;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -155,8 +156,8 @@ public class WorkRecordController {
             String[] codes = record.getWorkerCodes().split("[,\u3001\s]+");
             List<String> names = new ArrayList<>();
             for (String c : codes) {
-                if (c.isBlank()) continue;
-                var w = workerService.getByCode(c.trim());
+                if (c.trim().isEmpty()) continue;
+                Worker w = workerService.getByCode(c.trim());
                 if (w != null) names.add(w.getName());
             }
             record.setWorkerNames(String.join(",", names));
@@ -167,10 +168,10 @@ public class WorkRecordController {
     }
 
     private void validate(WorkRecord record) {
-        if (record.getProcessCode() == null || record.getProcessCode().isBlank()) {
+        if (record.getProcessCode() == null || record.getProcessCode().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代码不能为空");
         }
-        if (record.getBarcode() == null || record.getBarcode().isBlank()) {
+        if (record.getBarcode() == null || record.getBarcode().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "条形码不能为空");
         }
     }

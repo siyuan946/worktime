@@ -42,10 +42,10 @@ public class WorkerController {
     }
 
     private void validate(Worker worker) {
-        if (worker.getCode() == null || worker.getCode().isBlank()) {
+        if (worker.getCode() == null || worker.getCode().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工号不能为空");
         }
-        if (worker.getName() == null || worker.getName().isBlank()) {
+        if (worker.getName() == null || worker.getName().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "姓名不能为空");
         }
     }
