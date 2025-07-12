@@ -54,7 +54,8 @@ export default {
     return {
       file: null,
       preview: [],
-      loading: false
+      loading: false,
+      fileId: null
     }
   },
   methods: {
@@ -64,15 +65,19 @@ export default {
       const data = new FormData()
       data.append('file', this.file)
       const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
-      this.preview = res.data.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
+      this.fileId = res.data.fileId
+      this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
       this.loading = false
     },
     async save() {
+      if(!confirm('请再次核查数据后确认提交')) return
       this.loading = true
-      await axios.post('http://localhost:8080/api/workrecords', this.preview)
+      const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, this.preview)
+      const hasSupp = res.data.some(r => r.supplemental)
       this.preview = []
       this.file = null
       this.loading = false
+      alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
       this.$emit('saved')
     },
     computeSubtotal(row) {

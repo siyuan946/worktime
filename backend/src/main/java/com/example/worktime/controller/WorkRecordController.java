@@ -1,7 +1,9 @@
 package com.example.worktime.controller;
 
 import com.example.worktime.model.WorkRecord;
+import com.example.worktime.model.UploadedFile;
 import com.example.worktime.repository.WorkRecordRepository;
+import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
 import org.apache.poi.ss.usermodel.*;
@@ -20,11 +22,14 @@ public class WorkRecordController {
     private final WorkRecordRepository repository;
     private final ProcessCodeService processService;
     private final WorkerService workerService;
+    private final UploadedFileRepository fileRepository;
 
-    public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService, WorkerService workerService) {
+    public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService,
+                                WorkerService workerService, UploadedFileRepository fileRepository) {
         this.repository = repository;
         this.processService = processService;
         this.workerService = workerService;
+        this.fileRepository = fileRepository;
     }
 
     @GetMapping
@@ -45,15 +50,34 @@ public class WorkRecordController {
     }
 
     @PostMapping
-    public List<WorkRecord> save(@RequestBody List<WorkRecord> records) {
+    public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records) {
+        UploadedFile file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
         for (WorkRecord r : records) {
+            r.setFile(file);
+            r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
             prepare(r);
         }
         return repository.saveAll(records);
     }
 
     @PostMapping("/parse")
-    public List<WorkRecord> parse(@RequestParam("file") MultipartFile file) throws IOException {
+    public Map<String, Object> parse(@RequestParam("file") MultipartFile file) throws IOException {
+        UploadedFile uf = new UploadedFile();
+        uf.setFileName(file.getOriginalFilename());
+        uf.setData(file.getBytes());
+        uf.setUploadTime(java.time.LocalDateTime.now());
+        uf = fileRepository.save(uf);
+
+        List<WorkRecord> records = parseExcel(file);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("fileId", uf.getId());
+        result.put("records", records);
+        return result;
+    }
+
+    private List<WorkRecord> parseExcel(MultipartFile file) throws IOException {
         List<WorkRecord> result = new ArrayList<>();
         try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = wb.getSheetAt(0);
@@ -74,8 +98,8 @@ public class WorkRecordController {
 
                 int idx = 0;
                 while (true) {
-                    String pKey = idx==0 ? "工序" : "工序."+idx;
-                    String hKey = idx==0 ? "工时" : "工时."+idx;
+                    String pKey = idx == 0 ? "工序" : "工序." + idx;
+                    String hKey = idx == 0 ? "工时" : "工时." + idx;
                     if (!col.containsKey(pKey) || !col.containsKey(hKey)) break;
                     String process = getString(row, col.get(pKey));
                     Double hours = getDouble(row, col.get(hKey));

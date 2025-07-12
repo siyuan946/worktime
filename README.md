@@ -1,6 +1,6 @@
 # Worktime Application
 
-This project is a simple work time management demo built with **Spring Boot 3.2.5**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times.
+This project is a simple work time management demo built with **Spring Boot 3.2.5**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times. Uploaded Excel files are stored for reference and records with duplicate barcodes are marked as supplemental.
 
 ## Requirements
 

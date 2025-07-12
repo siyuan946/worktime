@@ -3,6 +3,12 @@ package com.example.worktime.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import com.example.worktime.model.UploadedFile;
+
+/**
+ * Entity representing a single work record parsed from Excel uploads.
+ */
+
 @Entity
 public class WorkRecord {
     @Id
@@ -38,6 +44,13 @@ public class WorkRecord {
 
     // 单件工时
     private Double hours;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id")
+    private UploadedFile file;
+
+    // 是否补录
+    private Boolean supplemental;
 
     // 人员代码 (多人员用逗号分隔)
     private String workerCodes;
@@ -93,6 +106,12 @@ public class WorkRecord {
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }
 
+    public UploadedFile getFile() { return file; }
+    public void setFile(UploadedFile file) { this.file = file; }
+
+    public Boolean getSupplemental() { return supplemental; }
+    public void setSupplemental(Boolean supplemental) { this.supplemental = supplemental; }
+
     public String getWorkerCodes() { return workerCodes; }
     public void setWorkerCodes(String workerCodes) { this.workerCodes = workerCodes; }
 
@@ -120,3 +139,4 @@ public class WorkRecord {
     public String getRemark2() { return remark2; }
     public void setRemark2(String remark2) { this.remark2 = remark2; }
 }
+

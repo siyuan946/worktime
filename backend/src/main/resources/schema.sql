@@ -24,6 +24,13 @@ CREATE TABLE IF NOT EXISTS worker (
     leave_date DATE
 );
 
+CREATE TABLE IF NOT EXISTS uploaded_file (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_name VARCHAR(255),
+    data LONGBLOB,
+    upload_time DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS work_time (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(255) NOT NULL,
@@ -61,5 +68,9 @@ CREATE TABLE IF NOT EXISTS work_record (
     end_time DATETIME,
     inspector VARCHAR(255),
     remark1 VARCHAR(255),
-    remark2 VARCHAR(255)
+    remark2 VARCHAR(255),
+    file_id BIGINT,
+    supplemental BOOLEAN,
+    CONSTRAINT fk_work_record_file FOREIGN KEY (file_id)
+        REFERENCES uploaded_file(id)
 );
