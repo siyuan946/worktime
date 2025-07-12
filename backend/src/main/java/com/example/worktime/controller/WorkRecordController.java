@@ -124,6 +124,9 @@ public class WorkRecordController {
                     wr.setPlanQty(qty);
                     wr.setProcessName(process);
                     String code = processService.getCode(process);
+                    if (code == null || code.trim().isEmpty()) {
+                        code = process; // fall back to process name
+                    }
                     wr.setProcessCode(code);
                     if (drawing != null && productCode != null && code != null) {
                         String bar = drawing + "-" + productCode + "-" + code;
