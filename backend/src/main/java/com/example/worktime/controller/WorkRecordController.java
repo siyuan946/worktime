@@ -88,6 +88,15 @@ public class WorkRecordController {
             for (Cell cell : header) {
                 col.put(cell.getStringCellValue().trim(), cell.getColumnIndex());
             }
+            List<int[]> steps = new ArrayList<>();
+            for (Map.Entry<String, Integer> e : col.entrySet()) {
+                String name = e.getKey();
+                if (name.startsWith("工序")) {
+                    String suffix = name.substring(2); // "" or ".1" etc
+                    Integer hIdx = col.get("工时" + suffix);
+                    if (hIdx != null) steps.add(new int[]{e.getValue(), hIdx});
+                }
+            }
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
@@ -97,14 +106,10 @@ public class WorkRecordController {
                 String partName = getString(row, col.get("名称"));
                 Integer qty = getInt(row, col.get("产量"));
 
-                int idx = 0;
-                while (true) {
-                    String pKey = idx == 0 ? "工序" : "工序." + idx;
-                    String hKey = idx == 0 ? "工时" : "工时." + idx;
-                    if (!col.containsKey(pKey) || !col.containsKey(hKey)) break;
-                    String process = getString(row, col.get(pKey));
-                    Double hours = getDouble(row, col.get(hKey));
-                    if (process == null && hours == null) { idx++; continue; }
+                for (int[] pair : steps) {
+                    String process = getString(row, pair[0]);
+                    Double hours = getDouble(row, pair[1]);
+                    if (process == null && hours == null) continue;
                     WorkRecord wr = new WorkRecord();
                     wr.setNotificationNumber(productCode);
                     wr.setProductCode(productCode);
@@ -120,7 +125,6 @@ public class WorkRecordController {
                     }
                     wr.setHours(hours);
                     result.add(wr);
-                    idx++;
                 }
             }
         }

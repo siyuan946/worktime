@@ -5,6 +5,7 @@
       <input class="form-control" type="file" @change="onFileChange">
       <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
       <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
+      <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
     <div v-if="preview.length">
@@ -79,6 +80,9 @@ export default {
       this.loading = false
       alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
       this.$emit('saved')
+    },
+    print() {
+      window.print()
     },
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours

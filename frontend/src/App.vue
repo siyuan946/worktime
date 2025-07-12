@@ -1,31 +1,39 @@
 <template>
   <div>
     <login-page v-if="!loggedIn" @logged-in="onLogin"></login-page>
-    <div v-else class="container py-4">
-      <h1 class="mb-4 text-center">工时录入</h1>
-      <record-upload @saved="reload"></record-upload>
-      <record-list ref="recordList"></record-list>
-      <worker-manager></worker-manager>
-      <process-manager></process-manager>
+    <div v-else>
+      <nav class="navbar navbar-expand navbar-light bg-white">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">工时录入</a>
+          <ul class="navbar-nav">
+            <li class="nav-item"><router-link class="nav-link" to="/upload">Excel上传</router-link></li>
+            <li class="nav-item"><router-link class="nav-link" to="/records">扫码录入</router-link></li>
+            <li class="nav-item"><router-link class="nav-link" to="/workers">人员管理</router-link></li>
+            <li class="nav-item"><router-link class="nav-link" to="/processes">工序代码</router-link></li>
+          </ul>
+        </div>
+      </nav>
+      <div class="container py-4">
+        <router-view ref="view" @saved="onSaved" />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import RecordUpload from './components/RecordUpload.vue'
-import RecordList from './components/RecordList.vue'
-import WorkerManager from './components/WorkerManager.vue'
-import ProcessManager from './components/ProcessManager.vue'
 import LoginPage from './components/LoginPage.vue'
 
 export default {
-  components: { RecordUpload, RecordList, WorkerManager, ProcessManager, LoginPage },
+  components: { LoginPage },
   data() {
     return { loggedIn: false }
   },
   methods: {
-    reload() { this.$refs.recordList.fetch() },
-    onLogin() { this.loggedIn = true }
+    onLogin() { this.loggedIn = true },
+    onSaved() {
+      const v = this.$refs.view
+      if (v && v.fetch) v.fetch()
+    }
   }
 }
 </script>

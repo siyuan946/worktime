@@ -1,6 +1,6 @@
 <template>
   <section class="section-card">
-    <h2 class="h5">已保存记录</h2>
+    <h2 class="h5">扫码录入</h2>
     <div class="input-group mb-2" style="max-width:300px;">
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>

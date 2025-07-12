@@ -37,6 +37,7 @@ npm run --prefix frontend build
 2. During development you can run `npm run --prefix frontend dev` to start a hot reload server.
 
 The built files will be placed in `frontend/dist` and can be served by any web server.
+After登录后,顶部导航栏可在“Excel上传”“扫码录入”“人员管理”和“工序代码”页面之间切换。
 
 ## Versions
 
