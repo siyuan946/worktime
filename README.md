@@ -13,6 +13,7 @@ This project is a simple work time management demo built with **Spring Boot 2.7.
 
 1. Create a MySQL database named `worktime` and run [`backend/src/main/resources/schema.sql`](backend/src/main/resources/schema.sql) to create the tables. The file [`backend/src/main/resources/data.sql`](backend/src/main/resources/data.sql) seeds a default admin user.
 2. Edit `backend/src/main/resources/application.properties` to configure your MySQL username and password.
+2.5. If Maven is not installed, run `sudo apt-get install maven` (or use your OS package manager).
 3. Build the backend:
 
 ```bash

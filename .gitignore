@@ -33,3 +33,4 @@ frontend/dist/
 # npm lock file
 frontend/package-lock.json
 
+.idea/
