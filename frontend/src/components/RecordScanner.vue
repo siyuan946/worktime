@@ -67,16 +67,16 @@ export default {
   },
   methods: {
     async fetch() {
-      const res = await axios.get('http://localhost:8080/api/workrecords')
+      const res = await axios.get('/api/workrecords')
       this.records = res.data.map(r => ({...r, editing:false}))
     },
     async searchByBarcode() {
       if (!this.searchBarcode) { this.fetch(); return }
-      const res = await axios.get(`http://localhost:8080/api/workrecords/barcode/${this.searchBarcode}`)
+      const res = await axios.get(`/api/workrecords/barcode/${this.searchBarcode}`)
       this.records = res.data.map(r => ({...r, editing:false}))
     },
     async updateRecord(rec) {
-      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
+      await axios.put(`/api/workrecords/${rec.id}`, rec)
       rec.editing = false
       this.fetch()
     },
