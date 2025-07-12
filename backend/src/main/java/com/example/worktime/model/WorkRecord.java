@@ -42,6 +42,10 @@ public class WorkRecord {
     // 条形码
     private String barcode;
 
+    // 条形码图片
+    @Lob
+    private byte[] barcodeImage;
+
     // 单件工时
     private Double hours;
 
@@ -102,6 +106,9 @@ public class WorkRecord {
 
     public String getBarcode() { return barcode; }
     public void setBarcode(String barcode) { this.barcode = barcode; }
+
+    public byte[] getBarcodeImage() { return barcodeImage; }
+    public void setBarcodeImage(byte[] barcodeImage) { this.barcodeImage = barcodeImage; }
 
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }

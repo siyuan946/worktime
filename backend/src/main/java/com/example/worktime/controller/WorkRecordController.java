@@ -7,6 +7,11 @@ import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
 import com.example.worktime.model.Worker;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.oned.Code128Writer;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -121,7 +126,9 @@ public class WorkRecordController {
                     String code = processService.getCode(process);
                     wr.setProcessCode(code);
                     if (drawing != null && productCode != null && code != null) {
-                        wr.setBarcode(drawing + "-" + productCode + "-" + code);
+                        String bar = drawing + "-" + productCode + "-" + code;
+                        wr.setBarcode(bar);
+                        wr.setBarcodeImage(generateBarcode(bar));
                     }
                     wr.setHours(hours);
                     result.add(wr);
@@ -177,6 +184,18 @@ public class WorkRecordController {
         }
         if (record.getBarcode() == null || record.getBarcode().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "条形码不能为空");
+        }
+    }
+
+    private byte[] generateBarcode(String text) {
+        try {
+            Code128Writer writer = new Code128Writer();
+            BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, 300, 80);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(matrix, "png", out);
+            return out.toByteArray();
+        } catch (WriterException | IOException e) {
+            return null;
         }
     }
 }

@@ -1,6 +1,25 @@
 <template>
   <section class="section-card">
     <h2 class="h5">人员管理</h2>
+    <h3 class="h6">已有人员</h3>
+    <table class="table table-bordered table-sm table-striped mb-3">
+      <thead>
+        <tr>
+          <th>工号</th><th>姓名</th><th>车间</th><th>班组</th><th>入厂</th><th>离厂</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="w in workers" :key="'view'+w.id">
+          <td>{{ w.code }}</td>
+          <td>{{ w.name }}</td>
+          <td>{{ w.workshop }}</td>
+          <td>{{ w.team }}</td>
+          <td>{{ w.entryDate }}</td>
+          <td>{{ w.leaveDate }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 class="h6">编辑/新增</h3>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>

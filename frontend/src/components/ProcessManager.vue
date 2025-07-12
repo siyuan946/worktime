@@ -1,6 +1,23 @@
 <template>
   <section class="section-card">
     <h2 class="h5">工序代码管理</h2>
+    <h3 class="h6">已有工序代码</h3>
+    <table class="table table-bordered table-sm table-striped mb-3">
+      <thead>
+        <tr>
+          <th>代号</th><th>工序名称</th><th>大类</th><th>内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="p in processCodes" :key="'view'+p.id">
+          <td>{{ p.code }}</td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.category }}</td>
+          <td>{{ p.content }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 class="h6">编辑/新增</h3>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>

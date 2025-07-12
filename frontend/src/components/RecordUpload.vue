@@ -37,7 +37,10 @@
             <td>{{ r.processCode }}</td>
             <td>{{ r.processName }}</td>
             <td>{{ r.hours }}</td>
-            <td>{{ r.barcode }}</td>
+            <td>
+              <div>{{ r.barcode }}</div>
+              <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" style="height:40px"/>
+            </td>
             <td><input class="form-control form-control-sm" v-model="r.workerCodes" placeholder="工号"/></td>
             <td><input class="form-control form-control-sm" v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:80px"/></td>
             <td>{{ r.hourSubtotal }}</td>

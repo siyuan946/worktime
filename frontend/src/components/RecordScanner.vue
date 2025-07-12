@@ -30,7 +30,10 @@
           <td>{{ rec.drawingNumber }}</td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
-          <td>{{ rec.barcode }}</td>
+          <td>
+            <div>{{ rec.barcode }}</div>
+            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" style="height:40px"/>
+          </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
             <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" style="width:80px" />

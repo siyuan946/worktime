@@ -1,6 +1,6 @@
 # Worktime Application
 
-This project is a simple work time management demo built with **Spring Boot 2.7.18**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times. Uploaded Excel files are stored for reference and records with duplicate barcodes are marked as supplemental.
+This project is a simple work time management demo built with **Spring Boot 2.7.18**, **Vue 2**, and **MySQL**. It allows uploading Excel files, managing workers and process codes, and recording work times. Uploaded Excel files are stored for reference and records with duplicate barcodes are marked as supplemental. 生成的条形码会在后端使用 ZXing 生成并随记录存入数据库，前端在预览和扫码页面都会展示条形码图片。
 
 ## Requirements
 
@@ -43,6 +43,7 @@ After登录后,顶部导航栏可在“Excel上传”“扫码录入”“人员
 
 - Spring Boot **2.7.18**
 - Apache POI **5.2.5**
+- ZXing **3.5.1**
 - Vue **2.7.14** with Vite **5.2**
 
 This repository also includes a sample Excel file `新建 Microsoft Excel 工作表.xlsx` for testing uploads.

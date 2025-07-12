@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS work_record (
     process_name VARCHAR(255),
     process_code VARCHAR(255),
     barcode VARCHAR(255),
+    barcode_image LONGBLOB,
     hours DOUBLE,
     worker_codes VARCHAR(255),
     worker_names VARCHAR(255),
