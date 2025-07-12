@@ -1,7 +1,7 @@
 <template>
-  <section>
+  <section class="section-card">
     <h2 class="h5">人员管理</h2>
-    <table class="table table-bordered table-sm">
+    <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
           <th>工号</th><th>姓名</th><th>车间</th><th>班组</th><th>入厂</th><th>离厂</th><th></th>

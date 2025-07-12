@@ -1,12 +1,12 @@
 <template>
-  <section>
+  <section class="section-card">
     <h2 class="h5">已保存记录</h2>
     <div class="input-group mb-2" style="max-width:300px;">
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
       <button class="btn btn-outline-secondary btn-sm" @click="fetch">全部</button>
     </div>
-    <table class="table table-bordered table-sm">
+    <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
           <th>ID</th>

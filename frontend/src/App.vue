@@ -4,9 +4,9 @@
     <div v-else class="container py-4">
       <h1 class="mb-4 text-center">工时录入</h1>
       <record-upload @saved="reload"></record-upload>
-      <record-list ref="recordList" class="mt-4"></record-list>
-      <worker-manager class="mt-4"></worker-manager>
-      <process-manager class="mt-4"></process-manager>
+      <record-list ref="recordList"></record-list>
+      <worker-manager></worker-manager>
+      <process-manager></process-manager>
     </div>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <template>
-  <section>
+<section class="section-card">
     <h2 class="h5">Excel上传</h2>
     <div class="input-group mb-2">
       <input class="form-control" type="file" @change="onFileChange">
@@ -9,7 +9,7 @@
     </div>
     <div v-if="preview.length">
       <h2 class="h5">预览</h2>
-      <table class="table table-bordered table-sm">
+      <table class="table table-bordered table-sm table-striped">
         <thead>
           <tr>
             <th>通知单号</th>

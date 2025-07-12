@@ -1,7 +1,7 @@
 <template>
-  <section>
+  <section class="section-card">
     <h2 class="h5">工序代码管理</h2>
-    <table class="table table-bordered table-sm">
+    <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
           <th>代号</th><th>工序名称</th><th>大类</th><th>内容</th><th></th>
