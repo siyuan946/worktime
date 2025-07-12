@@ -12,7 +12,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="w in workers" :key="'view'+w.id">
+        <tr v-for="w in workers" :key="'view'+w.code">
           <td>{{ w.code }}</td>
           <td>{{ w.name }}</td>
           <td>{{ w.workshop }}</td>
@@ -30,7 +30,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="w in workers" :key="w.id">
+        <tr v-for="w in workers" :key="w.code">
           <td><input class="form-control form-control-sm" v-model="w.code" /></td>
           <td><input class="form-control form-control-sm" v-model="w.name" /></td>
           <td><input class="form-control form-control-sm" v-model="w.workshop" /></td>

@@ -130,8 +130,9 @@ public class WorkRecordController {
                     wr.setProcessCode(code);
                     if (drawing != null && productCode != null && code != null) {
                         String bar = drawing + "-" + productCode + "-" + code;
-                        wr.setBarcode(bar);
-                        wr.setBarcodeImage(generateBarcode(bar));
+                        String cleanBar = sanitizeBarcode(bar);
+                        wr.setBarcode(cleanBar);
+                        wr.setBarcodeImage(generateBarcode(cleanBar));
                     }
                     wr.setHours(hours);
                     result.add(wr);
@@ -197,8 +198,13 @@ public class WorkRecordController {
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "png", out);
             return out.toByteArray();
-        } catch (WriterException | IOException e) {
+        } catch (WriterException | IOException | IllegalArgumentException e) {
             return null;
         }
+    }
+
+    private String sanitizeBarcode(String text) {
+        if (text == null) return null;
+        return text.replaceAll("[^\\x00-\\x7F]", "");
     }
 }
