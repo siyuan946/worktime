@@ -144,10 +144,10 @@ public class WorkRecordController {
 
     private void validate(WorkRecord record) {
         if (record.getProcessCode() == null || record.getProcessCode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Process code required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代码不能为空");
         }
         if (record.getBarcode() == null || record.getBarcode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Barcode required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "条形码不能为空");
         }
     }
 }

@@ -19,7 +19,7 @@ public class AuthController {
     @PostMapping("/login")
     public void login(@RequestBody User user) {
         if (repository.findByUsernameAndPassword(user.getUsername(), user.getPassword()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "账号或密码错误");
         }
     }
 }

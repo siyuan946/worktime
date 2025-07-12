@@ -107,10 +107,10 @@ public class WorkTimeController {
 
     private void validate(WorkTime wt) {
         if (wt.getCode() == null || wt.getCode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "代号不能为空");
         }
         if (wt.getName() == null || wt.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "名称不能为空");
         }
     }
 }

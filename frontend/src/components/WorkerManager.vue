@@ -1,6 +1,6 @@
 <template>
   <section>
-    <h2 class="h5">Workers</h2>
+    <h2 class="h5">人员管理</h2>
     <table class="table table-bordered table-sm">
       <thead>
         <tr>
@@ -16,8 +16,8 @@
           <td><input class="form-control form-control-sm" v-model="w.entryDate" type="date" /></td>
           <td><input class="form-control form-control-sm" v-model="w.leaveDate" type="date" /></td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" @click="updateWorker(w)">Save</button>
-            <button class="btn btn-sm btn-outline-danger" @click="deleteWorker(w.id)">Del</button>
+            <button class="btn btn-sm btn-outline-primary" @click="updateWorker(w)">保存</button>
+            <button class="btn btn-sm btn-outline-danger" @click="deleteWorker(w.id)">删除</button>
           </td>
         </tr>
         <tr>
@@ -27,7 +27,7 @@
           <td><input class="form-control form-control-sm" v-model="newWorker.team" /></td>
           <td><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" /></td>
           <td><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" /></td>
-          <td><button class="btn btn-sm btn-primary" @click="createWorker" :disabled="!canAdd">Add</button></td>
+          <td><button class="btn btn-sm btn-primary" @click="createWorker" :disabled="!canAdd">新增</button></td>
         </tr>
       </tbody>
     </table>

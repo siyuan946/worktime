@@ -1,10 +1,10 @@
 <template>
   <section>
-    <h2 class="h5">Saved Records</h2>
+    <h2 class="h5">已保存记录</h2>
     <div class="input-group mb-2" style="max-width:300px;">
-      <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="Search barcode" />
-      <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">Search</button>
-      <button class="btn btn-outline-secondary btn-sm" @click="fetch">All</button>
+      <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
+      <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
+      <button class="btn btn-outline-secondary btn-sm" @click="fetch">全部</button>
     </div>
     <table class="table table-bordered table-sm">
       <thead>
@@ -41,8 +41,8 @@
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" v-if="!rec.editing" @click="rec.editing=true">Edit</button>
-            <button class="btn btn-sm btn-primary" v-else @click="updateRecord(rec)">Save</button>
+            <button class="btn btn-sm btn-outline-primary" v-if="!rec.editing" @click="rec.editing=true">编辑</button>
+            <button class="btn btn-sm btn-primary" v-else @click="updateRecord(rec)">保存</button>
           </td>
         </tr>
       </tbody>

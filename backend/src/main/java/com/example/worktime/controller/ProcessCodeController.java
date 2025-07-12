@@ -43,10 +43,10 @@ public class ProcessCodeController {
 
     private void validate(ProcessCode pc) {
         if (pc.getCode() == null || pc.getCode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Process code required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代号不能为空");
         }
         if (pc.getName() == null || pc.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Process name required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称不能为空");
         }
     }
 }

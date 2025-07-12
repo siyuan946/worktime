@@ -1,6 +1,6 @@
 <template>
   <section>
-    <h2 class="h5">Process Codes</h2>
+    <h2 class="h5">工序代码管理</h2>
     <table class="table table-bordered table-sm">
       <thead>
         <tr>
@@ -14,8 +14,8 @@
           <td><input class="form-control form-control-sm" v-model="p.category" /></td>
           <td><input class="form-control form-control-sm" v-model="p.content" /></td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" @click="updateProcess(p)">Save</button>
-            <button class="btn btn-sm btn-outline-danger" @click="deleteProcess(p.id)">Del</button>
+            <button class="btn btn-sm btn-outline-primary" @click="updateProcess(p)">保存</button>
+            <button class="btn btn-sm btn-outline-danger" @click="deleteProcess(p.id)">删除</button>
           </td>
         </tr>
         <tr>
@@ -23,7 +23,7 @@
           <td><input class="form-control form-control-sm" v-model="newProcess.name" /></td>
           <td><input class="form-control form-control-sm" v-model="newProcess.category" /></td>
           <td><input class="form-control form-control-sm" v-model="newProcess.content" /></td>
-          <td><button class="btn btn-sm btn-primary" @click="createProcess" :disabled="!canAdd">Add</button></td>
+          <td><button class="btn btn-sm btn-primary" @click="createProcess" :disabled="!canAdd">新增</button></td>
         </tr>
       </tbody>
     </table>

@@ -1,14 +1,14 @@
 <template>
   <section>
-    <h2 class="h5">Excel Upload</h2>
+    <h2 class="h5">Excel上传</h2>
     <div class="input-group mb-2">
       <input class="form-control" type="file" @change="onFileChange">
-      <button class="btn btn-outline-primary" @click="parse" :disabled="!file">Parse</button>
-      <button class="btn btn-primary" @click="save" :disabled="!preview.length">Save</button>
+      <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
+      <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
     <div v-if="preview.length">
-      <h2 class="h5">Preview</h2>
+      <h2 class="h5">预览</h2>
       <table class="table table-bordered table-sm">
         <thead>
           <tr>
@@ -37,7 +37,7 @@
             <td>{{ r.processName }}</td>
             <td>{{ r.hours }}</td>
             <td>{{ r.barcode }}</td>
-            <td><input class="form-control form-control-sm" v-model="r.workerCodes" placeholder="codes"/></td>
+            <td><input class="form-control form-control-sm" v-model="r.workerCodes" placeholder="工号"/></td>
             <td><input class="form-control form-control-sm" v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:80px"/></td>
             <td>{{ r.hourSubtotal }}</td>
           </tr>

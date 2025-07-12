@@ -2,7 +2,7 @@
   <div>
     <login-page v-if="!loggedIn" @logged-in="onLogin"></login-page>
     <div v-else class="container py-4">
-      <h1 class="mb-4 text-center">Work Time Entry</h1>
+      <h1 class="mb-4 text-center">工时录入</h1>
       <record-upload @saved="reload"></record-upload>
       <record-list ref="recordList" class="mt-4"></record-list>
       <worker-manager class="mt-4"></worker-manager>
