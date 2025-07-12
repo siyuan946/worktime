@@ -1,6 +1,9 @@
 <template>
   <section class="section-card">
     <h2 class="h5">人员管理</h2>
+    <div class="mb-2 text-end">
+      <button class="btn btn-sm btn-primary" @click="openModal">新增人员</button>
+    </div>
     <h3 class="h6">已有人员</h3>
     <table class="table table-bordered table-sm table-striped mb-3">
       <thead>
@@ -19,7 +22,7 @@
         </tr>
       </tbody>
     </table>
-    <h3 class="h6">编辑/新增</h3>
+    <h3 class="h6">编辑/删除</h3>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
@@ -39,17 +42,31 @@
             <button class="btn btn-sm btn-outline-danger" @click="deleteWorker(w.id)">删除</button>
           </td>
         </tr>
-        <tr>
-          <td><input class="form-control form-control-sm" v-model="newWorker.code" /></td>
-          <td><input class="form-control form-control-sm" v-model="newWorker.name" /></td>
-          <td><input class="form-control form-control-sm" v-model="newWorker.workshop" /></td>
-          <td><input class="form-control form-control-sm" v-model="newWorker.team" /></td>
-          <td><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" /></td>
-          <td><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" /></td>
-          <td><button class="btn btn-sm btn-primary" @click="createWorker" :disabled="!canAdd">新增</button></td>
-        </tr>
       </tbody>
     </table>
+    <!-- 新增人员模态框 -->
+    <div class="modal fade" tabindex="-1" ref="addModal">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">新增人员</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.code" placeholder="工号" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.name" placeholder="姓名" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.workshop" placeholder="车间" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.team" placeholder="班组" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" placeholder="入厂日期" /></div>
+            <div><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" placeholder="离厂日期" /></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">取消</button>
+            <button class="btn btn-primary" @click="createWorker" :disabled="!canAdd">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -59,7 +76,8 @@ export default {
   data() {
     return {
       workers: [],
-      newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
+      newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' },
+      modal: null
     }
   },
   computed: {
@@ -70,14 +88,24 @@ export default {
   created() {
     this.fetchWorkers()
   },
+  mounted() {
+    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
+  },
   methods: {
+    openModal() {
+      this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
+      this.modal.show()
+    },
+    closeModal() {
+      this.modal.hide()
+    },
     async fetchWorkers() {
       const res = await axios.get('/api/workers')
       this.workers = res.data
     },
     async createWorker() {
       await axios.post('/api/workers', this.newWorker)
-      this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
+      this.closeModal()
       this.fetchWorkers()
     },
     async updateWorker(w) {
