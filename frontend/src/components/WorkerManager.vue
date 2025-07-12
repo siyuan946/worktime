@@ -72,20 +72,20 @@ export default {
   },
   methods: {
     async fetchWorkers() {
-      const res = await axios.get('http://localhost:8080/api/workers')
+      const res = await axios.get('/api/workers')
       this.workers = res.data
     },
     async createWorker() {
-      await axios.post('http://localhost:8080/api/workers', this.newWorker)
+      await axios.post('/api/workers', this.newWorker)
       this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
       this.fetchWorkers()
     },
     async updateWorker(w) {
-      await axios.put(`http://localhost:8080/api/workers/${w.id}`, w)
+      await axios.put(`/api/workers/${w.id}`, w)
       this.fetchWorkers()
     },
     async deleteWorker(id) {
-      await axios.delete(`http://localhost:8080/api/workers/${id}`)
+      await axios.delete(`/api/workers/${id}`)
       this.fetchWorkers()
     }
   }
