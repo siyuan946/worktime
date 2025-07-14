@@ -91,52 +91,43 @@ public class WorkRecordController {
         try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = wb.getSheetAt(0);
             if (sheet.getPhysicalNumberOfRows() < 1) return result;
-            Row header = sheet.getRow(0);
-            Map<String, Integer> col = new HashMap<>();
-            for (Cell cell : header) {
-                col.put(cell.getStringCellValue().trim(), cell.getColumnIndex());
-            }
-            List<int[]> steps = new ArrayList<>();
-            for (Map.Entry<String, Integer> e : col.entrySet()) {
-                String name = e.getKey();
-                if (name.startsWith("工序")) {
-                    String suffix = name.substring(2); // "" or ".1" etc
-                    Integer hIdx = col.get("工时" + suffix);
-                    if (hIdx != null) steps.add(new int[]{e.getValue(), hIdx});
-                }
-            }
+
+            // Fixed column indexes: F=5, E=4, J=9 ... AC=28, AQ=42
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
-                String productCode = getString(row, col.get("产品代码"));
-                String productName = getString(row, col.get("所属产品"));
-                String drawing = getString(row, col.get("代号"));
-                String partName = getString(row, col.get("名称"));
-                Integer qty = getInt(row, col.get("产量"));
 
-                for (int[] pair : steps) {
-                    String process = getString(row, pair[0]);
-                    Double hours = getDouble(row, pair[1]);
-                    if (process == null && hours == null) continue;
+                String notification = getString(row, 42);   // AQ
+                String prodName = getString(row, 5);        // F
+                String drawing = getString(row, 4);         // E
+                Integer qty = getInt(row, 1);               // B -> 产量
+
+                for (int c = 9; c <= 28; c += 2) {          // J..AC pairs
+                    String process = getString(row, c);
+                    Double hours = getDouble(row, c + 1);
+                    if ((process == null || process.trim().isEmpty()) && hours == null) continue;
+
                     WorkRecord wr = new WorkRecord();
-                    wr.setNotificationNumber(productCode);
-                    wr.setProductCode(productCode);
-                    wr.setProductName(productName);
+                    wr.setNotificationNumber(notification);
+                    wr.setProductName(prodName);
                     wr.setDrawingNumber(drawing);
-                    wr.setPartName(partName);
+                    wr.setPartName(prodName);
                     wr.setPlanQty(qty);
                     wr.setProcessName(process);
+
                     String code = processService.getCode(process);
                     if (code == null || code.trim().isEmpty()) {
-                        code = process; // fall back to process name
+                        code = process; // fallback to name
                     }
                     wr.setProcessCode(code);
-                    if (drawing != null && productCode != null && code != null) {
-                        String bar = drawing + "-" + productCode + "-" + code;
-                        String cleanBar = sanitizeBarcode(bar);
-                        wr.setBarcode(cleanBar);
-                        wr.setBarcodeImage(generateBarcode(cleanBar));
+
+                    if (drawing != null && notification != null && code != null) {
+                        String bar = drawing + "-" + notification + "-" + code;
+                        String clean = sanitizeBarcode(bar);
+                        wr.setBarcode(clean);
+                        wr.setBarcodeImage(generateBarcode(clean));
                     }
+
                     wr.setHours(hours);
                     result.add(wr);
                 }
