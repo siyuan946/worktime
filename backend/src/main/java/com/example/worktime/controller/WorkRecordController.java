@@ -45,7 +45,8 @@ public class WorkRecordController {
 
     @GetMapping("/barcode/{barcode}")
     public List<WorkRecord> byBarcode(@PathVariable String barcode) {
-        return repository.findByBarcode(barcode);
+        String clean = sanitizeBarcode(barcode);
+        return repository.findByBarcode(clean);
     }
 
     @PutMapping("/{id}")
