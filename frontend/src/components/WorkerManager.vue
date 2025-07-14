@@ -100,20 +100,20 @@ export default {
       this.modal.hide()
     },
     async fetchWorkers() {
-      const res = await axios.get('/api/workers')
+      const res = await axios.get('http://localhost:8080/api/workers')
       this.workers = res.data
     },
     async createWorker() {
-      await axios.post('/api/workers', this.newWorker)
+      await axios.post('http://localhost:8080/api/workers', this.newWorker)
       this.closeModal()
       this.fetchWorkers()
     },
     async updateWorker(w) {
-      await axios.put(`/api/workers/${w.id}`, w)
+      await axios.put(`http://localhost:8080/api/workers/${w.id}`, w)
       this.fetchWorkers()
     },
     async deleteWorker(id) {
-      await axios.delete(`/api/workers/${id}`)
+      await axios.delete(`http://localhost:8080/api/workers/${id}`)
       this.fetchWorkers()
     }
   }

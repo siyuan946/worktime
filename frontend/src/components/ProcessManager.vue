@@ -94,20 +94,20 @@ export default {
       this.modal.hide()
     },
     async fetchProcesses() {
-      const res = await axios.get('/api/processcodes')
+      const res = await axios.get('http://localhost:8080/api/processcodes')
       this.processCodes = res.data
     },
     async createProcess() {
-      await axios.post('/api/processcodes', this.newProcess)
+      await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
       this.closeModal()
       this.fetchProcesses()
     },
     async updateProcess(p) {
-      await axios.put(`/api/processcodes/${p.id}`, p)
+      await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
       this.fetchProcesses()
     },
     async deleteProcess(id) {
-      await axios.delete(`/api/processcodes/${id}`)
+      await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
       this.fetchProcesses()
     }
   }

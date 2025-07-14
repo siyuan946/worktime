@@ -68,7 +68,7 @@ export default {
       this.loading = true
       const data = new FormData()
       data.append('file', this.file)
-      const res = await axios.post('/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
       this.fileId = res.data.fileId
       this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
       this.loading = false
@@ -76,7 +76,7 @@ export default {
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
       this.loading = true
-      const res = await axios.post(`/api/workrecords?fileId=${this.fileId}`, this.preview)
+      const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, this.preview)
       const hasSupp = res.data.some(r => r.supplemental)
       this.preview = []
       this.file = null
