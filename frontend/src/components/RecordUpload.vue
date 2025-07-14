@@ -9,6 +9,7 @@
         <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
       </select>
       <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
+      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
       <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
@@ -86,6 +87,17 @@ export default {
       this.fileId = this.selectedFileId
       this.file = null
       this.loading = false
+    },
+    async remove() {
+      if (!this.selectedFileId) return
+      if (!confirm('删除后不可恢复，确定删除?')) return
+      this.loading = true
+      await axios.delete(`http://localhost:8080/api/files/${this.selectedFileId}`)
+      this.loading = false
+      this.selectedFileId = ''
+      this.preview = []
+      await this.fetchFiles()
+      alert('已删除')
     },
     async parse() {
       this.loading = true
