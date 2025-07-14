@@ -24,9 +24,9 @@ public class WorkerController {
     }
 
     @GetMapping("/code/{code}")
-    public Worker byCode(@PathVariable String code) {
+    public org.springframework.http.ResponseEntity<Worker> byCode(@PathVariable String code) {
         Worker w = repository.findByCode(code);
-        return w; // return null if not found
+        return org.springframework.http.ResponseEntity.ok(w);
     }
 
     @PostMapping

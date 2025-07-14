@@ -109,6 +109,7 @@ export default {
           }
         } catch (e) {
           console.error(e)
+          alert(`未找到人员 ${c}`)
         }
       }
       rec.workerNames = names.join(',')
