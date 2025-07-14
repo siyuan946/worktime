@@ -4,7 +4,6 @@
     <div class="input-group mb-2" style="max-width:300px;">
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
-      <button class="btn btn-outline-secondary btn-sm" @click="fetch">全部</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
@@ -62,23 +61,18 @@ export default {
       searchBarcode: ''
     }
   },
-  created() {
-    this.fetch()
-  },
   methods: {
-    async fetch() {
-      const res = await axios.get('http://localhost:8080/api/workrecords')
-      this.records = res.data.map(r => ({...r, editing:false}))
-    },
     async searchByBarcode() {
-      if (!this.searchBarcode) { this.fetch(); return }
-      const res = await axios.get(`http://localhost:8080/api/workrecords/barcode/${this.searchBarcode}`)
+      const code = this.searchBarcode.trim()
+      if (!code) { this.records = []; return }
+      const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
+      const res = await axios.get(url)
       this.records = res.data.map(r => ({...r, editing:false}))
     },
     async updateRecord(rec) {
       await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
       rec.editing = false
-      this.fetch()
+      this.searchByBarcode()
     },
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
