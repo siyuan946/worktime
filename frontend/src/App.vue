@@ -28,8 +28,14 @@ export default {
   data() {
     return { loggedIn: false }
   },
+  created() {
+    this.loggedIn = localStorage.getItem('loggedIn') === 'true'
+  },
   methods: {
-    onLogin() { this.loggedIn = true },
+    onLogin() {
+      this.loggedIn = true
+      localStorage.setItem('loggedIn','true')
+    },
     onSaved() {
       const v = this.$refs.view
       if (v && v.fetch) v.fetch()
