@@ -22,8 +22,6 @@
             <th>工序</th>
             <th>工时</th>
             <th>条形码</th>
-            <th>人员代码</th>
-            <th>合格数</th>
             <th>工时小计</th>
           </tr>
         </thead>
@@ -41,8 +39,6 @@
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
             </td>
-            <td><input class="form-control form-control-sm" v-model="r.workerCodes" placeholder="工号"/></td>
-            <td><input class="form-control form-control-sm" v-model.number="r.qualifiedQty" @input="computeSubtotal(r)" type="number" style="width:80px"/></td>
             <td>{{ r.hourSubtotal }}</td>
           </tr>
         </tbody>
@@ -86,10 +82,6 @@ export default {
     },
     print() {
       window.print()
-    },
-    computeSubtotal(row) {
-      if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
-      else row.hourSubtotal = null
     }
   }
 }
