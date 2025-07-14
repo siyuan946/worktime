@@ -50,7 +50,10 @@
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" v-if="!rec.editing" @click="rec.editing=true">编辑</button>
+            <template v-if="!rec.editing">
+              <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteRecord(rec)">删除</button>
+            </template>
             <button class="btn btn-sm btn-primary" v-else @click="updateRecord(rec)">保存</button>
           </td>
         </tr>
@@ -107,6 +110,11 @@ export default {
       if (!this.records.length) return
       const id = this.records[0].id
       await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+      await this.searchByBarcode()
+    },
+    async deleteRecord(rec) {
+      if (!confirm('确定删除这条记录?')) return
+      await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
       await this.searchByBarcode()
     },
     computeSubtotal(row) {

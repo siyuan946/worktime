@@ -90,6 +90,11 @@ public class WorkRecordController {
         return repository.save(copy);
     }
 
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        repository.deleteById(id);
+    }
+
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
     public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records) {
