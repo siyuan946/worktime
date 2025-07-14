@@ -14,8 +14,10 @@
           <th>图号</th>
           <th>工序代码</th>
           <th>工时</th>
-          <th>条形码</th>
           <th>人员代码</th>
+          <th>姓名</th>
+          <th>车间</th>
+          <th>班组</th>
           <th>合格数</th>
           <th>工时小计</th>
           <th></th>
@@ -29,14 +31,13 @@
           <td>{{ rec.drawingNumber }}</td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
-          <td class="barcode-cell">
-            <div>{{ rec.barcode }}</div>
-            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" />
-          </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
-            <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" style="width:80px" />
+            <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" @blur="lookupWorker(rec)" style="width:80px" />
           </td>
+          <td>{{ rec.workerNames }}</td>
+          <td>{{ rec.workshop }}</td>
+          <td>{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
             <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="computeSubtotal(rec)" style="width:80px" />
@@ -68,7 +69,10 @@ export default {
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
-        this.records = res.data.map(r => ({ ...r, editing: false }))
+        this.records = res.data.map(r => ({ ...r, editing: false, workshop:'', team:'' }))
+        for (const rec of this.records) {
+          if (rec.workerCodes) await this.lookupWorker(rec)
+        }
       } catch (e) {
         console.error(e)
         alert('查询失败')
@@ -82,6 +86,27 @@ export default {
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
       else row.hourSubtotal = null
+    },
+    async lookupWorker(rec) {
+      const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
+      const names = []
+      const workshops = new Set()
+      const teams = new Set()
+      for (const c of codes) {
+        if (!c) continue
+        try {
+          const res = await axios.get(`http://localhost:8080/api/workers/code/${encodeURIComponent(c)}`)
+          const w = res.data
+          if (w) {
+            if (w.name) names.push(w.name)
+            if (w.workshop) workshops.add(w.workshop)
+            if (w.team) teams.add(w.team)
+          }
+        } catch (e) {}
+      }
+      rec.workerNames = names.join(',')
+      rec.workshop = Array.from(workshops).join(',')
+      rec.team = Array.from(teams).join(',')
     }
   }
 }

@@ -23,6 +23,15 @@ public class WorkerController {
         return repository.findAll();
     }
 
+    @GetMapping("/code/{code}")
+    public Worker byCode(@PathVariable String code) {
+        Worker w = repository.findByCode(code);
+        if (w == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到人员");
+        }
+        return w;
+    }
+
     @PostMapping
     public Worker create(@RequestBody Worker worker) {
         validate(worker);
