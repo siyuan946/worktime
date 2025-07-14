@@ -20,11 +20,13 @@
           <th>工时</th>
           <th>产量</th>
           <th>人员代码</th>
+          <th>数量分配</th>
           <th>姓名</th>
           <th>车间</th>
           <th>班组</th>
           <th>合格数</th>
           <th>工时小计</th>
+          <th>工时分配</th>
           <th></th>
         </tr>
       </thead>
@@ -39,16 +41,21 @@
           <td>{{ rec.planQty }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
-            <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" @blur="lookupWorker(rec)" style="width:80px" />
+            <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" @blur="onWorkerCodesChange(rec)" style="width:80px" />
+          </td>
+          <td>
+            <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
+            <input v-else class="form-control form-control-sm" v-model="rec.workerQtys" @input="computeWorkerHours(rec)" style="width:80px" />
           </td>
           <td>{{ rec.workerNames }}</td>
           <td>{{ rec.workshop }}</td>
           <td>{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
-            <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="computeSubtotal(rec)" style="width:80px" />
+            <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
+          <td>{{ rec.workerHours }}</td>
           <td>
             <template v-if="!rec.editing">
               <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
@@ -86,12 +93,13 @@ export default {
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
-        this.records = res.data.map(r => ({ ...r, editing: false, workshop:'', team:'' }))
+        this.records = res.data.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }))
         for (const rec of this.records) {
           if (rec.qualifiedQty != null && rec.hours != null) {
             rec.hourSubtotal = rec.qualifiedQty * rec.hours
           }
           if (rec.workerCodes) await this.lookupWorker(rec)
+          this.computeWorkerHours(rec)
         }
       } catch (e) {
         console.error(e)
@@ -126,6 +134,14 @@ export default {
         alert('总合格数已超过产量，请确认')
       }
     },
+    onQtyChange(rec) {
+      this.computeSubtotal(rec)
+      this.computeWorkerHours(rec)
+    },
+    onWorkerCodesChange(rec) {
+      this.lookupWorker(rec)
+      this.computeWorkerHours(rec)
+    },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
       const names = []
@@ -151,6 +167,24 @@ export default {
       rec.workerNames = names.join(',')
       rec.workshop = Array.from(workshops).join(',')
       rec.team = Array.from(teams).join(',')
+    },
+    computeWorkerHours(rec) {
+      const codes = rec.workerCodes ? rec.workerCodes.trim().split(/[ ,\u3001]+/) : []
+      if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
+        rec.workerHours = ''
+        if (!rec.workerQtys) rec.workerQtys = ''
+        return
+      }
+      let qtys = []
+      if (rec.workerQtys && rec.workerQtys.trim()) {
+        qtys = rec.workerQtys.trim().split(/\s+/).map(n => parseFloat(n))
+      }
+      if (qtys.length !== codes.length) {
+        const share = rec.qualifiedQty / codes.length
+        qtys = codes.map(() => share)
+        rec.workerQtys = qtys.join(' ')
+      }
+      rec.workerHours = codes.map((c,i)=> `${c}:${(qtys[i]||0)*rec.hours}` ).join(',')
     }
   }
 }

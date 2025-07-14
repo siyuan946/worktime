@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS work_record (
     hours DOUBLE,
     worker_codes VARCHAR(255),
     worker_names VARCHAR(255),
+    worker_qtys VARCHAR(255),
     qualified_qty INT,
     hour_subtotal DOUBLE,
     start_time DATETIME,

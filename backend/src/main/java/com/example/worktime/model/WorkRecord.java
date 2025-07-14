@@ -71,6 +71,9 @@ public class WorkRecord {
     // 人员姓名 (回显)
     private String workerNames;
 
+    // 每个员工完成的数量，用空格分隔
+    private String workerQtys;
+
     // 合格数量
     private Integer qualifiedQty;
 
@@ -140,6 +143,9 @@ public class WorkRecord {
 
     public String getWorkerNames() { return workerNames; }
     public void setWorkerNames(String workerNames) { this.workerNames = workerNames; }
+
+    public String getWorkerQtys() { return workerQtys; }
+    public void setWorkerQtys(String workerQtys) { this.workerQtys = workerQtys; }
 
     public Integer getQualifiedQty() { return qualifiedQty; }
     public void setQualifiedQty(Integer qualifiedQty) { this.qualifiedQty = qualifiedQty; }
