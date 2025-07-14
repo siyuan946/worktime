@@ -26,10 +26,7 @@ public class WorkerController {
     @GetMapping("/code/{code}")
     public Worker byCode(@PathVariable String code) {
         Worker w = repository.findByCode(code);
-        if (w == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到人员");
-        }
-        return w;
+        return w; // return null if not found
     }
 
     @PostMapping

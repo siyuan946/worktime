@@ -71,6 +71,9 @@ export default {
         const res = await axios.get(url)
         this.records = res.data.map(r => ({ ...r, editing: false, workshop:'', team:'' }))
         for (const rec of this.records) {
+          if (rec.qualifiedQty != null && rec.hours != null) {
+            rec.hourSubtotal = rec.qualifiedQty * rec.hours
+          }
           if (rec.workerCodes) await this.lookupWorker(rec)
         }
       } catch (e) {
@@ -101,8 +104,12 @@ export default {
             if (w.name) names.push(w.name)
             if (w.workshop) workshops.add(w.workshop)
             if (w.team) teams.add(w.team)
+          } else {
+            alert(`未找到人员 ${c}`)
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error(e)
+        }
       }
       rec.workerNames = names.join(',')
       rec.workshop = Array.from(workshops).join(',')
