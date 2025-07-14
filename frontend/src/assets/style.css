@@ -1,0 +1,26 @@
+body {
+  background-color: #f8f9fa;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+.section-card {
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: .5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.table th, .table td {
+  vertical-align: middle;
+}
+
+.barcode-cell {
+  min-width: 220px;
+}
+
+.barcode-cell img {
+  height: 40px;
+  width: 200px;
+}

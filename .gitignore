@@ -22,3 +22,15 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Maven build output
+backend/target/
+
+# Node dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# npm lock file
+frontend/package-lock.json
+
+.idea/
