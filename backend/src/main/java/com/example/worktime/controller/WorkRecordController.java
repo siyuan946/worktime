@@ -56,6 +56,7 @@ public class WorkRecordController {
     }
 
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records) {
         UploadedFile file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
@@ -64,7 +65,9 @@ public class WorkRecordController {
             r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
             prepare(r);
         }
-        return repository.saveAll(records);
+        java.util.List<WorkRecord> saved = repository.saveAll(records);
+        repository.flush();
+        return saved;
     }
 
     @PostMapping("/parse")
