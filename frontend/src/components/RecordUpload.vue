@@ -8,7 +8,7 @@
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
-    <div v-if="preview.length">
+    <div v-if="preview.length" id="preview-table">
       <h2 class="h5">预览</h2>
       <table class="table table-bordered table-sm table-striped">
         <thead>

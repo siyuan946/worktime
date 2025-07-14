@@ -28,3 +28,19 @@ body {
   height: 80px;
   width: 300px;
 }
+
+/* Only show the preview table when printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #preview-table, #preview-table * {
+    visibility: visible;
+  }
+  #preview-table {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
