@@ -15,3 +15,12 @@ body {
 .table th, .table td {
   vertical-align: middle;
 }
+
+.barcode-cell {
+  min-width: 220px;
+}
+
+.barcode-cell img {
+  height: 40px;
+  width: 200px;
+}
