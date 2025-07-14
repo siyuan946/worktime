@@ -54,6 +54,12 @@ public class WorkRecordController {
         return repository.findByFileId(fileId);
     }
 
+    @GetMapping("/generateBarcode")
+    public String generateBarcodeEndpoint(@RequestParam("text") String text) {
+        byte[] img = generateBarcode(sanitizeBarcode(text));
+        return img == null ? null : java.util.Base64.getEncoder().encodeToString(img);
+    }
+
     @PutMapping("/{id}")
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
         record.setId(id);
@@ -122,10 +128,13 @@ public class WorkRecordController {
                     wr.setProcessName(process);
 
                     String code = processService.getCode(process);
+                    boolean codeMissing = false;
                     if (code == null || code.trim().isEmpty()) {
                         code = process; // fallback to name
+                        codeMissing = true;
                     }
                     wr.setProcessCode(code);
+                    wr.setCodeMissing(codeMissing);
 
                     if (drawing != null && notification != null && code != null) {
                         String bar = drawing + "-" + notification + "-" + code;
@@ -135,6 +144,7 @@ public class WorkRecordController {
                     }
 
                     wr.setHours(hours);
+                    wr.setHoursMissing(hours == null);
                     result.add(wr);
                 }
             }

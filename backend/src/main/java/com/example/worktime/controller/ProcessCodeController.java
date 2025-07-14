@@ -23,6 +23,11 @@ public class ProcessCodeController {
         return repository.findAll();
     }
 
+    @GetMapping("/name/{name}")
+    public ProcessCode byName(@PathVariable String name) {
+        return repository.findByName(name);
+    }
+
     @PostMapping
     public ProcessCode create(@RequestBody ProcessCode pc) {
         validate(pc);

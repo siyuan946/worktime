@@ -31,15 +31,15 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(r,i) in preview" :key="i">
+          <tr v-for="(r,i) in preview" :key="i" :class="{'table-danger': r.codeMissing || r.hoursMissing}">
             <td>{{ r.notificationNumber }}</td>
             <td>{{ r.productName }}</td>
             <td>{{ r.drawingNumber }}</td>
             <td>{{ r.partName }}</td>
             <td>{{ r.planQty }}</td>
             <td>{{ r.processCode }}</td>
-            <td>{{ r.processName }}</td>
-            <td>{{ r.hours }}</td>
+            <td><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
+            <td><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
             <td class="barcode-cell">
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
@@ -78,7 +78,11 @@ export default {
       if (!this.selectedFileId) return
       this.loading = true
       const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
-      this.preview = res.data
+      this.preview = res.data.map(r => ({
+        ...r,
+        codeMissing: false,
+        hoursMissing: r.hours == null
+      }))
       this.fileId = this.selectedFileId
       this.file = null
       this.loading = false
@@ -90,6 +94,8 @@ export default {
       const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
       this.fileId = res.data.fileId
       this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
+      const warn = this.preview.filter(r => r.codeMissing || r.hoursMissing)
+      if (warn.length) alert(`发现${warn.length}条记录缺少工时或工序码，请检查`)
       this.loading = false
     },
     async save() {
@@ -109,6 +115,42 @@ export default {
     },
     print() {
       window.print()
+    },
+    sanitize(text) {
+      return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
+    },
+    async updateProcess(r) {
+      if (!r.processName) {
+        r.processCode = ''
+        r.codeMissing = true
+        await this.updateBarcode(r)
+        return
+      }
+      try {
+        const res = await axios.get(`http://localhost:8080/api/processcodes/name/${encodeURIComponent(r.processName)}`)
+        if (res.data) {
+          r.processCode = res.data.code
+          r.codeMissing = false
+        } else {
+          r.processCode = r.processName
+          r.codeMissing = true
+        }
+      } catch (e) {
+        r.processCode = r.processName
+        r.codeMissing = true
+      }
+      await this.updateBarcode(r)
+    },
+    async checkHours(r) {
+      r.hoursMissing = r.hours == null || r.hours === ''
+    },
+    async updateBarcode(r) {
+      if (r.drawingNumber && r.notificationNumber && r.processCode) {
+        const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
+        const res = await axios.get('http://localhost:8080/api/workrecords/generateBarcode', { params: { text: bar } })
+        r.barcode = this.sanitize(bar)
+        r.barcodeImage = res.data
+      }
     }
   }
 }

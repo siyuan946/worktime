@@ -48,6 +48,12 @@ public class WorkRecord {
     @Lob
     private byte[] barcodeImage;
 
+    @Transient
+    private Boolean hoursMissing;
+
+    @Transient
+    private Boolean codeMissing;
+
     // 单件工时
     private Double hours;
 
@@ -112,6 +118,12 @@ public class WorkRecord {
 
     public byte[] getBarcodeImage() { return barcodeImage; }
     public void setBarcodeImage(byte[] barcodeImage) { this.barcodeImage = barcodeImage; }
+
+    public Boolean getHoursMissing() { return hoursMissing; }
+    public void setHoursMissing(Boolean hoursMissing) { this.hoursMissing = hoursMissing; }
+
+    public Boolean getCodeMissing() { return codeMissing; }
+    public void setCodeMissing(Boolean codeMissing) { this.codeMissing = codeMissing; }
 
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }
