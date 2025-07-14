@@ -12,6 +12,7 @@ public class UploadedFile {
     private String fileName;
 
     @Lob
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private byte[] data;
 
     private LocalDateTime uploadTime;

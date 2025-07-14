@@ -51,6 +51,7 @@ public class WorkRecord {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private UploadedFile file;
 
     // 是否补录
