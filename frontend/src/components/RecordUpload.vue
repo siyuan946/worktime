@@ -4,6 +4,11 @@
     <div class="input-group mb-2">
       <input class="form-control" type="file" @change="onFileChange">
       <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
+      <select class="form-select" style="max-width:180px" v-model="selectedFileId">
+        <option value="" disabled>选择历史文件</option>
+        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
+      </select>
+      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
       <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
@@ -55,11 +60,29 @@ export default {
       file: null,
       preview: [],
       loading: false,
-      fileId: null
+      fileId: null,
+      files: [],
+      selectedFileId: ''
     }
+  },
+  created() {
+    this.fetchFiles()
   },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
+    async fetchFiles() {
+      const res = await axios.get('http://localhost:8080/api/files')
+      this.files = res.data
+    },
+    async load() {
+      if (!this.selectedFileId) return
+      this.loading = true
+      const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
+      this.preview = res.data
+      this.fileId = this.selectedFileId
+      this.file = null
+      this.loading = false
+    },
     async parse() {
       this.loading = true
       const data = new FormData()

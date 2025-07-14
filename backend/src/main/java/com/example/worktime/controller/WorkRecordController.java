@@ -49,6 +49,11 @@ public class WorkRecordController {
         return repository.findByBarcode(clean);
     }
 
+    @GetMapping("/file/{fileId}")
+    public List<WorkRecord> byFile(@PathVariable Long fileId) {
+        return repository.findByFileId(fileId);
+    }
+
     @PutMapping("/{id}")
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
         record.setId(id);
