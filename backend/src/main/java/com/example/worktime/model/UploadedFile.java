@@ -1,9 +1,11 @@
 package com.example.worktime.model;
 
 import javax.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class UploadedFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

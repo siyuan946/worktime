@@ -4,12 +4,14 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 import com.example.worktime.model.UploadedFile;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Entity representing a single work record parsed from Excel uploads.
  */
 
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class WorkRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -114,6 +116,7 @@ public class WorkRecord {
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public UploadedFile getFile() { return file; }
     public void setFile(UploadedFile file) { this.file = file; }
 
