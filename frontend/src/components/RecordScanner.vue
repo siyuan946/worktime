@@ -32,7 +32,7 @@
           <td>{{ rec.hours }}</td>
           <td>
             <div>{{ rec.barcode }}</div>
-            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" style="height:60px"/>
+            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" style="height:80px;width:300px"/>
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
