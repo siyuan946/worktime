@@ -17,15 +17,14 @@ body {
 }
 
 
-/* Increase barcode row size so the full barcode is visible */
+/* Ensure barcode cells are tall enough so barcodes aren't clipped */
 .barcode-cell {
-  /* reserve enough room so barcode images aren't clipped */
-  min-width: 420px;
-  min-height: 110px;
+  width: 320px;
+  height: 90px;
 }
 
 .barcode-cell img {
   display: block;
-  height: 100px;
-  width: 400px;
+  height: 80px;
+  width: 300px;
 }

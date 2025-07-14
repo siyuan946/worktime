@@ -194,7 +194,7 @@ public class WorkRecordController {
     private byte[] generateBarcode(String text) {
         try {
             Code128Writer writer = new Code128Writer();
-            BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, 400, 100);
+            BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, 300, 80);
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "png", out);
             return out.toByteArray();
