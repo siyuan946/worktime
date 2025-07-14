@@ -99,8 +99,9 @@ export default {
       }
     },
     async updateRecord(rec) {
-      if (rec.qualifiedQty != null && this.planQty != null && rec.qualifiedQty > this.planQty) {
-        alert('合格数大于产量，请确认')
+      const total = this.records.reduce((sum, r) => sum + (r === rec ? (rec.qualifiedQty || 0) : (r.qualifiedQty || 0)), 0)
+      if (this.planQty != null && total > this.planQty) {
+        alert('总合格数已超过产量，请确认')
       }
       await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
       rec.editing = false
@@ -120,8 +121,10 @@ export default {
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
       else row.hourSubtotal = null
-      // trigger recompute
-      this.totalQualified
+      const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
+      if (this.planQty != null && total > this.planQty) {
+        alert('总合格数已超过产量，请确认')
+      }
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
