@@ -114,8 +114,8 @@ export default {
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
-      await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
-      await this.searchByBarcode()
+      const idx = this.records.indexOf(rec)
+      if (idx !== -1) this.records.splice(idx, 1)
     },
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
