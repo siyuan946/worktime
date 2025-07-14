@@ -6,6 +6,7 @@ import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.worktime.model.Worker;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
@@ -79,22 +80,25 @@ public class WorkRecordController {
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
+        System.out.println("Saved records: " + saved.size());
         return saved;
     }
 
     @PostMapping("/parse")
+    @Transactional
     public Map<String, Object> parse(@RequestParam("file") MultipartFile file) throws IOException {
         UploadedFile uf = new UploadedFile();
         uf.setFileName(file.getOriginalFilename());
         uf.setData(file.getBytes());
         uf.setUploadTime(java.time.LocalDateTime.now());
-        uf = fileRepository.save(uf);
+        uf = fileRepository.saveAndFlush(uf);
 
         List<WorkRecord> records = parseExcel(file);
 
         Map<String, Object> result = new HashMap<>();
         result.put("fileId", uf.getId());
         result.put("records", records);
+        System.out.println("Parsed records: " + records.size() + " for file " + uf.getId());
         return result;
     }
 
