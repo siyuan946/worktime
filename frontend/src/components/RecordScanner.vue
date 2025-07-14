@@ -30,9 +30,9 @@
           <td>{{ rec.drawingNumber }}</td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
-          <td>
+          <td class="barcode-cell">
             <div>{{ rec.barcode }}</div>
-            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" style="height:80px;width:300px"/>
+            <img v-if="rec.barcodeImage" :src="'data:image/png;base64,'+rec.barcodeImage" />
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
