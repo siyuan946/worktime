@@ -16,13 +16,15 @@ body {
   vertical-align: middle;
 }
 
+
+/* Increase barcode row size so the full barcode is visible */
 .barcode-cell {
   min-width: 220px;
-  min-height: 50px;
+  min-height: 80px;
 }
 
 .barcode-cell img {
   display: block;
-  height: 40px;
+  height: 60px;
   width: 200px;
 }
