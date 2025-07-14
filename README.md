@@ -48,3 +48,5 @@ After登录后,顶部导航栏可在“Excel上传”“扫码录入”“人员
 - Vue **2.7.14** with Vite **5.2**
 
 This repository also includes a sample Excel file `新建 Microsoft Excel 工作表.xlsx` for testing uploads.
+
+All frontend API calls are prefixed with http://localhost:8080 to target the backend server.
