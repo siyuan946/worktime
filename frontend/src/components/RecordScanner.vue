@@ -66,8 +66,13 @@ export default {
       const code = this.searchBarcode.trim()
       if (!code) { this.records = []; return }
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
-      const res = await axios.get(url)
-      this.records = res.data.map(r => ({...r, editing:false}))
+      try {
+        const res = await axios.get(url)
+        this.records = res.data.map(r => ({ ...r, editing: false }))
+      } catch (e) {
+        console.error(e)
+        alert('查询失败')
+      }
     },
     async updateRecord(rec) {
       await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
