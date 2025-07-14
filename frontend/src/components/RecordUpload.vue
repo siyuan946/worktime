@@ -72,7 +72,11 @@ export default {
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
       this.loading = true
-      const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, this.preview)
+      const valid = this.preview.filter(r => r.processCode && r.barcode)
+      const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, valid)
+      if (valid.length < this.preview.length) {
+        alert('部分记录因缺少工序代码或条形码已被忽略')
+      }
       const hasSupp = res.data.some(r => r.supplemental)
       this.preview = []
       this.file = null
