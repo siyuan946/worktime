@@ -18,9 +18,11 @@ body {
 
 .barcode-cell {
   min-width: 220px;
+  min-height: 50px;
 }
 
 .barcode-cell img {
+  display: block;
   height: 40px;
   width: 200px;
 }
