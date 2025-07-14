@@ -68,6 +68,28 @@ public class WorkRecordController {
         return repository.save(record);
     }
 
+    @PostMapping("/duplicate/{id}")
+    public WorkRecord duplicate(@PathVariable Long id) {
+        WorkRecord src = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found"));
+        WorkRecord copy = new WorkRecord();
+        copy.setNotificationNumber(src.getNotificationNumber());
+        copy.setProductName(src.getProductName());
+        copy.setDrawingNumber(src.getDrawingNumber());
+        copy.setProductCode(src.getProductCode());
+        copy.setPartName(src.getPartName());
+        copy.setPlanQty(src.getPlanQty());
+        copy.setProcessName(src.getProcessName());
+        copy.setProcessCode(src.getProcessCode());
+        copy.setBarcode(src.getBarcode());
+        copy.setBarcodeImage(src.getBarcodeImage());
+        copy.setHours(src.getHours());
+        copy.setFile(src.getFile());
+        copy.setSupplemental(true);
+        prepare(copy);
+        return repository.save(copy);
+    }
+
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
     public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records) {

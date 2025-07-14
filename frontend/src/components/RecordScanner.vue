@@ -5,6 +5,10 @@
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
     </div>
+    <div class="mb-2" v-if="records.length">
+      产量: {{ planQty }} | 总合格数: {{ totalQualified }}
+      <button class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
+    </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
@@ -14,6 +18,7 @@
           <th>图号</th>
           <th>工序代码</th>
           <th>工时</th>
+          <th>产量</th>
           <th>人员代码</th>
           <th>姓名</th>
           <th>车间</th>
@@ -31,6 +36,7 @@
           <td>{{ rec.drawingNumber }}</td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
+          <td>{{ rec.planQty }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
             <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" @blur="lookupWorker(rec)" style="width:80px" />
@@ -62,6 +68,14 @@ export default {
       searchBarcode: ''
     }
   },
+  computed: {
+    planQty() {
+      return this.records.length ? this.records[0].planQty : null
+    },
+    totalQualified() {
+      return this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
+    }
+  },
   methods: {
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
@@ -82,13 +96,24 @@ export default {
       }
     },
     async updateRecord(rec) {
+      if (rec.qualifiedQty != null && this.planQty != null && rec.qualifiedQty > this.planQty) {
+        alert('合格数大于产量，请确认')
+      }
       await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
       rec.editing = false
       this.searchByBarcode()
     },
+    async addRecord() {
+      if (!this.records.length) return
+      const id = this.records[0].id
+      await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+      await this.searchByBarcode()
+    },
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
       else row.hourSubtotal = null
+      // trigger recompute
+      this.totalQualified
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
