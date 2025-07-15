@@ -28,7 +28,7 @@
             <th>工序</th>
             <th>工时</th>
             <th>条形码</th>
-            <th></th>
+            <th class="no-print"></th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +45,7 @@
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
             </td>
-            <td><button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button></td>
+            <td class="no-print"><button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button></td>
           </tr>
         </tbody>
       </table>
