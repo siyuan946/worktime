@@ -93,6 +93,7 @@ public class WorkRecordController {
         copy.setProcessCode(src.getProcessCode());
         copy.setBarcode(src.getBarcode());
         copy.setBarcodeImage(src.getBarcodeImage());
+        copy.setBatchNumber(src.getBatchNumber());
         copy.setHours(src.getHours());
         copy.setFile(src.getFile());
         copy.setSupplemental(true);

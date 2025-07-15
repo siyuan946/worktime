@@ -23,6 +23,7 @@
           <th>通知单号</th>
           <th>产品名称</th>
           <th>图号</th>
+          <th>批次号</th>
           <th>工序代码</th>
           <th>工时</th>
           <th>产量</th>
@@ -43,6 +44,10 @@
           <td>{{ rec.notificationNumber }}</td>
           <td>{{ rec.productName }}</td>
           <td>{{ rec.drawingNumber }}</td>
+          <td>
+            <span v-if="!rec.editing">{{ rec.batchNumber }}</span>
+            <input v-else class="form-control form-control-sm" v-model="rec.batchNumber" style="width:80px" />
+          </td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
           <td>{{ rec.planQty }}</td>

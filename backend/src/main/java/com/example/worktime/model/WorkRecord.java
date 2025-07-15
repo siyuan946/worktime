@@ -48,6 +48,9 @@ public class WorkRecord {
     @Lob
     private byte[] barcodeImage;
 
+    // 批次号
+    private String batchNumber;
+
     @Transient
     private Boolean hoursMissing;
 
@@ -121,6 +124,9 @@ public class WorkRecord {
 
     public byte[] getBarcodeImage() { return barcodeImage; }
     public void setBarcodeImage(byte[] barcodeImage) { this.barcodeImage = barcodeImage; }
+
+    public String getBatchNumber() { return batchNumber; }
+    public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
 
     public Boolean getHoursMissing() { return hoursMissing; }
     public void setHoursMissing(Boolean hoursMissing) { this.hoursMissing = hoursMissing; }
