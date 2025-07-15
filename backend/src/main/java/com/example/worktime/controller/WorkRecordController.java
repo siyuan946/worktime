@@ -64,8 +64,16 @@ public class WorkRecordController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
+        WorkRecord existing = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found"));
         record.setId(id);
+        if (record.getFile() == null) {
+            record.setFile(existing.getFile());
+        }
+        if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
+        if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
         prepare(record);
         return repository.save(record);
     }
