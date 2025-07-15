@@ -106,9 +106,10 @@ export default {
     },
     async loadFile() {
       if (!this.selectedFileId) return
-      const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
-      const scanned = res.data.filter(r => r.qualifiedQty != null)
-      await this.processRecords(scanned)
+      const res = await axios.get(
+        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}`
+      )
+      await this.processRecords(res.data)
       this.viewOnly = true
     },
     async searchByBarcode() {
