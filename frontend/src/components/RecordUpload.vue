@@ -28,7 +28,7 @@
             <th>工序</th>
             <th>工时</th>
             <th>条形码</th>
-            <th>工时小计</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +45,7 @@
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
             </td>
-            <td>{{ r.hourSubtotal }}</td>
+            <td><button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button></td>
           </tr>
         </tbody>
       </table>
@@ -155,6 +155,11 @@ export default {
     },
     async checkHours(r) {
       r.hoursMissing = r.hours == null || r.hours === ''
+    },
+    deleteRow(index) {
+      if (confirm('确定删除该行? 删除后不可恢复')) {
+        this.preview.splice(index, 1)
+      }
     },
     async updateBarcode(r) {
       if (r.drawingNumber && r.notificationNumber && r.processCode) {
