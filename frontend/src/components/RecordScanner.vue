@@ -5,6 +5,13 @@
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
     </div>
+    <div class="input-group mb-2" style="max-width:300px;">
+      <select class="form-select form-select-sm" v-model="selectedFileId">
+        <option value="" disabled>选择文件查看全部</option>
+        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
+      </select>
+      <button class="btn btn-outline-secondary btn-sm" @click="loadFile" :disabled="!selectedFileId">加载</button>
+    </div>
     <div class="mb-2" v-if="records.length">
       产量: {{ planQty }} | 总合格数: {{ totalQualified }}
       <button class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
@@ -75,8 +82,13 @@ export default {
   data() {
     return {
       records: [],
-      searchBarcode: ''
+      searchBarcode: '',
+      files: [],
+      selectedFileId: ''
     }
+  },
+  created() {
+    this.fetchFiles()
   },
   computed: {
     planQty() {
@@ -87,20 +99,22 @@ export default {
     }
   },
   methods: {
+    async fetchFiles() {
+      const res = await axios.get('http://localhost:8080/api/files')
+      this.files = res.data
+    },
+    async loadFile() {
+      if (!this.selectedFileId) return
+      const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
+      await this.processRecords(res.data)
+    },
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
       if (!code) { this.records = []; return }
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
-        this.records = res.data.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }))
-        for (const rec of this.records) {
-          if (rec.qualifiedQty != null && rec.hours != null) {
-            rec.hourSubtotal = rec.qualifiedQty * rec.hours
-          }
-          if (rec.workerCodes) await this.lookupWorker(rec)
-          this.computeWorkerHours(rec)
-        }
+        await this.processRecords(res.data)
       } catch (e) {
         console.error(e)
         alert('查询失败')
@@ -135,6 +149,16 @@ export default {
       if (!confirm('确定删除这条记录?')) return
       const idx = this.records.indexOf(rec)
       if (idx !== -1) this.records.splice(idx, 1)
+    },
+    async processRecords(list) {
+      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }))
+      for (const rec of this.records) {
+        if (rec.qualifiedQty != null && rec.hours != null) {
+          rec.hourSubtotal = rec.qualifiedQty * rec.hours
+        }
+        if (rec.workerCodes) await this.lookupWorker(rec)
+        this.computeWorkerHours(rec)
+      }
     },
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
