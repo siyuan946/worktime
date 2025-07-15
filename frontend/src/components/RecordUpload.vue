@@ -100,6 +100,13 @@ export default {
       alert('已删除')
     },
     async parse() {
+      if (this.file) {
+        const dup = this.files.find(f => f.fileName === this.file.name)
+        if (dup) {
+          const cont = confirm('发现同名文件，若内容相同请勿重复上传。继续上传?')
+          if (!cont) return
+        }
+      }
       this.loading = true
       const data = new FormData()
       data.append('file', this.file)
@@ -108,6 +115,7 @@ export default {
       this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
       const warn = this.preview.filter(r => r.codeMissing || r.hoursMissing)
       if (warn.length) alert(`发现${warn.length}条记录缺少工时或工序码，请检查`)
+      await this.fetchFiles()
       this.loading = false
     },
     async save() {
@@ -123,6 +131,7 @@ export default {
       this.file = null
       this.loading = false
       alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
+      await this.fetchFiles()
       this.$emit('saved')
     },
     print() {
