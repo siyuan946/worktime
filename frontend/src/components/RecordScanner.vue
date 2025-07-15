@@ -116,10 +116,20 @@ export default {
       this.searchByBarcode()
     },
     async addRecord() {
+      if (this.records.some(r => r.editing)) {
+        alert('请先保存当前编辑的记录后再新增')
+        return
+      }
       if (!this.records.length) return
       const id = this.records[0].id
-      await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
-      await this.searchByBarcode()
+      const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }
+      if (rec.qualifiedQty != null && rec.hours != null) {
+        rec.hourSubtotal = rec.qualifiedQty * rec.hours
+      }
+      if (rec.workerCodes) await this.lookupWorker(rec)
+      this.computeWorkerHours(rec)
+      this.records.push(rec)
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
