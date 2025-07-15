@@ -14,7 +14,7 @@
     </div>
     <div class="mb-2" v-if="records.length">
       产量: {{ planQty }} | 总合格数: {{ totalQualified }}
-      <button class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
+      <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
@@ -34,7 +34,7 @@
           <th>合格数</th>
           <th>工时小计</th>
           <th>工时分配</th>
-          <th></th>
+          <th v-if="!viewOnly"></th>
         </tr>
       </thead>
       <tbody>
@@ -63,7 +63,7 @@
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td>{{ rec.workerHours }}</td>
-          <td>
+          <td v-if="!viewOnly">
             <template v-if="!rec.editing">
               <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
               <button class="btn btn-sm btn-outline-danger" @click="deleteRecord(rec)">删除</button>
@@ -84,7 +84,8 @@ export default {
       records: [],
       searchBarcode: '',
       files: [],
-      selectedFileId: ''
+      selectedFileId: '',
+      viewOnly: false
     }
   },
   created() {
@@ -106,7 +107,9 @@ export default {
     async loadFile() {
       if (!this.selectedFileId) return
       const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
-      await this.processRecords(res.data)
+      const filled = res.data.filter(r => r.qualifiedQty != null)
+      await this.processRecords(filled)
+      this.viewOnly = true
     },
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
@@ -115,6 +118,7 @@ export default {
       try {
         const res = await axios.get(url)
         await this.processRecords(res.data)
+        this.viewOnly = false
       } catch (e) {
         console.error(e)
         alert('查询失败')
