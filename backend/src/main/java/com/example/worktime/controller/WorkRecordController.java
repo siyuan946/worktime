@@ -14,12 +14,14 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 @RestController
@@ -193,12 +195,19 @@ public class WorkRecordController {
         return c.toString();
     }
 
+    private final DataFormatter formatter = new DataFormatter();
+
     private Double getDouble(Row row, Integer idx) {
         if (idx == null) return null;
         Cell c = row.getCell(idx);
         if (c == null) return null;
-        if (c.getCellType() == CellType.NUMERIC) return c.getNumericCellValue();
-        try { return Double.parseDouble(c.toString()); } catch (Exception e) { return null; }
+        String value = formatter.formatCellValue(c);
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return new BigDecimal(value.trim()).doubleValue();
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private Integer getInt(Row row, Integer idx) {
