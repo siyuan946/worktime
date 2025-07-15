@@ -26,7 +26,8 @@ public class WorkerController {
     @GetMapping("/code/{code}")
     public org.springframework.http.ResponseEntity<Worker> byCode(@PathVariable String code) {
         Worker w = repository.findByCode(code);
-        return org.springframework.http.ResponseEntity.ok(w);
+        // always return 200 so the frontend doesn't treat missing workers as errors
+        return org.springframework.http.ResponseEntity.ok().body(w);
     }
 
     @PostMapping
