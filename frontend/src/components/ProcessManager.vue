@@ -68,16 +68,16 @@ export default {
       return this.newProcess.code && this.newProcess.name
     },
     filteredProcesses() {
-      const term = this.search.trim().toLowerCase()
-      if (!term) return this.processCodes
-      return this.processCodes.filter(p =>
-        (p.code && p.code.toLowerCase().includes(term)) ||
-        (p.name && p.name.toLowerCase().includes(term))
-      )
+      return this.processCodes
+    }
+  },
+  watch: {
+    search(val) {
+      this.fetchProcesses(val)
     }
   },
   created() {
-    this.fetchProcesses()
+    this.fetchProcesses('')
   },
   mounted() {
     this.modal = new window.bootstrap.Modal(this.$refs.addModal)
@@ -90,22 +90,25 @@ export default {
     closeModal() {
       this.modal.hide()
     },
-    async fetchProcesses() {
-      const res = await axios.get('http://localhost:8080/api/processcodes')
+    async fetchProcesses(term) {
+      const url = term
+        ? `http://localhost:8080/api/processcodes/search?term=${encodeURIComponent(term)}`
+        : 'http://localhost:8080/api/processcodes'
+      const res = await axios.get(url)
       this.processCodes = res.data
     },
     async createProcess() {
       await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
       this.closeModal()
-      this.fetchProcesses()
+      this.fetchProcesses(this.search)
     },
     async updateProcess(p) {
       await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
-      this.fetchProcesses()
+      this.fetchProcesses(this.search)
     },
     async deleteProcess(id) {
       await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
-      this.fetchProcesses()
+      this.fetchProcesses(this.search)
     }
   }
 }
