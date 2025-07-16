@@ -4,23 +4,11 @@
     <div class="mb-2 text-end">
       <button class="btn btn-sm btn-primary" @click="openModal">新增工序代码</button>
     </div>
-    <h3 class="h6">已有工序代码</h3>
-    <table class="table table-bordered table-sm table-striped mb-3">
-      <thead>
-        <tr>
-          <th>代号</th><th>工序名称</th><th>大类</th><th>内容</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="p in processCodes" :key="'view'+p.id">
-          <td>{{ p.code }}</td>
-          <td>{{ p.name }}</td>
-          <td>{{ p.category }}</td>
-          <td>{{ p.content }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <h3 class="h6">编辑/删除</h3>
+    <div class="row mb-2">
+      <div class="col-sm-4">
+        <input class="form-control form-control-sm" v-model="search" placeholder="搜索代号或名称">
+      </div>
+    </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
@@ -28,7 +16,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="p in processCodes" :key="p.id">
+        <tr v-for="p in filteredProcesses" :key="p.id">
           <td><input class="form-control form-control-sm" v-model="p.code" /></td>
           <td><input class="form-control form-control-sm" v-model="p.name" /></td>
           <td><input class="form-control form-control-sm" v-model="p.category" /></td>
@@ -70,6 +58,7 @@ export default {
   data() {
     return {
       processCodes: [],
+      search: '',
       newProcess: { code: '', name: '', category: '', content: '' },
       modal: null
     }
@@ -77,6 +66,14 @@ export default {
   computed: {
     canAdd() {
       return this.newProcess.code && this.newProcess.name
+    },
+    filteredProcesses() {
+      const term = this.search.trim().toLowerCase()
+      if (!term) return this.processCodes
+      return this.processCodes.filter(p =>
+        (p.code && p.code.toLowerCase().includes(term)) ||
+        (p.name && p.name.toLowerCase().includes(term))
+      )
     }
   },
   created() {
