@@ -23,6 +23,15 @@ public class WorkerController {
         return repository.findAll();
     }
 
+    @GetMapping("/search")
+    public List<Worker> search(@RequestParam String term) {
+        String q = term.trim();
+        if (q.isEmpty()) {
+            return repository.findAll();
+        }
+        return repository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(q, q);
+    }
+
     @GetMapping("/code/{code}")
     public org.springframework.http.ResponseEntity<Worker> byCode(@PathVariable String code) {
         Worker w = repository.findByCode(code);

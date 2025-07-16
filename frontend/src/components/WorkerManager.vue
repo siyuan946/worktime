@@ -4,25 +4,11 @@
     <div class="mb-2 text-end">
       <button class="btn btn-sm btn-primary" @click="openModal">新增人员</button>
     </div>
-    <h3 class="h6">已有人员</h3>
-    <table class="table table-bordered table-sm table-striped mb-3">
-      <thead>
-        <tr>
-          <th>工号</th><th>姓名</th><th>车间</th><th>班组</th><th>入厂</th><th>离厂</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="w in workers" :key="'view'+w.code">
-          <td>{{ w.code }}</td>
-          <td>{{ w.name }}</td>
-          <td>{{ w.workshop }}</td>
-          <td>{{ w.team }}</td>
-          <td>{{ w.entryDate }}</td>
-          <td>{{ w.leaveDate }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <h3 class="h6">编辑/删除</h3>
+    <div class="row mb-2">
+      <div class="col-sm-4">
+        <input class="form-control form-control-sm" v-model="search" placeholder="搜索工号或姓名">
+      </div>
+    </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
         <tr>
@@ -30,7 +16,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="w in workers" :key="w.code">
+        <tr v-for="w in workers" :key="w.id">
           <td><input class="form-control form-control-sm" v-model="w.code" /></td>
           <td><input class="form-control form-control-sm" v-model="w.name" /></td>
           <td><input class="form-control form-control-sm" v-model="w.workshop" /></td>
@@ -76,6 +62,7 @@ export default {
   data() {
     return {
       workers: [],
+      search: '',
       newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' },
       modal: null
     }
@@ -85,8 +72,13 @@ export default {
       return this.newWorker.code && this.newWorker.name
     }
   },
+  watch: {
+    search(val) {
+      this.fetchWorkers(val)
+    }
+  },
   created() {
-    this.fetchWorkers()
+    this.fetchWorkers('')
   },
   mounted() {
     this.modal = new window.bootstrap.Modal(this.$refs.addModal)
@@ -99,22 +91,25 @@ export default {
     closeModal() {
       this.modal.hide()
     },
-    async fetchWorkers() {
-      const res = await axios.get('http://localhost:8080/api/workers')
+    async fetchWorkers(term) {
+      const url = term
+        ? `http://localhost:8080/api/workers/search?term=${encodeURIComponent(term)}`
+        : 'http://localhost:8080/api/workers'
+      const res = await axios.get(url)
       this.workers = res.data
     },
     async createWorker() {
       await axios.post('http://localhost:8080/api/workers', this.newWorker)
       this.closeModal()
-      this.fetchWorkers()
+      this.fetchWorkers(this.search)
     },
     async updateWorker(w) {
       await axios.put(`http://localhost:8080/api/workers/${w.id}`, w)
-      this.fetchWorkers()
+      this.fetchWorkers(this.search)
     },
     async deleteWorker(id) {
       await axios.delete(`http://localhost:8080/api/workers/${id}`)
-      this.fetchWorkers()
+      this.fetchWorkers(this.search)
     }
   }
 }
