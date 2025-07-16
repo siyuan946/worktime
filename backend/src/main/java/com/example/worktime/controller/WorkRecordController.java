@@ -15,10 +15,12 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -57,6 +59,41 @@ public class WorkRecordController {
         return repository.findByFileId(fileId);
     }
 
+    @GetMapping("/file/{fileId}/filled")
+    public List<WorkRecord> byFileFilled(@PathVariable Long fileId) {
+        return repository.findByFileIdAndFilledTrue(fileId);
+    }
+
+    @GetMapping("/file/{fileId}/export")
+    public void exportFilled(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
+        List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
+        Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        Sheet sheet = wb.createSheet("records");
+        Row head = sheet.createRow(0);
+        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","合格数","工时小计"};
+        for(int i=0;i<titles.length;i++) head.createCell(i).setCellValue(titles[i]);
+        int rowIdx=1;
+        for(WorkRecord r:list){
+            Row row = sheet.createRow(rowIdx++);
+            int c=0;
+            row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
+            row.createCell(c++).setCellValue(n(r.getProductName()));
+            row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+            row.createCell(c++).setCellValue(n(r.getBatchNumber()));
+            row.createCell(c++).setCellValue(n(r.getProcessCode()));
+            if(r.getHours()!=null) row.createCell(c++).setCellValue(r.getHours()); else row.createCell(c++).setCellValue("");
+            if(r.getPlanQty()!=null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
+            row.createCell(c++).setCellValue(n(r.getWorkerCodes()));
+            row.createCell(c++).setCellValue(n(r.getWorkerNames()));
+            if(r.getQualifiedQty()!=null) row.createCell(c++).setCellValue(r.getQualifiedQty()); else row.createCell(c++).setCellValue("");
+            if(r.getHourSubtotal()!=null) row.createCell(c++).setCellValue(r.getHourSubtotal()); else row.createCell(c++).setCellValue("");
+        }
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition","attachment; filename=records.xlsx");
+        wb.write(response.getOutputStream());
+        wb.close();
+    }
+
     @GetMapping("/generateBarcode")
     public String generateBarcodeEndpoint(@RequestParam("text") String text) {
         byte[] img = generateBarcode(sanitizeBarcode(text));
@@ -75,6 +112,7 @@ public class WorkRecordController {
         if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
         if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
         prepare(record);
+        if (record.getQualifiedQty() != null) record.setFilled(true);
         return repository.save(record);
     }
 
@@ -97,6 +135,7 @@ public class WorkRecordController {
         copy.setHours(src.getHours());
         copy.setFile(src.getFile());
         copy.setSupplemental(true);
+        copy.setFilled(false);
         prepare(copy);
         return repository.save(copy);
     }
@@ -114,6 +153,7 @@ public class WorkRecordController {
         for (WorkRecord r : records) {
             r.setFile(file);
             r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
+            r.setFilled(false);
             prepare(r);
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
@@ -187,6 +227,7 @@ public class WorkRecordController {
 
                     wr.setHours(hours);
                     wr.setHoursMissing(hours == null);
+                    wr.setFilled(false);
                     result.add(wr);
                 }
             }
@@ -266,4 +307,6 @@ public class WorkRecordController {
         if (text == null) return null;
         return text.replaceAll("[^\\x00-\\x7F]", "");
     }
+
+    private String n(String v) { return v == null ? "" : v; }
 }

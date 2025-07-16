@@ -83,6 +83,9 @@ public class WorkRecord {
     // 工时小计 = 合格数量 * 单件工时
     private Double hourSubtotal;
 
+    // 是否已填写合格数
+    private Boolean filled;
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
@@ -173,5 +176,8 @@ public class WorkRecord {
 
     public String getRemark2() { return remark2; }
     public void setRemark2(String remark2) { this.remark2 = remark2; }
+
+    public Boolean getFilled() { return filled; }
+    public void setFilled(Boolean filled) { this.filled = filled; }
 }
 

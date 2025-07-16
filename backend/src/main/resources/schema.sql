@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS work_record (
     worker_qtys VARCHAR(255),
     qualified_qty INT,
     hour_subtotal DOUBLE,
+    filled BOOLEAN,
     start_time DATETIME,
     end_time DATETIME,
     inspector VARCHAR(255),

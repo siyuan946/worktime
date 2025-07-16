@@ -5,15 +5,16 @@
       <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
     </div>
-    <div class="input-group mb-2" style="max-width:300px;">
+    <div class="input-group mb-2" style="max-width:400px;">
       <select class="form-select form-select-sm" v-model="selectedFileId">
         <option value="" disabled>选择文件查看全部</option>
         <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
       </select>
       <button class="btn btn-outline-secondary btn-sm" @click="loadFile" :disabled="!selectedFileId">加载</button>
+      <button class="btn btn-outline-primary btn-sm" @click="exportFile" :disabled="!records.length">导出</button>
     </div>
     <div class="mb-2" v-if="records.length">
-      产量: {{ planQty }} | 总合格数: {{ totalQualified }}
+      产量: {{ planQty }} | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
       <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
@@ -112,10 +113,23 @@ export default {
     async loadFile() {
       if (!this.selectedFileId) return
       const res = await axios.get(
-        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}`
+        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/filled`
       )
       await this.processRecords(res.data)
       this.viewOnly = true
+    },
+    async exportFile() {
+      if (!this.selectedFileId || !this.records.length) return
+      const res = await axios.get(
+        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/export`,
+        { responseType: 'blob' }
+      )
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'records.xlsx'
+      a.click()
+      window.URL.revokeObjectURL(url)
     },
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
