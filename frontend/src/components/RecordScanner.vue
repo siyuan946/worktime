@@ -112,11 +112,21 @@ export default {
     },
     async loadFile() {
       if (!this.selectedFileId) return
-      const res = await axios.get(
-        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/filled`
-      )
-      await this.processRecords(res.data)
-      this.viewOnly = true
+      try {
+        const res = await axios.get(
+          `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/filled`
+        )
+        if (!Array.isArray(res.data) || !res.data.length) {
+          alert('该文件暂无填写记录')
+          this.records = []
+        } else {
+          await this.processRecords(res.data)
+          this.viewOnly = true
+        }
+      } catch (e) {
+        console.error(e)
+        alert('加载失败')
+      }
     },
     async exportFile() {
       if (!this.selectedFileId || !this.records.length) return

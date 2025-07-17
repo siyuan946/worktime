@@ -79,14 +79,26 @@ export default {
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
-      const res = await axios.get(`http://localhost:8080/api/workrecords/file/${this.selectedFileId}`)
-      this.preview = res.data.map(r => ({
-        ...r,
-        codeMissing: false,
-        hoursMissing: r.hours == null
-      }))
-      this.fileId = this.selectedFileId
-      this.file = null
+      try {
+        const res = await axios.get(
+          `http://localhost:8080/api/workrecords/file/${this.selectedFileId}`
+        )
+        if (!Array.isArray(res.data) || !res.data.length) {
+          alert('未找到该文件的记录')
+          this.preview = []
+        } else {
+          this.preview = res.data.map(r => ({
+            ...r,
+            codeMissing: false,
+            hoursMissing: r.hours == null
+          }))
+        }
+        this.fileId = this.selectedFileId
+        this.file = null
+      } catch (e) {
+        console.error(e)
+        alert('加载失败')
+      }
       this.loading = false
     },
     async remove() {
