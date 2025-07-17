@@ -22,7 +22,7 @@ public class UploadedFileController {
 
     @GetMapping
     public List<UploadedFile> all() {
-        return repository.findAll();
+        return repository.findAllWithRecords();
     }
 
     @DeleteMapping("/{id}")
