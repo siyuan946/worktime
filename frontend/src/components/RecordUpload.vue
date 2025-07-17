@@ -92,6 +92,7 @@ export default {
             codeMissing: false,
             hoursMissing: r.hours == null
           }))
+          await this.refreshProcesses()
         }
         this.fileId = this.selectedFileId
         this.file = null
@@ -134,6 +135,7 @@ export default {
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
       this.loading = true
+      await this.refreshProcesses()
       const valid = this.preview.filter(r => r.processCode && r.barcode)
       const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, valid)
       if (valid.length < this.preview.length) {
@@ -193,6 +195,11 @@ export default {
       })
       const removed = before - this.preview.length
       alert(`已删除${removed}行`)
+    },
+    async refreshProcesses() {
+      for (const r of this.preview) {
+        await this.updateProcess(r)
+      }
     },
     async updateBarcode(r) {
       if (r.drawingNumber && r.notificationNumber && r.processCode) {
