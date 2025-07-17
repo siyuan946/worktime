@@ -10,6 +10,7 @@
       </select>
       <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
       <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
+      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
       <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
@@ -169,6 +170,17 @@ export default {
       if (confirm('确定删除该行? 删除后不可恢复')) {
         this.preview.splice(index, 1)
       }
+    },
+    deleteZero() {
+      if (!this.preview.length) return
+      if (!confirm('确定删除所有工序为0的行?')) return
+      const before = this.preview.length
+      this.preview = this.preview.filter(r => {
+        const code = r.processCode != null ? String(r.processCode).trim() : ''
+        return code !== '0'
+      })
+      const removed = before - this.preview.length
+      alert(`已删除${removed}行`)
     },
     async updateBarcode(r) {
       if (r.drawingNumber && r.notificationNumber && r.processCode) {
