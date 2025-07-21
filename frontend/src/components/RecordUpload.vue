@@ -150,7 +150,20 @@ export default {
       this.$emit('saved')
     },
     print() {
-      window.print()
+      if (!this.fileId) {
+        alert('请先保存文件后再打印')
+        return
+      }
+      axios.get(`http://localhost:8080/api/workrecords/file/${this.fileId}/print`, { responseType: 'blob' })
+        .then(res => {
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'print.xlsx'
+          a.click()
+          window.URL.revokeObjectURL(url)
+        })
+        .catch(() => alert('打印文件生成失败'))
     },
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''

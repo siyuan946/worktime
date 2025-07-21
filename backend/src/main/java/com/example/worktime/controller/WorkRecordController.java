@@ -16,6 +16,7 @@ import com.google.zxing.oned.Code128Writer;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -92,6 +94,40 @@ public class WorkRecordController {
         response.setHeader("Content-Disposition","attachment; filename=records.xlsx");
         wb.write(response.getOutputStream());
         wb.close();
+    }
+
+    @GetMapping("/file/{fileId}/print")
+    public void printFile(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
+        List<WorkRecord> list = repository.findByFileId(fileId);
+        ClassPathResource res = new ClassPathResource("template.xlsx");
+        try (InputStream in = res.getInputStream(); Workbook wb = WorkbookFactory.create(in)) {
+            Sheet sheet = wb.getSheetAt(0);
+            int rowIdx = 1;
+            Drawing<?> drawing = sheet.createDrawingPatriarch();
+            CreationHelper helper = wb.getCreationHelper();
+            for (WorkRecord r : list) {
+                Row row = sheet.getRow(rowIdx);
+                if (row == null) row = sheet.createRow(rowIdx);
+                int c = 0;
+                row.createCell(c++).setCellValue(rowIdx);
+                row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
+                row.createCell(c++).setCellValue(n(r.getProductName()));
+                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+                row.createCell(c++).setCellValue(n(r.getProcessCode()));
+                if (r.getBarcodeImage() != null) {
+                    int picId = wb.addPicture(r.getBarcodeImage(), Workbook.PICTURE_TYPE_PNG);
+                    ClientAnchor anchor = helper.createClientAnchor();
+                    anchor.setRow1(rowIdx);
+                    anchor.setCol1(c);
+                    Picture pic = drawing.createPicture(anchor, picId);
+                    pic.resize();
+                }
+                rowIdx++;
+            }
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition","attachment; filename=print.xlsx");
+            wb.write(response.getOutputStream());
+        }
     }
 
     @GetMapping("/generateBarcode")
