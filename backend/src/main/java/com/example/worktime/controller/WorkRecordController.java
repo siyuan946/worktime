@@ -14,6 +14,7 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
@@ -235,9 +236,22 @@ public class WorkRecordController {
         return result;
     }
 
+    private Cell findMergedCell(Sheet sheet, int rowIdx, int colIdx) {
+        for (CellRangeAddress range : sheet.getMergedRegions()) {
+            if (range.isInRange(rowIdx, colIdx)) {
+                Row firstRow = sheet.getRow(range.getFirstRow());
+                if (firstRow != null) {
+                    return firstRow.getCell(range.getFirstColumn());
+                }
+            }
+        }
+        return null;
+    }
+
     private String getString(Row row, Integer idx) {
         if (idx == null) return null;
         Cell c = row.getCell(idx);
+        if (c == null) c = findMergedCell(row.getSheet(), row.getRowNum(), idx);
         if (c == null) return null;
         if (c.getCellType() == CellType.NUMERIC) {
             return String.valueOf((long)c.getNumericCellValue());
@@ -250,6 +264,7 @@ public class WorkRecordController {
     private Double getDouble(Row row, Integer idx) {
         if (idx == null) return null;
         Cell c = row.getCell(idx);
+        if (c == null) c = findMergedCell(row.getSheet(), row.getRowNum(), idx);
         if (c == null) return null;
         String value = formatter.formatCellValue(c);
         if (value == null || value.trim().isEmpty()) return null;
