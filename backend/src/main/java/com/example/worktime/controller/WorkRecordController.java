@@ -73,27 +73,72 @@ public class WorkRecordController {
         Sheet sheet = wb.createSheet("records");
         Row head = sheet.createRow(0);
         String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","合格数","工时小计"};
-        for(int i=0;i<titles.length;i++) head.createCell(i).setCellValue(titles[i]);
-        int rowIdx=1;
-        for(WorkRecord r:list){
-            Row row = sheet.createRow(rowIdx++);
-            int c=0;
-            row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
-            row.createCell(c++).setCellValue(n(r.getProductName()));
-            row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
-            row.createCell(c++).setCellValue(n(r.getBatchNumber()));
-            row.createCell(c++).setCellValue(n(r.getProcessCode()));
-            if(r.getHours()!=null) row.createCell(c++).setCellValue(r.getHours()); else row.createCell(c++).setCellValue("");
-            if(r.getPlanQty()!=null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
-            row.createCell(c++).setCellValue(n(r.getWorkerCodes()));
-            row.createCell(c++).setCellValue(n(r.getWorkerNames()));
-            if(r.getQualifiedQty()!=null) row.createCell(c++).setCellValue(r.getQualifiedQty()); else row.createCell(c++).setCellValue("");
-            if(r.getHourSubtotal()!=null) row.createCell(c++).setCellValue(r.getHourSubtotal()); else row.createCell(c++).setCellValue("");
+        for (int i = 0; i < titles.length; i++) head.createCell(i).setCellValue(titles[i]);
+
+        int rowIdx = 1;
+        for (WorkRecord r : list) {
+            java.util.List<String> codes = splitWorkers(r.getWorkerCodes());
+            java.util.List<String> names = splitNames(r.getWorkerNames());
+            java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
+            int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
+
+            for (int i = 0; i < max; i++) {
+                Row row = sheet.createRow(rowIdx++);
+                int c = 0;
+                row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
+                row.createCell(c++).setCellValue(n(r.getProductName()));
+                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+                row.createCell(c++).setCellValue(n(r.getBatchNumber()));
+                row.createCell(c++).setCellValue(n(r.getProcessCode()));
+                if (r.getHours() != null) row.createCell(c++).setCellValue(r.getHours()); else row.createCell(c++).setCellValue("");
+                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
+                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
+                Double q = i < qtys.size() ? qtys.get(i) : null;
+                if (q != null) row.createCell(c++).setCellValue(q);
+                else if (i == 0 && r.getQualifiedQty() != null && max == 1) row.createCell(c++).setCellValue(r.getQualifiedQty());
+                else row.createCell(c++).setCellValue("");
+                Double hs = null;
+                if (q != null && r.getHours() != null) hs = q * r.getHours();
+                if (hs != null) row.createCell(c++).setCellValue(hs);
+                else if (i == 0 && r.getHourSubtotal() != null && max == 1) row.createCell(c++).setCellValue(r.getHourSubtotal());
+                else row.createCell(c++).setCellValue("");
+            }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition","attachment; filename=records.xlsx");
+        response.setHeader("Content-Disposition", "attachment; filename=records.xlsx");
         wb.write(response.getOutputStream());
         wb.close();
+    }
+
+    private java.util.List<String> splitWorkers(String codes) {
+        if (codes == null || codes.trim().isEmpty()) return java.util.Collections.emptyList();
+        String[] arr = codes.split("[,\u3001\\s]+");
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String s : arr) if (!s.trim().isEmpty()) list.add(s.trim());
+        return list;
+    }
+
+    private java.util.List<String> splitNames(String names) {
+        if (names == null || names.trim().isEmpty()) return java.util.Collections.emptyList();
+        String[] arr = names.split("[,\u3001\\s]+");
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String s : arr) if (!s.trim().isEmpty()) list.add(s.trim());
+        return list;
+    }
+
+    private java.util.List<Double> parseQtys(String str) {
+        java.util.List<Double> vals = new java.util.ArrayList<>();
+        if (str == null) return vals;
+        for (String seg : str.trim().split("[\\s,]+")) {
+            if (seg.isEmpty()) continue;
+            int idx = seg.indexOf(":");
+            if (idx < 0) idx = seg.indexOf('：');
+            String num = idx >= 0 ? seg.substring(idx + 1) : seg;
+            if (num.isEmpty()) { vals.add(null); continue; }
+            try { vals.add(Double.parseDouble(num)); } catch (NumberFormatException e) { vals.add(null); }
+        }
+        return vals;
     }
 
     @GetMapping("/file/{fileId}/print")
