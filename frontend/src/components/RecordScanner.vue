@@ -70,7 +70,7 @@
               v-else
               class="form-control form-control-sm"
               v-model="rec.workerQtys"
-              @input="() => { rec.workerHourInputs=''; computeWorkerHours(rec) }"
+              @input="computeWorkerHours(rec)"
               style="width:80px"
             />
           </td>
@@ -236,7 +236,7 @@ export default {
     },
     onQtyChange(rec) {
       this.computeSubtotal(rec)
-      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
+      if (this.parseAllocValues(rec.workerHourInputs).some(v => v != null)) {
         this.computeQtysFromHours(rec)
       } else {
         this.computeWorkerHours(rec)
@@ -244,7 +244,7 @@ export default {
     },
     onWorkerCodesChange(rec) {
       this.lookupWorker(rec)
-      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
+      if (this.parseAllocValues(rec.workerHourInputs).some(v => v != null)) {
         this.computeQtysFromHours(rec)
       } else {
         this.computeWorkerHours(rec)
@@ -280,60 +280,80 @@ export default {
       rec.workerNames = names.join(',')
       rec.workshop = Array.from(workshops).join(',')
       rec.team = Array.from(teams).join(',')
+      const qtyVals = this.parseAllocValues(rec.workerQtys)
+      const hourVals = this.parseAllocValues(rec.workerHourInputs)
+      rec.workerQtys = this.formatAllocString(names, qtyVals.length === names.length ? qtyVals : undefined)
+      rec.workerHourInputs = this.formatAllocString(names, hourVals.length === names.length ? hourVals : undefined)
     },
     computeWorkerHours(rec) {
       const codes = rec.workerCodes
         ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
         : []
+      const names = codes.map(c => (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c)
       if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
-        if (!rec.workerQtys) rec.workerQtys = ''
-        rec.workerHourInputs = ''
+        rec.workerHourInputs = this.formatAllocString(names)
+        rec.workerQtys = this.formatAllocString(names)
         return
       }
-      let qtys = []
-      if (rec.workerQtys && rec.workerQtys.trim()) {
-        qtys = rec.workerQtys.trim().split(/\s+/).map(n => parseFloat(n))
+      let qtyVals = this.parseAllocValues(rec.workerQtys)
+      const hasAny = qtyVals.some(v => v != null)
+      if (!hasAny) {
+        rec.workerHourInputs = this.formatAllocString(names)
+        rec.workerHours = ''
+        return
       }
-      if (qtys.length !== codes.length) {
-        const share = rec.qualifiedQty / codes.length
-        qtys = codes.map(() => share)
-        rec.workerQtys = qtys.map(q => q.toFixed(2)).join(' ')
-      }
-      const hoursArr = codes.map((_,i) => (qtys[i] || 0) * rec.hours)
-      rec.workerHours = codes.map((c,i) => {
-        const name = (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c
-        return `${name}:${hoursArr[i].toFixed(2)}`
-      }).join(',')
-      rec.workerHourInputs = hoursArr.map(h => h.toFixed(2)).join(' ')
+      while (qtyVals.length < codes.length) qtyVals.push(0)
+      qtyVals = qtyVals.map(v => (v == null || isNaN(v)) ? 0 : v)
+      const hoursArr = qtyVals.map(q => (q || 0) * rec.hours)
+      rec.workerHours = names.map((n,i) => `${n}:${hoursArr[i].toFixed(2)}`).join(',')
+      rec.workerHourInputs = this.formatAllocString(names, hoursArr)
+      rec.workerQtys = this.formatAllocString(names, qtyVals)
     },
     computeQtysFromHours(rec) {
       const codes = rec.workerCodes
         ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
         : []
+      const names = codes.map(c => (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c)
       if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
-        rec.workerQtys = ''
+        rec.workerQtys = this.formatAllocString(names)
         return
       }
-      let hours = []
-      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
-        hours = rec.workerHourInputs.trim().split(/\s+/).map(n => parseFloat(n))
+      let hours = this.parseAllocValues(rec.workerHourInputs)
+      const hasAny = hours.some(v => v != null)
+      if (!hasAny) {
+        rec.workerQtys = this.formatAllocString(names)
+        rec.workerHours = ''
+        return
       }
-      if (hours.length !== codes.length) {
-        hours = codes.map(() => 0)
-      }
+      while (hours.length < codes.length) hours.push(0)
+      hours = hours.map(v => (v == null || isNaN(v)) ? 0 : v)
       const total = rec.qualifiedQty * rec.hours
       const sum = hours.reduce((a,b) => a + (b || 0), 0)
       if (total != null && sum > total) {
         alert('填写的工时超过总工时')
       }
       const qtys = hours.map(h => rec.hours ? h / rec.hours : 0)
-      rec.workerQtys = qtys.map(q => q.toFixed(2)).join(' ')
-      rec.workerHours = codes.map((c,i) => {
-        const name = (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c
-        return `${name}:${(hours[i] || 0).toFixed(2)}`
-      }).join(',')
+      rec.workerQtys = this.formatAllocString(names, qtys)
+      rec.workerHours = names.map((n,i) => `${n}:${(hours[i] || 0).toFixed(2)}`).join(',')
+    },
+    parseAllocValues(str) {
+      if (!str) return []
+      return str.trim().split(/[\s,]+/).map(seg => {
+        if (!seg) return null
+        const idx = seg.indexOf(':')
+        const numStr = idx >= 0 ? seg.slice(idx + 1) : seg
+        if (numStr === '') return null
+        const v = parseFloat(numStr)
+        return isNaN(v) ? null : v
+      })
+    },
+    formatAllocString(names, values) {
+      return names.map((n, i) => {
+        const val = values && values[i] != null && !isNaN(values[i]) ? values[i].toFixed(2) : ''
+        return `${n}:${val}`
+      }).join(' ')
     },
     autoGrow(event) {
       const el = event.target
