@@ -78,7 +78,7 @@ public class WorkRecord {
     private String workerQtys;
 
     // 合格数量
-    private Integer qualifiedQty;
+    private Double qualifiedQty;
 
     // 工时小计 = 合格数量 * 单件工时
     private Double hourSubtotal;
@@ -156,8 +156,8 @@ public class WorkRecord {
     public String getWorkerQtys() { return workerQtys; }
     public void setWorkerQtys(String workerQtys) { this.workerQtys = workerQtys; }
 
-    public Integer getQualifiedQty() { return qualifiedQty; }
-    public void setQualifiedQty(Integer qualifiedQty) { this.qualifiedQty = qualifiedQty; }
+    public Double getQualifiedQty() { return qualifiedQty; }
+    public void setQualifiedQty(Double qualifiedQty) { this.qualifiedQty = qualifiedQty; }
 
     public Double getHourSubtotal() { return hourSubtotal; }
     public void setHourSubtotal(Double hourSubtotal) { this.hourSubtotal = hourSubtotal; }

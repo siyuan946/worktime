@@ -87,7 +87,7 @@
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
-            <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
+            <input v-else type="number" step="0.01" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td class="wrap-text">
@@ -390,7 +390,8 @@ export default {
       if (!str) return []
       return str.trim().split(/[\s,]+/).map(seg => {
         if (!seg) return null
-        const idx = seg.indexOf(':')
+        let idx = seg.indexOf(':')
+        if (idx < 0) idx = seg.indexOf('：')
         const numStr = idx >= 0 ? seg.slice(idx + 1) : seg
         if (numStr === '') return null
         const v = parseFloat(numStr)
