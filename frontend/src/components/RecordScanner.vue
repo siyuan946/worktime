@@ -231,8 +231,14 @@ export default {
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
-      const idx = this.records.indexOf(rec)
-      if (idx !== -1) this.records.splice(idx, 1)
+      try {
+        await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
+        const idx = this.records.indexOf(rec)
+        if (idx !== -1) this.records.splice(idx, 1)
+      } catch (e) {
+        console.error(e)
+        alert('删除失败')
+      }
     },
     async processRecords(list) {
       this.records = list.map(r => ({
