@@ -228,6 +228,8 @@ export default {
       if (rec.workerCodes) await this.lookupWorker(rec)
       this.computeWorkerHours(rec)
       this.records.push(rec)
+      // reload from backend to ensure state consistent
+      this.searchByBarcode()
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
@@ -235,6 +237,8 @@ export default {
         await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
         const idx = this.records.indexOf(rec)
         if (idx !== -1) this.records.splice(idx, 1)
+        // ensure UI reflects backend state
+        this.searchByBarcode()
       } catch (e) {
         console.error(e)
         alert('删除失败')

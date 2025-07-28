@@ -177,8 +177,10 @@ public class WorkRecordController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public void delete(@PathVariable Long id) {
         repository.deleteById(id);
+        repository.flush();
     }
 
     @PostMapping
