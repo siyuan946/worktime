@@ -69,29 +69,125 @@ public class WorkRecordController {
     @GetMapping("/file/{fileId}/export")
     public void exportFilled(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
         List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
+        exportList(list, response);
+    }
+
+    @GetMapping("/date/{date}/export")
+    public void exportByDate(@PathVariable @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+                             HttpServletResponse response) throws IOException {
+        java.time.LocalDateTime start = date.atStartOfDay();
+        java.time.LocalDateTime end = start.plusDays(1);
+        List<WorkRecord> list = repository.findByUploadDate(start, end);
+        exportList(list, response);
+    }
+
+    private java.util.List<String> splitWorkers(String codes) {
+        if (codes == null || codes.trim().isEmpty()) return java.util.Collections.emptyList();
+        String[] arr = codes.split("[,\u3001\\s]+");
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String s : arr) if (!s.trim().isEmpty()) list.add(s.trim());
+        return list;
+    }
+
+    private java.util.List<String> splitNames(String names) {
+        if (names == null || names.trim().isEmpty()) return java.util.Collections.emptyList();
+        String[] arr = names.split("[,\u3001\\s]+");
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String s : arr) if (!s.trim().isEmpty()) list.add(s.trim());
+        return list;
+    }
+
+    private java.util.List<Double> parseQtys(String str) {
+        java.util.List<Double> vals = new java.util.ArrayList<>();
+        if (str == null) return vals;
+        for (String seg : str.trim().split("[\\s,]+")) {
+            if (seg.isEmpty()) continue;
+            int idx = seg.indexOf(":");
+            if (idx < 0) idx = seg.indexOf('：');
+            String num = idx >= 0 ? seg.substring(idx + 1) : seg;
+            if (num.isEmpty()) { vals.add(null); continue; }
+            try { vals.add(Double.parseDouble(num)); } catch (NumberFormatException e) { vals.add(null); }
+        }
+        return vals;
+    }
+
+    private void exportList(java.util.List<WorkRecord> list, HttpServletResponse response) throws IOException {
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
+        CellStyle twoDec = wb.createCellStyle();
+        twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","合格数","工时小计"};
-        for(int i=0;i<titles.length;i++) head.createCell(i).setCellValue(titles[i]);
-        int rowIdx=1;
-        for(WorkRecord r:list){
-            Row row = sheet.createRow(rowIdx++);
-            int c=0;
-            row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
-            row.createCell(c++).setCellValue(n(r.getProductName()));
-            row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
-            row.createCell(c++).setCellValue(n(r.getBatchNumber()));
-            row.createCell(c++).setCellValue(n(r.getProcessCode()));
-            if(r.getHours()!=null) row.createCell(c++).setCellValue(r.getHours()); else row.createCell(c++).setCellValue("");
-            if(r.getPlanQty()!=null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
-            row.createCell(c++).setCellValue(n(r.getWorkerCodes()));
-            row.createCell(c++).setCellValue(n(r.getWorkerNames()));
-            if(r.getQualifiedQty()!=null) row.createCell(c++).setCellValue(r.getQualifiedQty()); else row.createCell(c++).setCellValue("");
-            if(r.getHourSubtotal()!=null) row.createCell(c++).setCellValue(r.getHourSubtotal()); else row.createCell(c++).setCellValue("");
+        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期","合格数","工时小计"};
+        for (int i = 0; i < titles.length; i++) {
+            head.createCell(i).setCellValue(titles[i]);
+        }
+
+        int rowIdx = 1;
+        for (WorkRecord r : list) {
+            java.util.List<String> codes = splitWorkers(r.getWorkerCodes());
+            java.util.List<String> names = splitNames(r.getWorkerNames());
+            java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
+            int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
+
+            for (int i = 0; i < max; i++) {
+                Row row = sheet.createRow(rowIdx++);
+                int c = 0;
+                row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
+                row.createCell(c++).setCellValue(n(r.getProductName()));
+                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+                row.createCell(c++).setCellValue(n(r.getBatchNumber()));
+                row.createCell(c++).setCellValue(n(r.getProcessCode()));
+                if (r.getHours() != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(r.getHours());
+                    cell.setCellStyle(twoDec);
+                } else row.createCell(c++).setCellValue("");
+                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
+                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
+
+                Double q = i < qtys.size() ? qtys.get(i) : null;
+                if (q != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(q);
+                    cell.setCellStyle(twoDec);
+                }
+                else row.createCell(c++).setCellValue("");
+
+                Double workerHours = null;
+                if (q != null && r.getHours() != null) workerHours = q * r.getHours();
+                if (workerHours != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(workerHours);
+                    cell.setCellStyle(twoDec);
+                }
+                else row.createCell(c++).setCellValue("");
+
+                if (i == 0) {
+                    row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
+                    row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
+                    if (r.getQualifiedQty() != null) {
+                        Cell cell = row.createCell(c++);
+                        cell.setCellValue(r.getQualifiedQty());
+                        cell.setCellStyle(twoDec);
+                    }
+                    else row.createCell(c++).setCellValue("");
+                    if (r.getHourSubtotal() != null) {
+                        Cell cell = row.createCell(c++);
+                        cell.setCellValue(r.getHourSubtotal());
+                        cell.setCellStyle(twoDec);
+                    }
+                    else row.createCell(c++).setCellValue("");
+                } else {
+                    row.createCell(c++).setCellValue("");
+                    row.createCell(c++).setCellValue("");
+                    row.createCell(c++).setCellValue("");
+                    row.createCell(c++).setCellValue("");
+                }
+            }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition","attachment; filename=records.xlsx");
+        response.setHeader("Content-Disposition", "attachment; filename=records.xlsx");
         wb.write(response.getOutputStream());
         wb.close();
     }
@@ -177,8 +273,10 @@ public class WorkRecordController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public void delete(@PathVariable Long id) {
         repository.deleteById(id);
+        repository.flush();
     }
 
     @PostMapping

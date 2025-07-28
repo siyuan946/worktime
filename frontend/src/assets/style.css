@@ -29,6 +29,30 @@ body {
   width: 300px;
 }
 
+/* allow table cells to wrap long text without widening the table */
+.wrap-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 320px;
+}
+
+/* wider inputs for worker allocations */
+.alloc-input {
+  width: 90px;
+}
+
+/* textarea that expands vertically to fit its content */
+.auto-grow {
+  overflow: hidden;
+  resize: none;
+}
+
+/* highlight editable fields so they stand out against table background */
+.edit-highlight {
+  background-color: #fffbe6;
+  border-color: #f0ad4e;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {

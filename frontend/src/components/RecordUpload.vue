@@ -6,7 +6,7 @@
       <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
       <select class="form-select" style="max-width:180px" v-model="selectedFileId">
         <option value="" disabled>选择历史文件</option>
-        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
+        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
       </select>
       <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
       <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
