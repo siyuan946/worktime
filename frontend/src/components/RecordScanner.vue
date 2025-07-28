@@ -42,9 +42,9 @@
       <tbody>
         <tr v-for="rec in records" :key="rec.id">
           <td>{{ rec.id }}</td>
-          <td>{{ rec.notificationNumber }}</td>
-          <td>{{ rec.productName }}</td>
-          <td>{{ rec.drawingNumber }}</td>
+          <td class="wrap-text">{{ rec.notificationNumber }}</td>
+          <td class="wrap-text">{{ rec.productName }}</td>
+          <td class="wrap-text">{{ rec.drawingNumber }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.batchNumber }}</span>
             <input v-else class="form-control form-control-sm" v-model="rec.batchNumber" style="width:80px" />
@@ -69,14 +69,14 @@
             <input v-else class="form-control form-control-sm" v-model="rec.workerQtys" @input="computeWorkerHours(rec)" style="width:80px" />
           </td>
           <td class="wrap-text">{{ rec.workerNames }}</td>
-          <td>{{ rec.workshop }}</td>
-          <td>{{ rec.team }}</td>
+          <td class="wrap-text">{{ rec.workshop }}</td>
+          <td class="wrap-text">{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
             <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
-          <td>{{ rec.workerHours }}</td>
+          <td class="wrap-text">{{ rec.workerHours }}</td>
           <td v-if="!viewOnly">
             <template v-if="!rec.editing">
               <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
@@ -179,7 +179,7 @@ export default {
       if (!this.records.length) return
       const id = this.records[0].id
       const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
-      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }
+      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', codeToName:{} }
       if (rec.qualifiedQty != null && rec.hours != null) {
         rec.hourSubtotal = rec.qualifiedQty * rec.hours
       }
@@ -193,7 +193,7 @@ export default {
       if (idx !== -1) this.records.splice(idx, 1)
     },
     async processRecords(list) {
-      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'' }))
+      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', codeToName:{} }))
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
           rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -223,13 +223,17 @@ export default {
       const names = []
       const workshops = new Set()
       const teams = new Set()
+      const map = {}
       for (const c of codes) {
         if (!c) continue
         try {
           const res = await axios.get(`http://localhost:8080/api/workers/code/${encodeURIComponent(c)}`)
           const w = res.data
           if (w) {
-            if (w.name) names.push(w.name)
+            if (w.name) {
+              names.push(w.name)
+              map[c] = w.name
+            }
             if (w.workshop) workshops.add(w.workshop)
             if (w.team) teams.add(w.team)
           } else {
@@ -240,6 +244,7 @@ export default {
           alert(`未找到人员 ${c}`)
         }
       }
+      rec.codeToName = map
       rec.workerNames = names.join(',')
       rec.workshop = Array.from(workshops).join(',')
       rec.team = Array.from(teams).join(',')
@@ -260,7 +265,10 @@ export default {
         qtys = codes.map(() => share)
         rec.workerQtys = qtys.join(' ')
       }
-      rec.workerHours = codes.map((c,i)=> `${c}:${(qtys[i]||0)*rec.hours}` ).join(',')
+      rec.workerHours = codes.map((c,i) => {
+        const name = (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c
+        return `${name}:${(qtys[i] || 0) * rec.hours}`
+      }).join(',')
     },
     autoGrow(event) {
       const el = event.target
