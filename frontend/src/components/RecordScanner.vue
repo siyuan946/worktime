@@ -66,13 +66,22 @@
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
-            <input
-              v-else
-              class="form-control form-control-sm"
-              v-model="rec.workerQtys"
-              @input="computeWorkerHours(rec)"
-              style="width:80px"
-            />
+            <div v-else class="d-flex flex-wrap">
+              <div
+                v-for="(name, idx) in rec.workerNamesList"
+                :key="idx"
+                class="me-1 mb-1"
+              >
+                <input
+                  type="number"
+                  class="form-control form-control-sm"
+                  style="width:70px"
+                  v-model.number="rec.workerQtyVals[idx]"
+                  :placeholder="name"
+                  @input="onQtyFieldsInput(rec)"
+                />
+              </div>
+            </div>
           </td>
           <td class="wrap-text">{{ rec.workerNames }}</td>
           <td class="wrap-text">{{ rec.workshop }}</td>
@@ -84,13 +93,22 @@
           <td>{{ rec.hourSubtotal }}</td>
           <td class="wrap-text">
             <span v-if="!rec.editing">{{ rec.workerHours }}</span>
-            <input
-              v-else
-              class="form-control form-control-sm"
-              v-model="rec.workerHourInputs"
-              @input="computeQtysFromHours(rec)"
-              style="width:100px"
-            />
+            <div v-else class="d-flex flex-wrap">
+              <div
+                v-for="(name, idx) in rec.workerNamesList"
+                :key="idx"
+                class="me-1 mb-1"
+              >
+                <input
+                  type="number"
+                  class="form-control form-control-sm"
+                  style="width:70px"
+                  v-model.number="rec.workerHourVals[idx]"
+                  :placeholder="name"
+                  @input="onHourFieldsInput(rec)"
+                />
+              </div>
+            </div>
           </td>
           <td v-if="!viewOnly">
             <template v-if="!rec.editing">
@@ -193,8 +211,19 @@ export default {
       }
       if (!this.records.length) return
       const id = this.records[0].id
-      const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
-      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', workerHourInputs:'', codeToName:{} }
+        const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+        const rec = {
+          ...res.data,
+          editing: false,
+          workshop: '',
+          team: '',
+          workerQtys: '',
+          workerHours: '',
+          workerQtyVals: [],
+          workerHourVals: [],
+          workerNamesList: [],
+          codeToName: {}
+        }
       if (rec.qualifiedQty != null && rec.hours != null) {
         rec.hourSubtotal = rec.qualifiedQty * rec.hours
       }
@@ -215,7 +244,9 @@ export default {
         team: '',
         workerQtys: r.workerQtys || '',
         workerHours: '',
-        workerHourInputs: '',
+        workerQtyVals: this.parseAllocValues(r.workerQtys),
+        workerHourVals: [],
+        workerNamesList: [],
         codeToName: {}
       }))
       for (const rec of this.records) {
@@ -236,7 +267,7 @@ export default {
     },
     onQtyChange(rec) {
       this.computeSubtotal(rec)
-      if (this.parseAllocValues(rec.workerHourInputs).some(v => v != null)) {
+      if (rec.workerHourVals.some(v => v != null && v !== '' && !isNaN(v))) {
         this.computeQtysFromHours(rec)
       } else {
         this.computeWorkerHours(rec)
@@ -244,11 +275,17 @@ export default {
     },
     onWorkerCodesChange(rec) {
       this.lookupWorker(rec)
-      if (this.parseAllocValues(rec.workerHourInputs).some(v => v != null)) {
+      if (rec.workerHourVals.some(v => v != null && v !== '' && !isNaN(v))) {
         this.computeQtysFromHours(rec)
       } else {
         this.computeWorkerHours(rec)
       }
+    },
+    onQtyFieldsInput(rec) {
+      this.computeWorkerHours(rec)
+    },
+    onHourFieldsInput(rec) {
+      this.computeQtysFromHours(rec)
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
@@ -280,61 +317,66 @@ export default {
       rec.workerNames = names.join(',')
       rec.workshop = Array.from(workshops).join(',')
       rec.team = Array.from(teams).join(',')
-      const qtyVals = this.parseAllocValues(rec.workerQtys)
-      const hourVals = this.parseAllocValues(rec.workerHourInputs)
-      rec.workerQtys = this.formatAllocString(names, qtyVals.length === names.length ? qtyVals : undefined)
-      rec.workerHourInputs = this.formatAllocString(names, hourVals.length === names.length ? hourVals : undefined)
+      rec.workerNamesList = names
+      const qtyVals = rec.workerQtyVals && rec.workerQtyVals.length
+        ? rec.workerQtyVals
+        : this.parseAllocValues(rec.workerQtys)
+      const hourVals = rec.workerHourVals && rec.workerHourVals.length
+        ? rec.workerHourVals
+        : []
+      while (qtyVals.length < names.length) qtyVals.push(null)
+      while (hourVals.length < names.length) hourVals.push(null)
+      rec.workerQtyVals = qtyVals
+      rec.workerHourVals = hourVals
+      rec.workerQtys = this.formatAllocString(names, qtyVals)
+      rec.workerHours = this.formatAllocString(names, hourVals)
     },
     computeWorkerHours(rec) {
-      const codes = rec.workerCodes
-        ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
-        : []
-      const names = codes.map(c => (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c)
-      if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
+      const names = rec.workerNamesList || []
+      if (!names.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
-        rec.workerHourInputs = this.formatAllocString(names)
         rec.workerQtys = this.formatAllocString(names)
+        rec.workerHourVals = names.map(() => null)
         return
       }
-      let qtyVals = this.parseAllocValues(rec.workerQtys)
-      const hasAny = qtyVals.some(v => v != null)
+      const qtyVals = (rec.workerQtyVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
+      const hasAny = qtyVals.some(v => v)
       if (!hasAny) {
-        rec.workerHourInputs = this.formatAllocString(names)
+        rec.workerHourVals = names.map(() => null)
         rec.workerHours = ''
+        rec.workerQtys = this.formatAllocString(names, qtyVals)
         return
       }
-      while (qtyVals.length < codes.length) qtyVals.push(0)
-      qtyVals = qtyVals.map(v => (v == null || isNaN(v)) ? 0 : v)
+      while (qtyVals.length < names.length) qtyVals.push(0)
       const hoursArr = qtyVals.map(q => (q || 0) * rec.hours)
+      rec.workerHourVals = hoursArr
       rec.workerHours = names.map((n,i) => `${n}:${hoursArr[i].toFixed(2)}`).join(',')
-      rec.workerHourInputs = this.formatAllocString(names, hoursArr)
       rec.workerQtys = this.formatAllocString(names, qtyVals)
     },
     computeQtysFromHours(rec) {
-      const codes = rec.workerCodes
-        ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
-        : []
-      const names = codes.map(c => (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c)
-      if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
+      const names = rec.workerNamesList || []
+      if (!names.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
         rec.workerQtys = this.formatAllocString(names)
+        rec.workerQtyVals = names.map(() => null)
         return
       }
-      let hours = this.parseAllocValues(rec.workerHourInputs)
-      const hasAny = hours.some(v => v != null)
+      let hours = (rec.workerHourVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
+      const hasAny = hours.some(v => v)
       if (!hasAny) {
-        rec.workerQtys = this.formatAllocString(names)
+        rec.workerQtyVals = names.map(() => null)
         rec.workerHours = ''
+        rec.workerQtys = this.formatAllocString(names)
         return
       }
-      while (hours.length < codes.length) hours.push(0)
-      hours = hours.map(v => (v == null || isNaN(v)) ? 0 : v)
+      while (hours.length < names.length) hours.push(0)
       const total = rec.qualifiedQty * rec.hours
       const sum = hours.reduce((a,b) => a + (b || 0), 0)
       if (total != null && sum > total) {
         alert('填写的工时超过总工时')
       }
       const qtys = hours.map(h => rec.hours ? h / rec.hours : 0)
+      rec.workerQtyVals = qtys
       rec.workerQtys = this.formatAllocString(names, qtys)
       rec.workerHours = names.map((n,i) => `${n}:${(hours[i] || 0).toFixed(2)}`).join(',')
     },
