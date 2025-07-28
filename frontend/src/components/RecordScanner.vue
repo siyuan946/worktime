@@ -74,8 +74,7 @@
               >
                 <input
                   type="number"
-                  class="form-control form-control-sm"
-                  style="width:70px"
+                  class="form-control form-control-sm alloc-input"
                   v-model.number="rec.workerQtyVals[idx]"
                   :placeholder="name"
                   @input="onQtyFieldsInput(rec)"
@@ -101,8 +100,7 @@
               >
                 <input
                   type="number"
-                  class="form-control form-control-sm"
-                  style="width:70px"
+                  class="form-control form-control-sm alloc-input"
                   v-model.number="rec.workerHourVals[idx]"
                   :placeholder="name"
                   @input="onHourFieldsInput(rec)"

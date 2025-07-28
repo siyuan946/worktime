@@ -33,7 +33,12 @@ body {
 .wrap-text {
   white-space: pre-wrap;
   word-break: break-word;
-  max-width: 260px;
+  max-width: 320px;
+}
+
+/* wider inputs for worker allocations */
+.alloc-input {
+  width: 90px;
 }
 
 /* textarea that expands vertically to fit its content */
