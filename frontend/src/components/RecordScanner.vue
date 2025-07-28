@@ -282,7 +282,9 @@ export default {
       rec.team = Array.from(teams).join(',')
     },
     computeWorkerHours(rec) {
-      const codes = rec.workerCodes ? rec.workerCodes.trim().split(/[ ,\u3001]+/) : []
+      const codes = rec.workerCodes
+        ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
+        : []
       if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
         if (!rec.workerQtys) rec.workerQtys = ''
@@ -306,7 +308,9 @@ export default {
       rec.workerHourInputs = hoursArr.map(h => h.toFixed(2)).join(' ')
     },
     computeQtysFromHours(rec) {
-      const codes = rec.workerCodes ? rec.workerCodes.trim().split(/[ ,\u3001]+/) : []
+      const codes = rec.workerCodes
+        ? rec.workerCodes.trim().split(/[,\u3001\s]+/)
+        : []
       if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
         rec.workerQtys = ''
