@@ -334,24 +334,23 @@ export default {
     computeWorkerHours(rec) {
       const names = rec.workerNamesList || []
       if (!names.length || rec.hours == null || rec.qualifiedQty == null) {
+        rec.workerHourVals = names.map(() => null)
         rec.workerHours = ''
         rec.workerQtys = this.formatAllocString(names)
-        rec.workerHourVals = names.map(() => null)
         return
       }
-      const qtyVals = (rec.workerQtyVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
-      const hasAny = qtyVals.some(v => v)
-      if (!hasAny) {
+      const qtyList = (rec.workerQtyVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
+      if (qtyList.every(v => v === 0)) {
         rec.workerHourVals = names.map(() => null)
         rec.workerHours = ''
-        rec.workerQtys = this.formatAllocString(names, qtyVals)
+        rec.workerQtys = this.formatAllocString(names, qtyList)
         return
       }
-      while (qtyVals.length < names.length) qtyVals.push(0)
-      const hoursArr = qtyVals.map(q => (q || 0) * rec.hours)
-      rec.workerHourVals = hoursArr
-      rec.workerHours = names.map((n,i) => `${n}:${hoursArr[i].toFixed(2)}`).join(',')
-      rec.workerQtys = this.formatAllocString(names, qtyVals)
+      while (qtyList.length < names.length) qtyList.push(0)
+      const hourList = qtyList.map(q => q * rec.hours)
+      rec.workerHourVals = hourList
+      rec.workerHours = names.map((n,i) => `${n}:${hourList[i].toFixed(2)}`).join(',')
+      rec.workerQtys = this.formatAllocString(names, qtyList)
     },
     computeQtysFromHours(rec) {
       const names = rec.workerNamesList || []
@@ -361,24 +360,23 @@ export default {
         rec.workerQtyVals = names.map(() => null)
         return
       }
-      let hours = (rec.workerHourVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
-      const hasAny = hours.some(v => v)
-      if (!hasAny) {
+      const hourList = (rec.workerHourVals || []).map(v => (v == null || isNaN(v)) ? 0 : parseFloat(v))
+      if (hourList.every(v => v === 0)) {
         rec.workerQtyVals = names.map(() => null)
         rec.workerHours = ''
         rec.workerQtys = this.formatAllocString(names)
         return
       }
-      while (hours.length < names.length) hours.push(0)
+      while (hourList.length < names.length) hourList.push(0)
       const total = rec.qualifiedQty * rec.hours
-      const sum = hours.reduce((a,b) => a + (b || 0), 0)
+      const sum = hourList.reduce((a,b) => a + (b || 0), 0)
       if (total != null && sum > total) {
         alert('填写的工时超过总工时')
       }
-      const qtys = hours.map(h => rec.hours ? h / rec.hours : 0)
-      rec.workerQtyVals = qtys
-      rec.workerQtys = this.formatAllocString(names, qtys)
-      rec.workerHours = names.map((n,i) => `${n}:${(hours[i] || 0).toFixed(2)}`).join(',')
+      const qtyList = hourList.map(h => rec.hours ? h / rec.hours : 0)
+      rec.workerQtyVals = qtyList
+      rec.workerQtys = this.formatAllocString(names, qtyList)
+      rec.workerHours = names.map((n,i) => `${n}:${hourList[i].toFixed(2)}`).join(',')
     },
     parseAllocValues(str) {
       if (!str) return []
