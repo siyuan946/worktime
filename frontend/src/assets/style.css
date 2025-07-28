@@ -29,6 +29,13 @@ body {
   width: 300px;
 }
 
+/* allow table cells to wrap long text without widening the table */
+.wrap-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 260px;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {

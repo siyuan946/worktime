@@ -52,15 +52,15 @@
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
           <td>{{ rec.planQty }}</td>
-          <td>
+          <td class="wrap-text">
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
-            <input v-else class="form-control form-control-sm" v-model="rec.workerCodes" @blur="onWorkerCodesChange(rec)" style="width:80px" />
+            <textarea v-else class="form-control form-control-sm" rows="2" style="width:100%;" v-model="rec.workerCodes" @blur="onWorkerCodesChange(rec)"></textarea>
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
             <input v-else class="form-control form-control-sm" v-model="rec.workerQtys" @input="computeWorkerHours(rec)" style="width:80px" />
           </td>
-          <td>{{ rec.workerNames }}</td>
+          <td class="wrap-text">{{ rec.workerNames }}</td>
           <td>{{ rec.workshop }}</td>
           <td>{{ rec.team }}</td>
           <td>
