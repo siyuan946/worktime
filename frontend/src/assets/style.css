@@ -47,6 +47,12 @@ body {
   resize: none;
 }
 
+/* highlight editable fields so they stand out against table background */
+.edit-highlight {
+  background-color: #fffbe6;
+  border-color: #f0ad4e;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {

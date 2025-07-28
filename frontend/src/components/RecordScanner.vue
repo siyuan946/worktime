@@ -47,7 +47,7 @@
           <td class="wrap-text">{{ rec.drawingNumber }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.batchNumber }}</span>
-            <input v-else class="form-control form-control-sm" v-model="rec.batchNumber" style="width:80px" />
+            <input v-else class="form-control form-control-sm edit-highlight" v-model="rec.batchNumber" style="width:80px" />
           </td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
@@ -56,7 +56,7 @@
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
             <textarea
               v-else
-              class="form-control form-control-sm auto-grow"
+              class="form-control form-control-sm auto-grow edit-highlight"
               style="width:100%;"
               v-model="rec.workerCodes"
               @focus="autoGrow"
@@ -74,7 +74,7 @@
               >
                 <input
                   type="number"
-                  class="form-control form-control-sm alloc-input"
+                  class="form-control form-control-sm alloc-input edit-highlight"
                   v-model.number="rec.workerQtyVals[idx]"
                   :placeholder="name"
                   @input="onQtyFieldsInput(rec)"
@@ -87,7 +87,7 @@
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
-            <input v-else type="number" step="0.01" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
+            <input v-else type="number" step="0.01" class="form-control form-control-sm edit-highlight" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td class="wrap-text">
@@ -100,7 +100,7 @@
               >
                 <input
                   type="number"
-                  class="form-control form-control-sm alloc-input"
+                  class="form-control form-control-sm alloc-input edit-highlight"
                   v-model.number="rec.workerHourVals[idx]"
                   :placeholder="name"
                   @input="onHourFieldsInput(rec)"

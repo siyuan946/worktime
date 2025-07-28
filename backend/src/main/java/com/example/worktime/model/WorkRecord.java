@@ -78,6 +78,7 @@ public class WorkRecord {
     private String workerQtys;
 
     // 合格数量
+    @javax.persistence.Column(precision = 10, scale = 2)
     private Double qualifiedQty;
 
     // 工时小计 = 合格数量 * 单件工时
