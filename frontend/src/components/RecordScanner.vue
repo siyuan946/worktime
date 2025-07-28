@@ -78,6 +78,7 @@
                   v-model.number="rec.workerQtyVals[idx]"
                   :placeholder="name"
                   @input="onQtyFieldsInput(rec)"
+                  @blur="validateQtyAllocation(rec)"
                 />
               </div>
             </div>
@@ -87,7 +88,7 @@
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
-            <input v-else type="number" step="0.01" class="form-control form-control-sm edit-highlight" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
+            <input v-else type="number" step="0.01" class="form-control form-control-sm edit-highlight" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" @blur="validatePlanQty();validateQtyAllocation(rec);validateHourAllocation(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td class="wrap-text">
@@ -104,6 +105,7 @@
                   v-model.number="rec.workerHourVals[idx]"
                   :placeholder="name"
                   @input="onHourFieldsInput(rec)"
+                  @blur="validateHourAllocation(rec)"
                 />
               </div>
             </div>
@@ -198,6 +200,8 @@ export default {
       if (this.planQty != null && total > this.planQty) {
         alert('总合格数已超过产量，请确认')
       }
+      this.validateQtyAllocation(rec)
+      this.validateHourAllocation(rec)
       await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
       rec.editing = false
       this.searchByBarcode()
@@ -268,10 +272,6 @@ export default {
     computeSubtotal(row) {
       if (row.qualifiedQty != null && row.hours != null) row.hourSubtotal = row.qualifiedQty * row.hours
       else row.hourSubtotal = null
-      const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
-      if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过产量，请确认')
-      }
     },
     onQtyChange(rec) {
       this.computeSubtotal(rec)
@@ -294,6 +294,27 @@ export default {
     },
     onHourFieldsInput(rec) {
       this.computeQtysFromHours(rec)
+    },
+    validatePlanQty() {
+      const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
+      if (this.planQty != null && total > this.planQty) {
+        alert('总合格数已超过产量，请确认')
+      }
+    },
+    validateQtyAllocation(rec) {
+      if (!rec || !Array.isArray(rec.workerQtyVals)) return
+      const sum = rec.workerQtyVals.reduce((a, b) => a + (parseFloat(b) || 0), 0)
+      if (rec.qualifiedQty != null && sum > rec.qualifiedQty) {
+        alert('分配数量超过合格数量')
+      }
+    },
+    validateHourAllocation(rec) {
+      if (!rec || !Array.isArray(rec.workerHourVals)) return
+      const sum = rec.workerHourVals.reduce((a,b) => a + (parseFloat(b) || 0), 0)
+      const total = (rec.qualifiedQty || 0) * (rec.hours || 0)
+      if (total && sum > total) {
+        alert('填写的工时超过总工时')
+      }
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
@@ -359,6 +380,8 @@ export default {
       rec.workerHourVals = hourList
       rec.workerHours = names.map((n,i) => `${n}:${hourList[i].toFixed(2)}`).join(',')
       rec.workerQtys = this.formatAllocString(names, qtyList)
+      const sum = qtyList.reduce((a,b) => a + (b || 0), 0)
+      rec._qtyOverflow = rec.qualifiedQty != null && sum > rec.qualifiedQty
     },
     computeQtysFromHours(rec) {
       const names = rec.workerNamesList || []
@@ -378,12 +401,12 @@ export default {
       while (hourList.length < names.length) hourList.push(0)
       const total = rec.qualifiedQty * rec.hours
       const sum = hourList.reduce((a,b) => a + (b || 0), 0)
-      if (total != null && sum > total) {
-        alert('填写的工时超过总工时')
-      }
+      rec._hourOverflow = total != null && sum > total
       const qtyList = hourList.map(h => rec.hours ? h / rec.hours : 0)
       rec.workerQtyVals = qtyList
       rec.workerQtys = this.formatAllocString(names, qtyList)
+      const qtySum = qtyList.reduce((a,b) => a + (b || 0), 0)
+      rec._qtyOverflow = rec.qualifiedQty != null && qtySum > rec.qualifiedQty
       rec.workerHours = names.map((n,i) => `${n}:${hourList[i].toFixed(2)}`).join(',')
     },
     parseAllocValues(str) {
