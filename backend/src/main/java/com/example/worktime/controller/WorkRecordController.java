@@ -71,6 +71,8 @@ public class WorkRecordController {
         List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
+        CellStyle twoDec = wb.createCellStyle();
+        twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
         String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","合格数","工时小计"};
         for (int i = 0; i < titles.length; i++) {
@@ -92,24 +94,44 @@ public class WorkRecordController {
                 row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
                 row.createCell(c++).setCellValue(n(r.getBatchNumber()));
                 row.createCell(c++).setCellValue(n(r.getProcessCode()));
-                if (r.getHours() != null) row.createCell(c++).setCellValue(r.getHours()); else row.createCell(c++).setCellValue("");
+                if (r.getHours() != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(r.getHours());
+                    cell.setCellStyle(twoDec);
+                } else row.createCell(c++).setCellValue("");
                 if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
                 row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
 
                 Double q = i < qtys.size() ? qtys.get(i) : null;
-                if (q != null) row.createCell(c++).setCellValue(q);
+                if (q != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(q);
+                    cell.setCellStyle(twoDec);
+                }
                 else row.createCell(c++).setCellValue("");
 
                 Double workerHours = null;
                 if (q != null && r.getHours() != null) workerHours = q * r.getHours();
-                if (workerHours != null) row.createCell(c++).setCellValue(workerHours);
+                if (workerHours != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(workerHours);
+                    cell.setCellStyle(twoDec);
+                }
                 else row.createCell(c++).setCellValue("");
 
                 if (i == 0) {
-                    if (r.getQualifiedQty() != null) row.createCell(c++).setCellValue(r.getQualifiedQty());
+                    if (r.getQualifiedQty() != null) {
+                        Cell cell = row.createCell(c++);
+                        cell.setCellValue(r.getQualifiedQty());
+                        cell.setCellStyle(twoDec);
+                    }
                     else row.createCell(c++).setCellValue("");
-                    if (r.getHourSubtotal() != null) row.createCell(c++).setCellValue(r.getHourSubtotal());
+                    if (r.getHourSubtotal() != null) {
+                        Cell cell = row.createCell(c++);
+                        cell.setCellValue(r.getHourSubtotal());
+                        cell.setCellStyle(twoDec);
+                    }
                     else row.createCell(c++).setCellValue("");
                 } else {
                     row.createCell(c++).setCellValue("");
