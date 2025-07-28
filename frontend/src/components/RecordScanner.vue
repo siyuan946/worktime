@@ -54,7 +54,15 @@
           <td>{{ rec.planQty }}</td>
           <td class="wrap-text">
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
-            <textarea v-else class="form-control form-control-sm" rows="2" style="width:100%;" v-model="rec.workerCodes" @blur="onWorkerCodesChange(rec)"></textarea>
+            <textarea
+              v-else
+              class="form-control form-control-sm auto-grow"
+              style="width:100%;"
+              v-model="rec.workerCodes"
+              @focus="autoGrow"
+              @input="autoGrow"
+              @blur="onWorkerCodesChange(rec)"
+            ></textarea>
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
@@ -253,6 +261,12 @@ export default {
         rec.workerQtys = qtys.join(' ')
       }
       rec.workerHours = codes.map((c,i)=> `${c}:${(qtys[i]||0)*rec.hours}` ).join(',')
+    },
+    autoGrow(event) {
+      const el = event.target
+      if (!el) return
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
     }
   }
 }

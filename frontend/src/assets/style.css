@@ -36,6 +36,12 @@ body {
   max-width: 260px;
 }
 
+/* textarea that expands vertically to fit its content */
+.auto-grow {
+  overflow: hidden;
+  resize: none;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {
