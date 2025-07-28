@@ -28,7 +28,6 @@ public class UploadedFileController {
     @DeleteMapping("/{id}")
     @Transactional
     public void delete(@PathVariable Long id) {
-        recordRepository.deleteByFileId(id);
         repository.deleteById(id);
     }
 }

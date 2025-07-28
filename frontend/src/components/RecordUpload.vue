@@ -104,7 +104,7 @@ export default {
     },
     async remove() {
       if (!this.selectedFileId) return
-      if (!confirm('删除后不可恢复，确定删除?')) return
+      if (!confirm('删除该文件及其所有记录，确定删除?')) return
       this.loading = true
       await axios.delete(`http://localhost:8080/api/files/${this.selectedFileId}`)
       this.loading = false
