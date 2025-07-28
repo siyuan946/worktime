@@ -72,8 +72,10 @@ public class WorkRecordController {
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","合格数","工时小计"};
-        for (int i = 0; i < titles.length; i++) head.createCell(i).setCellValue(titles[i]);
+        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","合格数","工时小计"};
+        for (int i = 0; i < titles.length; i++) {
+            head.createCell(i).setCellValue(titles[i]);
+        }
 
         int rowIdx = 1;
         for (WorkRecord r : list) {
@@ -94,15 +96,25 @@ public class WorkRecordController {
                 if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
                 row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
+
                 Double q = i < qtys.size() ? qtys.get(i) : null;
                 if (q != null) row.createCell(c++).setCellValue(q);
-                else if (i == 0 && r.getQualifiedQty() != null && max == 1) row.createCell(c++).setCellValue(r.getQualifiedQty());
                 else row.createCell(c++).setCellValue("");
-                Double hs = null;
-                if (q != null && r.getHours() != null) hs = q * r.getHours();
-                if (hs != null) row.createCell(c++).setCellValue(hs);
-                else if (i == 0 && r.getHourSubtotal() != null && max == 1) row.createCell(c++).setCellValue(r.getHourSubtotal());
+
+                Double workerHours = null;
+                if (q != null && r.getHours() != null) workerHours = q * r.getHours();
+                if (workerHours != null) row.createCell(c++).setCellValue(workerHours);
                 else row.createCell(c++).setCellValue("");
+
+                if (i == 0) {
+                    if (r.getQualifiedQty() != null) row.createCell(c++).setCellValue(r.getQualifiedQty());
+                    else row.createCell(c++).setCellValue("");
+                    if (r.getHourSubtotal() != null) row.createCell(c++).setCellValue(r.getHourSubtotal());
+                    else row.createCell(c++).setCellValue("");
+                } else {
+                    row.createCell(c++).setCellValue("");
+                    row.createCell(c++).setCellValue("");
+                }
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
