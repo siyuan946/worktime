@@ -208,7 +208,16 @@ export default {
       if (idx !== -1) this.records.splice(idx, 1)
     },
     async processRecords(list) {
-      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', workerHourInputs:'', codeToName:{} }))
+      this.records = list.map(r => ({
+        ...r,
+        editing: false,
+        workshop: '',
+        team: '',
+        workerQtys: r.workerQtys || '',
+        workerHours: '',
+        workerHourInputs: '',
+        codeToName: {}
+      }))
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
           rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -287,7 +296,7 @@ export default {
       if (qtys.length !== codes.length) {
         const share = rec.qualifiedQty / codes.length
         qtys = codes.map(() => share)
-        rec.workerQtys = qtys.join(' ')
+        rec.workerQtys = qtys.map(q => q.toFixed(2)).join(' ')
       }
       const hoursArr = codes.map((_,i) => (qtys[i] || 0) * rec.hours)
       rec.workerHours = codes.map((c,i) => {
