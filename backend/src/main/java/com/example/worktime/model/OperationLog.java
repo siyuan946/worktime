@@ -18,6 +18,9 @@ public class OperationLog {
 
     private LocalDateTime timestamp;
 
+    @Lob
+    private String details;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -29,4 +32,7 @@ public class OperationLog {
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+    public String getDetails() { return details; }
+    public void setDetails(String details) { this.details = details; }
 }

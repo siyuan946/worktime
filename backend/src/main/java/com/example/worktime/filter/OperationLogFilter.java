@@ -24,13 +24,14 @@ public class OperationLogFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String user = request.getHeader("X-User");
-        if (user != null && !request.getRequestURI().startsWith("/api/logs")) {
+        filterChain.doFilter(request, response);
+        if (user != null && request.getAttribute("operationLogged") == null
+                && !request.getRequestURI().startsWith("/api/logs")) {
             OperationLog log = new OperationLog();
             log.setUsername(user);
             log.setAction(request.getMethod() + " " + request.getRequestURI());
             log.setTimestamp(LocalDateTime.now());
             repository.save(log);
         }
-        filterChain.doFilter(request, response);
     }
 }

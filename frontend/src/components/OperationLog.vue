@@ -6,10 +6,15 @@
         <tr><th>时间</th><th>操作</th></tr>
       </thead>
       <tbody>
-        <tr v-for="log in logs" :key="log.id">
-          <td>{{ log.timestamp.replace('T',' ').slice(0,19) }}</td>
-          <td class="wrap-text">{{ log.action }}</td>
-        </tr>
+        <template v-for="log in logs" :key="log.id">
+          <tr @click="log.show = !log.show" style="cursor:pointer">
+            <td>{{ log.timestamp.replace('T',' ').slice(0,19) }}</td>
+            <td class="wrap-text">{{ log.action }}</td>
+          </tr>
+          <tr v-if="log.show">
+            <td colspan="2" class="pre-wrap">{{ log.details }}</td>
+          </tr>
+        </template>
       </tbody>
     </table>
   </section>
@@ -37,3 +42,7 @@ export default {
   }
 }
 </script>
+
+<style>
+.pre-wrap { white-space: pre-wrap; }
+</style>

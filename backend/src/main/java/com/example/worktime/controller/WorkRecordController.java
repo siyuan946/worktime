@@ -4,6 +4,7 @@ import com.example.worktime.model.WorkRecord;
 import com.example.worktime.model.UploadedFile;
 import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.repository.UploadedFileRepository;
+import com.example.worktime.service.OperationLogService;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,13 +37,16 @@ public class WorkRecordController {
     private final ProcessCodeService processService;
     private final WorkerService workerService;
     private final UploadedFileRepository fileRepository;
+    private final OperationLogService logService;
 
     public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService,
-                                WorkerService workerService, UploadedFileRepository fileRepository) {
+                                WorkerService workerService, UploadedFileRepository fileRepository,
+                                OperationLogService logService) {
         this.repository = repository;
         this.processService = processService;
         this.workerService = workerService;
         this.fileRepository = fileRepository;
+        this.logService = logService;
     }
 
     @GetMapping
@@ -234,7 +238,8 @@ public class WorkRecordController {
 
     @PutMapping("/{id}")
     @Transactional
-    public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record) {
+    public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record,
+                             @RequestHeader("X-User") String user) {
         WorkRecord existing = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found"));
         record.setId(id);
@@ -245,11 +250,13 @@ public class WorkRecordController {
         if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
         prepare(record);
         if (record.getQualifiedQty() != null) record.setFilled(true);
-        return repository.save(record);
+        WorkRecord updated = repository.save(record);
+        logService.log(user, "更新记录 " + id, null);
+        return updated;
     }
 
     @PostMapping("/duplicate/{id}")
-    public WorkRecord duplicate(@PathVariable Long id) {
+    public WorkRecord duplicate(@PathVariable Long id, @RequestHeader("X-User") String user) {
         WorkRecord src = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found"));
         WorkRecord copy = new WorkRecord();
@@ -269,19 +276,23 @@ public class WorkRecordController {
         copy.setSupplemental(true);
         copy.setFilled(false);
         prepare(copy);
-        return repository.save(copy);
+        WorkRecord saved = repository.save(copy);
+        logService.log(user, "复制记录 " + id, "newId=" + saved.getId());
+        return saved;
     }
 
     @DeleteMapping("/{id}")
     @Transactional
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
         repository.flush();
+        logService.log(user, "删除记录 " + id, null);
     }
 
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
-    public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records) {
+    public List<WorkRecord> save(@RequestParam("fileId") Long fileId, @RequestBody List<WorkRecord> records,
+                                 @RequestHeader("X-User") String user) {
         UploadedFile file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
         for (WorkRecord r : records) {
@@ -293,12 +304,14 @@ public class WorkRecordController {
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
         System.out.println("Saved records: " + saved.size());
+        logService.log(user, "新增记录" , "fileId=" + fileId + " count=" + saved.size());
         return saved;
     }
 
     @PostMapping("/parse")
     @Transactional
-    public Map<String, Object> parse(@RequestParam("file") MultipartFile file) throws IOException {
+    public Map<String, Object> parse(@RequestParam("file") MultipartFile file,
+                                     @RequestHeader("X-User") String user) throws IOException {
         UploadedFile uf = new UploadedFile();
         uf.setFileName(file.getOriginalFilename());
         uf.setData(file.getBytes());
@@ -311,6 +324,7 @@ public class WorkRecordController {
         result.put("fileId", uf.getId());
         result.put("records", records);
         System.out.println("Parsed records: " + records.size() + " for file " + uf.getId());
+        logService.log(user, "上传文件 " + uf.getFileName(), "records=" + records.size());
         return result;
     }
 
