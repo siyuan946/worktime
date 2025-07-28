@@ -6,12 +6,12 @@
         <tr><th>时间</th><th>操作</th></tr>
       </thead>
       <tbody>
-        <template v-for="log in logs" :key="log.id">
-          <tr @click="log.show = !log.show" style="cursor:pointer">
+        <template v-for="log in logs">
+          <tr :key="log.id" @click="log.show = !log.show" style="cursor:pointer">
             <td>{{ log.timestamp.replace('T',' ').slice(0,19) }}</td>
             <td class="wrap-text">{{ log.action }}</td>
           </tr>
-          <tr v-if="log.show">
+          <tr v-if="log.show" :key="log.id + '-details'">
             <td colspan="2" class="pre-wrap">{{ log.details }}</td>
           </tr>
         </template>
