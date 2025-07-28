@@ -24,7 +24,14 @@ export default {
   created() { this.fetchLogs() },
   methods: {
     async fetchLogs() {
-      const res = await axios.get('http://localhost:8080/api/logs')
+      const user = localStorage.getItem('username')
+      if (!user) {
+        this.logs = []
+        return
+      }
+      const res = await axios.get('http://localhost:8080/api/logs', {
+        headers: { 'X-User': user }
+      })
       this.logs = res.data
     }
   }
