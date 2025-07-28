@@ -78,3 +78,10 @@ CREATE TABLE IF NOT EXISTS work_record (
     CONSTRAINT fk_work_record_file FOREIGN KEY (file_id)
         REFERENCES uploaded_file(id)
 );
+
+CREATE TABLE IF NOT EXISTS operation_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255),
+    action VARCHAR(255),
+    timestamp DATETIME
+);

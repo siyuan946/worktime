@@ -28,6 +28,7 @@ export default {
           password: this.password
         })
         localStorage.setItem('loggedIn','true')
+        localStorage.setItem('username', this.username)
         this.$emit('logged-in')
       } catch (e) {
         this.error = '登录失败'
