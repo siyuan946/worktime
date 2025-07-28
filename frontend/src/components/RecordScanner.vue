@@ -66,7 +66,13 @@
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
-            <input v-else class="form-control form-control-sm" v-model="rec.workerQtys" @input="computeWorkerHours(rec)" style="width:80px" />
+            <input
+              v-else
+              class="form-control form-control-sm"
+              v-model="rec.workerQtys"
+              @input="() => { rec.workerHourInputs=''; computeWorkerHours(rec) }"
+              style="width:80px"
+            />
           </td>
           <td class="wrap-text">{{ rec.workerNames }}</td>
           <td class="wrap-text">{{ rec.workshop }}</td>
@@ -76,7 +82,16 @@
             <input v-else type="number" class="form-control form-control-sm" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
-          <td class="wrap-text">{{ rec.workerHours }}</td>
+          <td class="wrap-text">
+            <span v-if="!rec.editing">{{ rec.workerHours }}</span>
+            <input
+              v-else
+              class="form-control form-control-sm"
+              v-model="rec.workerHourInputs"
+              @input="computeQtysFromHours(rec)"
+              style="width:100px"
+            />
+          </td>
           <td v-if="!viewOnly">
             <template v-if="!rec.editing">
               <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
@@ -179,7 +194,7 @@ export default {
       if (!this.records.length) return
       const id = this.records[0].id
       const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
-      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', codeToName:{} }
+      const rec = { ...res.data, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', workerHourInputs:'', codeToName:{} }
       if (rec.qualifiedQty != null && rec.hours != null) {
         rec.hourSubtotal = rec.qualifiedQty * rec.hours
       }
@@ -193,7 +208,7 @@ export default {
       if (idx !== -1) this.records.splice(idx, 1)
     },
     async processRecords(list) {
-      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', codeToName:{} }))
+      this.records = list.map(r => ({ ...r, editing: false, workshop:'', team:'', workerQtys:'', workerHours:'', workerHourInputs:'', codeToName:{} }))
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
           rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -212,11 +227,19 @@ export default {
     },
     onQtyChange(rec) {
       this.computeSubtotal(rec)
-      this.computeWorkerHours(rec)
+      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
+        this.computeQtysFromHours(rec)
+      } else {
+        this.computeWorkerHours(rec)
+      }
     },
     onWorkerCodesChange(rec) {
       this.lookupWorker(rec)
-      this.computeWorkerHours(rec)
+      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
+        this.computeQtysFromHours(rec)
+      } else {
+        this.computeWorkerHours(rec)
+      }
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
@@ -254,6 +277,7 @@ export default {
       if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
         rec.workerHours = ''
         if (!rec.workerQtys) rec.workerQtys = ''
+        rec.workerHourInputs = ''
         return
       }
       let qtys = []
@@ -265,9 +289,37 @@ export default {
         qtys = codes.map(() => share)
         rec.workerQtys = qtys.join(' ')
       }
+      const hoursArr = codes.map((_,i) => (qtys[i] || 0) * rec.hours)
       rec.workerHours = codes.map((c,i) => {
         const name = (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c
-        return `${name}:${(qtys[i] || 0) * rec.hours}`
+        return `${name}:${hoursArr[i].toFixed(2)}`
+      }).join(',')
+      rec.workerHourInputs = hoursArr.map(h => h.toFixed(2)).join(' ')
+    },
+    computeQtysFromHours(rec) {
+      const codes = rec.workerCodes ? rec.workerCodes.trim().split(/[ ,\u3001]+/) : []
+      if (!codes.length || rec.hours == null || rec.qualifiedQty == null) {
+        rec.workerHours = ''
+        rec.workerQtys = ''
+        return
+      }
+      let hours = []
+      if (rec.workerHourInputs && rec.workerHourInputs.trim()) {
+        hours = rec.workerHourInputs.trim().split(/\s+/).map(n => parseFloat(n))
+      }
+      if (hours.length !== codes.length) {
+        hours = codes.map(() => 0)
+      }
+      const total = rec.qualifiedQty * rec.hours
+      const sum = hours.reduce((a,b) => a + (b || 0), 0)
+      if (total != null && sum > total) {
+        alert('填写的工时超过总工时')
+      }
+      const qtys = hours.map(h => rec.hours ? h / rec.hours : 0)
+      rec.workerQtys = qtys.map(q => q.toFixed(2)).join(' ')
+      rec.workerHours = codes.map((c,i) => {
+        const name = (rec.codeToName && rec.codeToName[c]) ? rec.codeToName[c] : c
+        return `${name}:${(hours[i] || 0).toFixed(2)}`
       }).join(',')
     },
     autoGrow(event) {
