@@ -8,10 +8,12 @@
     <div class="input-group mb-2" style="max-width:400px;">
       <select class="form-select form-select-sm" v-model="selectedFileId">
         <option value="" disabled>选择文件查看全部</option>
-        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }}</option>
+        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
       </select>
       <button class="btn btn-outline-secondary btn-sm" @click="loadFile" :disabled="!selectedFileId">加载</button>
       <button class="btn btn-outline-primary btn-sm" @click="exportFile" :disabled="!records.length">导出</button>
+      <input type="date" class="form-control form-control-sm ms-1" style="max-width:160px" v-model="exportDate">
+      <button class="btn btn-outline-primary btn-sm ms-1" @click="exportByDate" :disabled="!exportDate">按日期导出</button>
     </div>
     <div class="mb-2" v-if="records.length">
       产量: {{ planQty }} | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
@@ -33,6 +35,8 @@
           <th>姓名</th>
           <th>车间</th>
           <th>班组</th>
+          <th>起始日期</th>
+          <th>结束日期</th>
           <th>合格数</th>
           <th>工时小计</th>
           <th>工时分配</th>
@@ -87,6 +91,14 @@
           <td class="wrap-text">{{ rec.workshop }}</td>
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
+            <span v-if="!rec.editing">{{ rec.startDate }}</span>
+            <input v-else type="date" class="form-control form-control-sm edit-highlight" v-model="rec.startDate" style="width:130px" />
+          </td>
+          <td>
+            <span v-if="!rec.editing">{{ rec.endDate }}</span>
+            <input v-else type="date" class="form-control form-control-sm edit-highlight" v-model="rec.endDate" style="width:130px" />
+          </td>
+          <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
             <input v-else type="number" step="0.01" class="form-control form-control-sm edit-highlight" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" @blur="validatePlanQty();validateQtyAllocation(rec);validateHourAllocation(rec)" style="width:80px" />
           </td>
@@ -132,6 +144,7 @@ export default {
       searchBarcode: '',
       files: [],
       selectedFileId: '',
+      exportDate: '',
       viewOnly: false
     }
   },
@@ -182,6 +195,19 @@ export default {
       a.click()
       window.URL.revokeObjectURL(url)
     },
+    async exportByDate() {
+      if (!this.exportDate) return
+      const res = await axios.get(
+        `http://localhost:8080/api/workrecords/date/${this.exportDate}/export`,
+        { responseType: 'blob' }
+      )
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `records_${this.exportDate}.xlsx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    },
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
       if (!code) { this.records = []; return }
@@ -202,7 +228,12 @@ export default {
       }
       this.validateQtyAllocation(rec)
       this.validateHourAllocation(rec)
-      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, rec)
+      const payload = {
+        ...rec,
+        startTime: rec.startDate ? rec.startDate + 'T00:00:00' : null,
+        endTime: rec.endDate ? rec.endDate + 'T00:00:00' : null
+      }
+      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
       rec.editing = false
       this.searchByBarcode()
     },
@@ -224,7 +255,9 @@ export default {
           workerQtyVals: [],
           workerHourVals: [],
           workerNamesList: [],
-          codeToName: {}
+          codeToName: {},
+          startDate: '',
+          endDate: ''
         }
       if (rec.qualifiedQty != null && rec.hours != null) {
         rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -259,7 +292,9 @@ export default {
         workerQtyVals: this.parseAllocValues(r.workerQtys),
         workerHourVals: [],
         workerNamesList: [],
-        codeToName: {}
+        codeToName: {},
+        startDate: r.startTime ? r.startTime.slice(0,10) : '',
+        endDate: r.endTime ? r.endTime.slice(0,10) : ''
       }))
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
