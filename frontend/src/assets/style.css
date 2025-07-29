@@ -53,6 +53,10 @@ body {
   border-color: #f0ad4e;
 }
 
+.print-only {
+  display: none;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {
@@ -69,5 +73,27 @@ body {
   }
   .no-print {
     display: none !important;
+  }
+  .print-only {
+    display: table-cell !important;
+  }
+  #preview-table table {
+    table-layout: fixed;
+    font-size: 12px;
+  }
+  #preview-table th,
+  #preview-table td {
+    white-space: nowrap;
+  }
+  #preview-table .barcode-cell {
+    width: 200px;
+  }
+  #preview-table .barcode-cell img {
+    width: 200px;
+    height: 60px;
+  }
+  @page {
+    size: A4;
+    margin: 10mm;
   }
 }

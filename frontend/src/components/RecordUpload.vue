@@ -21,13 +21,18 @@
         <thead>
           <tr>
             <th>通知单号</th>
-            <th>产品名称</th>
+            <th class="no-print">产品名称</th>
             <th>图号</th>
             <th>名称</th>
             <th>计划数</th>
             <th>工序代码</th>
             <th>工序</th>
             <th>工时</th>
+            <th class="print-only">人员代码</th>
+            <th class="print-only">合格件数</th>
+            <th class="print-only">起始时间</th>
+            <th class="print-only">结束时间</th>
+            <th class="print-only">检验员</th>
             <th>条形码</th>
             <th class="no-print"></th>
           </tr>
@@ -35,13 +40,18 @@
         <tbody>
           <tr v-for="(r,i) in preview" :key="i" :class="{'table-danger': r.codeMissing || r.hoursMissing}">
             <td>{{ r.notificationNumber }}</td>
-            <td>{{ r.productName }}</td>
+            <td class="no-print">{{ r.productName }}</td>
             <td>{{ r.drawingNumber }}</td>
             <td>{{ r.partName }}</td>
             <td>{{ r.planQty }}</td>
             <td>{{ r.processCode }}</td>
             <td><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
             <td><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
             <td class="barcode-cell">
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
@@ -150,20 +160,7 @@ export default {
       this.$emit('saved')
     },
     print() {
-      if (!this.fileId) {
-        alert('请先保存文件后再打印')
-        return
-      }
-      axios.get(`http://localhost:8080/api/workrecords/file/${this.fileId}/print`, { responseType: 'blob' })
-        .then(res => {
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'print.xlsx'
-          a.click()
-          window.URL.revokeObjectURL(url)
-        })
-        .catch(() => alert('打印文件生成失败'))
+      window.print()
     },
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
