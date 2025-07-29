@@ -25,7 +25,7 @@
             <th class="drawing-col">图号</th>
             <th class="no-print">名称</th>
             <th>计划数</th>
-            <th>工序代码</th>
+            <th class="no-print">工序代码</th>
             <th class="process-col">工序</th>
             <th class="hours-col">工时</th>
             <th class="print-only">人员代码</th>
@@ -44,7 +44,7 @@
             <td class="drawing-col">{{ r.drawingNumber }}</td>
             <td class="no-print">{{ r.partName }}</td>
             <td>{{ r.planQty }}</td>
-            <td>{{ r.processCode }}</td>
+            <td class="no-print">{{ r.processCode }}</td>
             <td class="process-col"><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
             <td class="hours-col"><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
             <td class="print-only"></td>
