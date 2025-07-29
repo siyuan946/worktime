@@ -86,6 +86,14 @@ export default {
   created() {
     this.fetchFiles()
   },
+  computed: {
+    currentFileName() {
+      if (this.file) return this.file.name
+      const id = this.fileId || this.selectedFileId
+      const f = this.files.find(x => x.id === id)
+      return f ? f.fileName : ''
+    }
+  },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
     async fetchFiles() {
@@ -166,7 +174,10 @@ export default {
       this.$emit('saved')
     },
     print() {
+      const title = document.title
+      if (this.currentFileName) document.title = this.currentFileName
       window.print()
+      document.title = title
     },
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
