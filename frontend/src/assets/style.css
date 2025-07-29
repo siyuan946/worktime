@@ -81,6 +81,9 @@ body {
     table-layout: auto;
     font-size: 10px;
   }
+  #preview-table .process-col {
+    width: 80px;
+  }
   #preview-table th,
   #preview-table td {
     white-space: nowrap;
