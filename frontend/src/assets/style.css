@@ -81,14 +81,6 @@ body {
     table-layout: auto;
     font-size: 10px;
   }
-  #preview-table .process-name-col,
-  #preview-table .hours-col {
-    width: auto;
-  }
-  #preview-table .process-name-col input,
-  #preview-table .hours-col input {
-    width: auto;
-  }
   #preview-table th,
   #preview-table td {
     white-space: nowrap;
