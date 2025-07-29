@@ -83,11 +83,15 @@ body {
   }
   #preview-table .process-name-col,
   #preview-table .hours-col {
-    width: 60px;
+    width: auto;
+  }
+  #preview-table .process-name-col {
+    max-width: 4em;
+    word-break: break-all;
   }
   #preview-table .process-name-col input,
   #preview-table .hours-col input {
-    width: 100%;
+    width: auto;
   }
   #preview-table th,
   #preview-table td {

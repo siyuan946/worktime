@@ -45,8 +45,8 @@
             <td class="no-print">{{ r.partName }}</td>
             <td>{{ r.planQty }}</td>
             <td>{{ r.processCode }}</td>
-            <td class="process-name-col"><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
-            <td class="hours-col"><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
+            <td class="process-name-col"><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)" :style="processStyle(r.processName)"/></td>
+            <td class="hours-col"><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" :style="hoursStyle(r.hours)"/></td>
             <td class="print-only"></td>
             <td class="print-only"></td>
             <td class="print-only"></td>
@@ -161,6 +161,17 @@ export default {
     },
     print() {
       window.print()
+    },
+    processStyle(name) {
+      const len = name ? name.length : 0
+      if (len <= 4) {
+        return { width: `${len || 1}em` }
+      }
+      return { width: '3em', 'white-space': 'pre-wrap', 'word-break': 'break-all' }
+    },
+    hoursStyle(val) {
+      const len = val != null ? String(val).length : 1
+      return { width: `${len}ch` }
     },
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
