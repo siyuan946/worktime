@@ -19,14 +19,13 @@ body {
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
 .barcode-cell {
-  width: 320px;
   height: 90px;
 }
 
 .barcode-cell img {
   display: block;
   height: 80px;
-  width: 300px;
+  width: 100%;
 }
 
 /* allow table cells to wrap long text without widening the table */

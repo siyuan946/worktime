@@ -18,18 +18,16 @@
     <div v-if="preview.length" id="preview-table">
       <h2 class="h5">预览</h2>
       <table class="table table-bordered table-sm table-striped">
+        <colgroup>
+          <col v-for="(w,i) in colWidths" :key="i" :style="{ width: w + 'px' }" />
+          <col />
+        </colgroup>
         <thead>
           <tr>
-            <th>通知单号</th>
-            <th>产品名称</th>
-            <th>图号</th>
-            <th>名称</th>
-            <th>计划数</th>
-            <th>工序代码</th>
-            <th>工序</th>
-            <th>工时</th>
-            <th>条形码</th>
-            <th class="no-print"></th>
+            <th v-for="(h,i) in headers" :key="h" :class="{ 'no-print': i===headers.length-1 }" ref="headerCells" :style="{ position:'relative' }">
+              <span>{{ h }}<small v-if="i<colWidths.length"> ({{ colWidths[i] }}px)</small></span>
+              <span v-if="i<colWidths.length" class="resize-handle" @mousedown.prevent="startDrag(i)"></span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -64,11 +62,28 @@ export default {
       loading: false,
       fileId: null,
       files: [],
-      selectedFileId: ''
+      selectedFileId: '',
+      headers: ['通知单号','产品名称','图号','名称','计划数','工序代码','工序','工时','条形码',''],
+      colWidths: [],
+      dragIndex: null,
+      dragStartX: 0,
+      dragStartWidth: 0
     }
   },
   created() {
     this.fetchFiles()
+  },
+  mounted() {
+    const stored = localStorage.getItem('record-upload-widths')
+    if (stored) {
+      try { this.colWidths = JSON.parse(stored) } catch(e) {}
+    }
+    this.$nextTick(() => {
+      if (!this.colWidths.length) {
+        const cells = this.$refs.headerCells || []
+        this.colWidths = Array.from(cells).slice(0, this.headers.length - 1).map(th => th.offsetWidth)
+      }
+    })
   },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
@@ -221,7 +236,42 @@ export default {
         r.barcode = this.sanitize(bar)
         r.barcodeImage = res.data
       }
+    },
+    startDrag(i) {
+      this.dragIndex = i
+      this.dragStartX = event.clientX
+      this.dragStartWidth = this.colWidths[i]
+      document.addEventListener('mousemove', this.onDrag)
+      document.addEventListener('mouseup', this.stopDrag)
+    },
+    onDrag(e) {
+      if (this.dragIndex === null) return
+      const delta = e.clientX - this.dragStartX
+      const w = Math.max(30, this.dragStartWidth + delta)
+      this.$set(this.colWidths, this.dragIndex, w)
+    },
+    stopDrag() {
+      document.removeEventListener('mousemove', this.onDrag)
+      document.removeEventListener('mouseup', this.stopDrag)
+      if (this.dragIndex !== null) {
+        localStorage.setItem('record-upload-widths', JSON.stringify(this.colWidths))
+      }
+      this.dragIndex = null
     }
   }
 }
 </script>
+
+<style>
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+}
+@media print {
+  .resize-handle { display: none; }
+}
+</style>
