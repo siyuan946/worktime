@@ -13,7 +13,10 @@
             <td class="wrap-text">{{ log.action }}</td>
           </tr>
           <tr v-if="log.show" :key="log.id + '-details'">
-            <td colspan="3" class="pre-wrap">{{ log.details }}</td>
+            <td colspan="3" class="pre-wrap">
+              <div v-if="log.details">{{ log.details }}</div>
+              <div v-for="s in log.sub" :key="s.id">{{ s.action }}</div>
+            </td>
           </tr>
         </template>
       </tbody>
@@ -33,7 +36,23 @@ export default {
       const user = localStorage.getItem('username')
       const headers = user ? { 'X-User': user } : {}
       const res = await axios.get('http://localhost:8080/api/logs', { headers })
-      this.logs = res.data
+      this.logs = this.groupLogs(res.data)
+    },
+    groupLogs(raw) {
+      const grouped = []
+      let current = null
+      for (const log of raw) {
+        log.show = false
+        log.sub = log.sub || []
+        const isApi = /^(GET|POST|PUT|DELETE|PATCH) /.test(log.action) && !log.details
+        if (isApi && current) {
+          current.sub.push(log)
+        } else {
+          grouped.push(log)
+          current = log
+        }
+      }
+      return grouped
     }
   }
 }
