@@ -86,7 +86,7 @@ body {
     display: table-cell !important;
   }
   #preview-table table {
-    table-layout: auto;
+    table-layout: fixed;
     font-size: 10px;
   }
   #preview-table .process-col {
