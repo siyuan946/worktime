@@ -163,11 +163,8 @@ export default {
       window.print()
     },
     processStyle(name) {
-      const len = name ? name.length : 0
-      if (len <= 4) {
-        return { width: `${len || 1}em` }
-      }
-      return { width: '3em', 'white-space': 'pre-wrap', 'word-break': 'break-all' }
+      const len = name ? name.length : 1
+      return { width: `${len}em` }
     },
     hoursStyle(val) {
       const len = val != null ? String(val).length : 1

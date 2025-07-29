@@ -85,18 +85,13 @@ body {
   #preview-table .hours-col {
     width: auto;
   }
-  #preview-table .process-name-col {
-    max-width: 4em;
-    word-break: break-all;
-  }
   #preview-table .process-name-col input,
   #preview-table .hours-col input {
     width: auto;
   }
   #preview-table th,
   #preview-table td {
-    white-space: normal;
-    word-break: break-word;
+    white-space: nowrap;
   }
   #preview-table tr {
     page-break-inside: avoid;
