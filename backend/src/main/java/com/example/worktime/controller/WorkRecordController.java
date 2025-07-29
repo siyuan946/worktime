@@ -73,7 +73,8 @@ public class WorkRecordController {
     @GetMapping("/file/{fileId}/export")
     public void exportFilled(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
         List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
-        exportList(list, response);
+        String name = fileRepository.findById(fileId).map(UploadedFile::getFileName).orElse("records.xlsx");
+        exportList(list, name, response);
     }
 
     @GetMapping("/date/{date}/export")
@@ -82,7 +83,7 @@ public class WorkRecordController {
         java.time.LocalDateTime start = date.atStartOfDay();
         java.time.LocalDateTime end = start.plusDays(1);
         List<WorkRecord> list = repository.findByUploadDate(start, end);
-        exportList(list, response);
+        exportList(list, "records_" + date.toString() + ".xlsx", response);
     }
 
     private java.util.List<String> splitWorkers(String codes) {
@@ -115,13 +116,13 @@ public class WorkRecordController {
         return vals;
     }
 
-    private void exportList(java.util.List<WorkRecord> list, HttpServletResponse response) throws IOException {
+    private void exportList(java.util.List<WorkRecord> list, String fileName, HttpServletResponse response) throws IOException {
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期","合格数","工时小计"};
+        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -170,28 +171,15 @@ public class WorkRecordController {
                 if (i == 0) {
                     row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
                     row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
-                    if (r.getQualifiedQty() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getQualifiedQty());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
-                    if (r.getHourSubtotal() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getHourSubtotal());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
                 } else {
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
                     row.createCell(c++).setCellValue("");
                     row.createCell(c++).setCellValue("");
                 }
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=records.xlsx");
+        String fname = fileName == null || fileName.isEmpty() ? "records.xlsx" : java.net.URLEncoder.encode(fileName, "UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
         wb.write(response.getOutputStream());
         wb.close();
     }
