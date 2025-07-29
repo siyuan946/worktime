@@ -122,7 +122,7 @@ public class WorkRecordController {
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期"};
+        String[] titles = {"通知单号","产品名称","图号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -140,7 +140,6 @@ public class WorkRecordController {
                 row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
                 row.createCell(c++).setCellValue(n(r.getProductName()));
                 row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
-                row.createCell(c++).setCellValue(n(r.getBatchNumber()));
                 row.createCell(c++).setCellValue(n(r.getProcessCode()));
                 if (r.getHours() != null) {
                     Cell cell = row.createCell(c++);
@@ -168,13 +167,8 @@ public class WorkRecordController {
                 }
                 else row.createCell(c++).setCellValue("");
 
-                if (i == 0) {
-                    row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
-                    row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
-                } else {
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                }
+                row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
+                row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
