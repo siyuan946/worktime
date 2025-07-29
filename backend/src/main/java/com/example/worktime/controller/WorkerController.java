@@ -2,6 +2,7 @@ package com.example.worktime.controller;
 
 import com.example.worktime.model.Worker;
 import com.example.worktime.repository.WorkerRepository;
+import com.example.worktime.service.OperationLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,9 +14,11 @@ import java.util.List;
 @CrossOrigin
 public class WorkerController {
     private final WorkerRepository repository;
+    private final OperationLogService logService;
 
-    public WorkerController(WorkerRepository repository) {
+    public WorkerController(WorkerRepository repository, OperationLogService logService) {
         this.repository = repository;
+        this.logService = logService;
     }
 
     @GetMapping
@@ -40,21 +43,26 @@ public class WorkerController {
     }
 
     @PostMapping
-    public Worker create(@RequestBody Worker worker) {
+    public Worker create(@RequestBody Worker worker, @RequestHeader("X-User") String user) {
         validate(worker);
-        return repository.save(worker);
+        Worker saved = repository.save(worker);
+        logService.log(user, "新增人员 " + worker.getName(), "id=" + saved.getId());
+        return saved;
     }
 
     @PutMapping("/{id}")
-    public Worker update(@PathVariable Long id, @RequestBody Worker worker) {
+    public Worker update(@PathVariable Long id, @RequestBody Worker worker, @RequestHeader("X-User") String user) {
         worker.setId(id);
         validate(worker);
-        return repository.save(worker);
+        Worker saved = repository.save(worker);
+        logService.log(user, "更新人员 " + id, null);
+        return saved;
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
+        logService.log(user, "删除人员 " + id, null);
     }
 
     private void validate(Worker worker) {
