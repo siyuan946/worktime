@@ -3,6 +3,14 @@ body {
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
+/* width variables so print layout can be customised */
+:root {
+  --drawing-col-width: 110px;
+  --process-col-width: 220px;
+  --hours-col-width: 70px;
+  --barcode-col-width: 300px;
+}
+
 .section-card {
   background-color: #fff;
   border: 1px solid #dee2e6;
@@ -82,16 +90,16 @@ body {
     font-size: 10px;
   }
   #preview-table .process-col {
-    width: 220px !important;
+    width: var(--process-col-width) !important;
   }
   #preview-table .drawing-col {
-    width: 110px !important;
+    width: var(--drawing-col-width) !important;
   }
   #preview-table .hours-col {
-    width: 70px !important;
+    width: var(--hours-col-width) !important;
   }
   #preview-table .hours-col input {
-    width: 70px !important;
+    width: var(--hours-col-width) !important;
   }
   #preview-table th,
   #preview-table td {
@@ -101,10 +109,10 @@ body {
     page-break-inside: avoid;
   }
   #preview-table .barcode-cell {
-    width: 300px;
+    width: var(--barcode-col-width);
   }
   #preview-table .barcode-cell img {
-    width: 300px;
+    width: var(--barcode-col-width);
     height: 80px;
   }
   @page {
