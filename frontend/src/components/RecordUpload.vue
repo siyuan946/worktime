@@ -45,8 +45,14 @@
             <td class="no-print">{{ r.partName }}</td>
             <td class="plan-col">{{ r.planQty }}</td>
             <td class="no-print">{{ r.processCode }}</td>
-            <td class="process-col"><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
-            <td class="hours-col"><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
+            <td class="process-col">
+              <input class="form-control form-control-sm no-print" v-model="r.processName" @blur="updateProcess(r)" />
+              <span class="print-text">{{ r.processName }}</span>
+            </td>
+            <td class="hours-col">
+              <input type="number" class="form-control form-control-sm no-print" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px" />
+              <span class="print-text">{{ r.hours }}</span>
+            </td>
             <td class="print-only"></td>
             <td class="print-only"></td>
             <td class="print-only"></td>
