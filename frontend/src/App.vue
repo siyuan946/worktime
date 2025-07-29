@@ -10,6 +10,7 @@
             <li class="nav-item"><router-link class="nav-link" to="/records">扫码录入</router-link></li>
             <li class="nav-item"><router-link class="nav-link" to="/workers">人员管理</router-link></li>
             <li class="nav-item"><router-link class="nav-link" to="/processes">工序代码</router-link></li>
+            <li class="nav-item"><a href="#" class="nav-link" @click.prevent="logout">退出登录</a></li>
           </ul>
         </div>
       </nav>
@@ -28,8 +29,18 @@ export default {
   data() {
     return { loggedIn: false }
   },
+  created() {
+    this.loggedIn = localStorage.getItem('loggedIn') === 'true'
+  },
   methods: {
-    onLogin() { this.loggedIn = true },
+    onLogin() {
+      this.loggedIn = true
+      localStorage.setItem('loggedIn','true')
+    },
+    logout() {
+      this.loggedIn = false
+      localStorage.removeItem('loggedIn')
+    },
     onSaved() {
       const v = this.$refs.view
       if (v && v.fetch) v.fetch()

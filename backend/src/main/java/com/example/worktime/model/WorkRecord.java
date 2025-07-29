@@ -4,12 +4,14 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 import com.example.worktime.model.UploadedFile;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Entity representing a single work record parsed from Excel uploads.
  */
 
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class WorkRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,11 +48,21 @@ public class WorkRecord {
     @Lob
     private byte[] barcodeImage;
 
+    // 批次号
+    private String batchNumber;
+
+    @Transient
+    private Boolean hoursMissing;
+
+    @Transient
+    private Boolean codeMissing;
+
     // 单件工时
     private Double hours;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private UploadedFile file;
 
     // 是否补录
@@ -62,11 +74,17 @@ public class WorkRecord {
     // 人员姓名 (回显)
     private String workerNames;
 
+    // 每个员工完成的数量，用空格分隔
+    private String workerQtys;
+
     // 合格数量
     private Integer qualifiedQty;
 
     // 工时小计 = 合格数量 * 单件工时
     private Double hourSubtotal;
+
+    // 是否已填写合格数
+    private Boolean filled;
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
@@ -110,9 +128,19 @@ public class WorkRecord {
     public byte[] getBarcodeImage() { return barcodeImage; }
     public void setBarcodeImage(byte[] barcodeImage) { this.barcodeImage = barcodeImage; }
 
+    public String getBatchNumber() { return batchNumber; }
+    public void setBatchNumber(String batchNumber) { this.batchNumber = batchNumber; }
+
+    public Boolean getHoursMissing() { return hoursMissing; }
+    public void setHoursMissing(Boolean hoursMissing) { this.hoursMissing = hoursMissing; }
+
+    public Boolean getCodeMissing() { return codeMissing; }
+    public void setCodeMissing(Boolean codeMissing) { this.codeMissing = codeMissing; }
+
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public UploadedFile getFile() { return file; }
     public void setFile(UploadedFile file) { this.file = file; }
 
@@ -124,6 +152,9 @@ public class WorkRecord {
 
     public String getWorkerNames() { return workerNames; }
     public void setWorkerNames(String workerNames) { this.workerNames = workerNames; }
+
+    public String getWorkerQtys() { return workerQtys; }
+    public void setWorkerQtys(String workerQtys) { this.workerQtys = workerQtys; }
 
     public Integer getQualifiedQty() { return qualifiedQty; }
     public void setQualifiedQty(Integer qualifiedQty) { this.qualifiedQty = qualifiedQty; }
@@ -145,5 +176,8 @@ public class WorkRecord {
 
     public String getRemark2() { return remark2; }
     public void setRemark2(String remark2) { this.remark2 = remark2; }
+
+    public Boolean getFilled() { return filled; }
+    public void setFilled(Boolean filled) { this.filled = filled; }
 }
 

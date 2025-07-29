@@ -23,6 +23,20 @@ public class ProcessCodeController {
         return repository.findAll();
     }
 
+    @GetMapping("/search")
+    public List<ProcessCode> search(@RequestParam String term) {
+        String q = term.trim();
+        if (q.isEmpty()) {
+            return repository.findAll();
+        }
+        return repository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(q, q);
+    }
+
+    @GetMapping("/name/{name}")
+    public ProcessCode byName(@PathVariable String name) {
+        return repository.findByName(name);
+    }
+
     @PostMapping
     public ProcessCode create(@RequestBody ProcessCode pc) {
         validate(pc);

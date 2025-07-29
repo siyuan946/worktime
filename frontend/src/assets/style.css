@@ -16,11 +16,34 @@ body {
   vertical-align: middle;
 }
 
+
+/* Ensure barcode cells are tall enough so barcodes aren't clipped */
 .barcode-cell {
-  min-width: 220px;
+  width: 320px;
+  height: 90px;
 }
 
 .barcode-cell img {
-  height: 40px;
-  width: 200px;
+  display: block;
+  height: 80px;
+  width: 300px;
+}
+
+/* Only show the preview table when printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #preview-table, #preview-table * {
+    visibility: visible;
+  }
+  #preview-table {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
 }
