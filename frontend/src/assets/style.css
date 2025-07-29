@@ -82,7 +82,7 @@ body {
     font-size: 10px;
   }
   #preview-table .process-col {
-    width: 80px;
+    width: 200px !important;
   }
   #preview-table th,
   #preview-table td {
