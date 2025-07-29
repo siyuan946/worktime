@@ -82,7 +82,16 @@ body {
     font-size: 10px;
   }
   #preview-table .process-col {
-    width: 200px !important;
+    width: 220px !important;
+  }
+  #preview-table .drawing-col {
+    width: 110px !important;
+  }
+  #preview-table .hours-col {
+    width: 70px !important;
+  }
+  #preview-table .hours-col input {
+    width: 70px !important;
   }
   #preview-table th,
   #preview-table td {
