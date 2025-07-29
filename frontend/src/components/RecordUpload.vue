@@ -23,7 +23,7 @@
             <th>通知单号</th>
             <th class="no-print">产品名称</th>
             <th>图号</th>
-            <th>名称</th>
+            <th class="no-print">名称</th>
             <th>计划数</th>
             <th>工序代码</th>
             <th>工序</th>
@@ -42,7 +42,7 @@
             <td>{{ r.notificationNumber }}</td>
             <td class="no-print">{{ r.productName }}</td>
             <td>{{ r.drawingNumber }}</td>
-            <td>{{ r.partName }}</td>
+            <td class="no-print">{{ r.partName }}</td>
             <td>{{ r.planQty }}</td>
             <td>{{ r.processCode }}</td>
             <td><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>

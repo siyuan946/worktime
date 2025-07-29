@@ -78,19 +78,23 @@ body {
     display: table-cell !important;
   }
   #preview-table table {
-    table-layout: fixed;
-    font-size: 12px;
+    table-layout: auto;
+    font-size: 10px;
   }
   #preview-table th,
   #preview-table td {
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
+  }
+  #preview-table tr {
+    page-break-inside: avoid;
   }
   #preview-table .barcode-cell {
-    width: 200px;
+    width: 300px;
   }
   #preview-table .barcode-cell img {
-    width: 200px;
-    height: 60px;
+    width: 300px;
+    height: 80px;
   }
   @page {
     size: A4;
