@@ -20,11 +20,11 @@
       <table class="table table-bordered table-sm table-striped">
         <thead>
           <tr>
-            <th>通知单号</th>
+            <th class="notification-col">通知单号</th>
             <th class="no-print">产品名称</th>
             <th class="drawing-col">图号</th>
             <th class="no-print">名称</th>
-            <th>计划数</th>
+            <th class="plan-col">计划数</th>
             <th class="no-print">工序代码</th>
             <th class="process-col">工序</th>
             <th class="hours-col">工时</th>
@@ -39,11 +39,11 @@
         </thead>
         <tbody>
           <tr v-for="(r,i) in preview" :key="i" :class="{'table-danger': r.codeMissing || r.hoursMissing}">
-            <td>{{ r.notificationNumber }}</td>
+            <td class="notification-col">{{ r.notificationNumber }}</td>
             <td class="no-print">{{ r.productName }}</td>
             <td class="drawing-col">{{ r.drawingNumber }}</td>
             <td class="no-print">{{ r.partName }}</td>
-            <td>{{ r.planQty }}</td>
+            <td class="plan-col">{{ r.planQty }}</td>
             <td class="no-print">{{ r.processCode }}</td>
             <td class="process-col"><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
             <td class="hours-col"><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>

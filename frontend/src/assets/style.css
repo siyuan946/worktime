@@ -70,6 +70,12 @@ body {
   body * {
     visibility: hidden;
   }
+  #preview-table .plan-col {
+    width: 50px !important;  /* 设置计划数列的宽度 */
+  }
+  #preview-table .notification-col {
+    width: 60px !important;  /* 设置通知单号列的宽度 */
+  }
   #preview-table, #preview-table * {
     visibility: visible;
   }
@@ -83,6 +89,7 @@ body {
     display: none !important;
   }
   .print-only {
+     width: 50px;
     display: table-cell !important;
   }
   #preview-table table {
