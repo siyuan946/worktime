@@ -76,5 +76,13 @@ CREATE TABLE IF NOT EXISTS work_record (
     file_id BIGINT,
     supplemental BOOLEAN,
     CONSTRAINT fk_work_record_file FOREIGN KEY (file_id)
-        REFERENCES uploaded_file(id)
+        REFERENCES uploaded_file(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS operation_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255),
+    action VARCHAR(255),
+    timestamp DATETIME,
+    details TEXT
 );

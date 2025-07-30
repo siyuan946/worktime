@@ -15,4 +15,6 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
                                                 @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
 
     void deleteByFileId(Long fileId);
+
+    long countByFileId(Long fileId);
 }

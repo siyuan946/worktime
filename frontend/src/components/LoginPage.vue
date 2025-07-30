@@ -23,11 +23,16 @@ export default {
   methods: {
     async login() {
       try {
-        await axios.post('http://localhost:8080/api/auth/login', {
-          username: this.username,
-          password: this.password
-        })
+        await axios.post(
+          'http://localhost:8080/api/auth/login',
+          {
+            username: this.username,
+            password: this.password
+          },
+          { headers: { 'X-User': this.username } }
+        )
         localStorage.setItem('loggedIn','true')
+        localStorage.setItem('username', this.username)
         this.$emit('logged-in')
       } catch (e) {
         this.error = '登录失败'

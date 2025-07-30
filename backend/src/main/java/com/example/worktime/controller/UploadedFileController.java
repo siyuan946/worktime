@@ -3,6 +3,7 @@ package com.example.worktime.controller;
 import com.example.worktime.model.UploadedFile;
 import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.repository.WorkRecordRepository;
+import com.example.worktime.service.OperationLogService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,10 +15,13 @@ import java.util.List;
 public class UploadedFileController {
     private final UploadedFileRepository repository;
     private final WorkRecordRepository recordRepository;
+    private final OperationLogService logService;
 
-    public UploadedFileController(UploadedFileRepository repository, WorkRecordRepository recordRepository) {
+    public UploadedFileController(UploadedFileRepository repository, WorkRecordRepository recordRepository,
+                                 OperationLogService logService) {
         this.repository = repository;
         this.recordRepository = recordRepository;
+        this.logService = logService;
     }
 
     @GetMapping
@@ -27,8 +31,11 @@ public class UploadedFileController {
 
     @DeleteMapping("/{id}")
     @Transactional
-    public void delete(@PathVariable Long id) {
-        recordRepository.deleteByFileId(id);
+    public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
+        UploadedFile file = repository.findById(id).orElse(null);
+        long cnt = recordRepository.countByFileId(id);
         repository.deleteById(id);
+        String name = file != null ? file.getFileName() : String.valueOf(id);
+        logService.log(user, "删除文件 " + name, "records=" + cnt);
     }
 }
