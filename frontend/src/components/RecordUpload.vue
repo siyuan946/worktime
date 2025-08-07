@@ -221,11 +221,12 @@ export default {
       }
     },
     addRow(index) {
+      const base = this.preview[index]
       const blank = {
-        notificationNumber: '',
-        productName: '',
-        drawingNumber: '',
-        partName: '',
+        notificationNumber: base.notificationNumber,
+        productName: base.productName,
+        drawingNumber: base.drawingNumber,
+        partName: base.partName,
         planQty: null,
         processCode: '',
         processName: '',
@@ -237,8 +238,8 @@ export default {
         inspector: '',
         barcode: '',
         barcodeImage: '',
-        codeMissing: false,
-        hoursMissing: false
+        codeMissing: true,
+        hoursMissing: true
       }
       this.preview.splice(index + 1, 0, blank)
     },
