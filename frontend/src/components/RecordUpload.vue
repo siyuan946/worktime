@@ -24,7 +24,7 @@
             <th class="no-print">产品名称</th>
             <th class="drawing-col">图号</th>
             <th class="no-print">名称</th>
-            <th class="plan-col">计划数</th>
+            <th class="plan-col no-print">计划数</th>
             <th class="no-print">工序代码</th>
             <th class="process-col">工序</th>
             <th class="hours-col">工时</th>
@@ -32,6 +32,7 @@
             <th class="print-only">合格件数</th>
             <th class="print-only">起始时间</th>
             <th class="print-only">结束时间</th>
+            <th class="print-only plan-col">计划数</th>
             <th class="print-only">检验员</th>
             <th>条形码</th>
             <th class="no-print"></th>
@@ -43,7 +44,10 @@
             <td class="no-print">{{ r.productName }}</td>
             <td class="drawing-col">{{ r.drawingNumber }}</td>
             <td class="no-print">{{ r.partName }}</td>
-            <td class="plan-col">{{ r.planQty }}</td>
+            <td class="plan-col no-print">
+              <input type="number" class="form-control form-control-sm" v-model.number="r.planQty" />
+              <span class="print-text">{{ r.planQty }}</span>
+            </td>
             <td class="no-print">{{ r.processCode }}</td>
             <td class="process-col">
               <input class="form-control form-control-sm no-print" v-model="r.processName" @blur="updateProcess(r)" />
@@ -57,12 +61,16 @@
             <td class="print-only"></td>
             <td class="print-only"></td>
             <td class="print-only"></td>
+            <td class="print-only plan-col">{{ r.planQty }}</td>
             <td class="print-only"></td>
             <td class="barcode-cell">
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
             </td>
-            <td class="no-print"><button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button></td>
+            <td class="no-print">
+              <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(i)">新增</button>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -211,6 +219,28 @@ export default {
       if (confirm('确定删除该行? 删除后不可恢复')) {
         this.preview.splice(index, 1)
       }
+    },
+    addRow(index) {
+      const blank = {
+        notificationNumber: '',
+        productName: '',
+        drawingNumber: '',
+        partName: '',
+        planQty: null,
+        processCode: '',
+        processName: '',
+        hours: null,
+        workerCodes: '',
+        qualifiedQty: null,
+        startTime: '',
+        endTime: '',
+        inspector: '',
+        barcode: '',
+        barcodeImage: '',
+        codeMissing: false,
+        hoursMissing: false
+      }
+      this.preview.splice(index + 1, 0, blank)
     },
     deleteZero() {
       if (!this.preview.length) return
