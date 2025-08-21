@@ -60,7 +60,7 @@ public class WorkTimeController {
                 int idx = 0;
                 while (true) {
                     String pKey = idx == 0 ? "工序" : "工序." + idx;
-                    String hKey = idx == 0 ? "工时" : "工时." + idx;
+                    String hKey = idx == 0 ? "单件工时" : "单件工时." + idx;
                     if (!col.containsKey(pKey) || !col.containsKey(hKey)) break;
                     String process = getString(row, col.get(pKey));
                     Double hours = getDouble(row, col.get(hKey));

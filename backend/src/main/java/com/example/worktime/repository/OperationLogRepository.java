@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface OperationLogRepository extends JpaRepository<OperationLog, Long> {
     List<OperationLog> findByUsernameOrderByTimestampDesc(String username);
+    List<OperationLog> findAllByOrderByTimestampDesc();
 }

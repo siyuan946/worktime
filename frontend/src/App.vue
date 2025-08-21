@@ -4,7 +4,7 @@
     <div v-else>
       <nav class="navbar navbar-expand navbar-light bg-white">
         <div class="container-fluid">
-          <a class="navbar-brand" href="#">工时录入</a>
+          <a class="navbar-brand" href="#">单件工时录入</a>
           <ul class="navbar-nav">
             <li class="nav-item"><router-link class="nav-link" to="/upload">Excel上传</router-link></li>
             <li class="nav-item"><router-link class="nav-link" to="/records">扫码录入</router-link></li>
@@ -31,6 +31,10 @@ export default {
     return { loggedIn: false }
   },
   created() {
+    window.addEventListener('beforeunload', () => {
+      localStorage.removeItem('loggedIn')
+      localStorage.removeItem('username')
+    })
     this.loggedIn = localStorage.getItem('loggedIn') === 'true'
   },
   methods: {
