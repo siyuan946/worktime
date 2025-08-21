@@ -122,7 +122,7 @@ public class WorkRecordController {
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","工序代码","单件工时","计划数","人员代码","姓名","数量分配","单件工时分配","起始时间"};
+        String[] titles = {"通知单号","产品名称","图号","工序代码","起始时间","单件工时","计划数","人员代码","姓名","数量分配","单件工时分配"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -134,6 +134,21 @@ public class WorkRecordController {
             java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
             int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
 
+            String timeCell = "";
+            if (r.getStartTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                String s = r.getStartTime().toLocalDate().format(fmt);
+                if (r.getEndTime() != null && !r.getEndTime().toLocalDate().isEqual(r.getStartTime().toLocalDate())) {
+                    String e = r.getEndTime().toLocalDate().format(fmt);
+                    timeCell = s + "-" + e;
+                } else {
+                    timeCell = s;
+                }
+            } else if (r.getEndTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                timeCell = r.getEndTime().toLocalDate().format(fmt);
+            }
+
             for (int i = 0; i < max; i++) {
                 Row row = sheet.createRow(rowIdx++);
                 int c = 0;
@@ -141,6 +156,7 @@ public class WorkRecordController {
                 row.createCell(c++).setCellValue(n(r.getProductName()));
                 row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
                 row.createCell(c++).setCellValue(n(r.getProcessCode()));
+                row.createCell(c++).setCellValue(timeCell);
                 if (r.getHours() != null) {
                     Cell cell = row.createCell(c++);
                     cell.setCellValue(r.getHours());
@@ -166,22 +182,6 @@ public class WorkRecordController {
                     cell.setCellStyle(twoDec);
                 }
                 else row.createCell(c++).setCellValue("");
-
-                String timeCell = "";
-                if (r.getStartTime() != null) {
-                    java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
-                    String s = r.getStartTime().toLocalDate().format(fmt);
-                    if (r.getEndTime() != null && !r.getEndTime().toLocalDate().isEqual(r.getStartTime().toLocalDate())) {
-                        String e = r.getEndTime().toLocalDate().format(fmt);
-                        timeCell = s + "-" + e;
-                    } else {
-                        timeCell = s;
-                    }
-                } else if (r.getEndTime() != null) {
-                    java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
-                    timeCell = r.getEndTime().toLocalDate().format(fmt);
-                }
-                row.createCell(c++).setCellValue(timeCell);
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

@@ -52,7 +52,17 @@
           <td class="wrap-text">{{ rec.drawingNumber }}</td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
-          <td>{{ rec.planQty }}</td>
+          <td>
+            <span v-if="!rec.editing">{{ rec.planQty }}</span>
+            <input
+              v-else
+              type="number"
+              class="form-control form-control-sm edit-highlight"
+              style="width:80px"
+              v-model.number="rec.planQty"
+              @blur="onPlanQtyCellChange(rec)"
+            />
+          </td>
           <td class="wrap-text">
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
             <textarea
@@ -364,6 +374,10 @@ export default {
       } else {
         rec._hourOverflowShown = false
       }
+    },
+    onPlanQtyCellChange(rec) {
+      this.planQtyInput = rec.planQty
+      this.updatePlanQty()
     },
     updatePlanQty() {
       this.records.forEach(r => { r.planQty = this.planQtyInput })
