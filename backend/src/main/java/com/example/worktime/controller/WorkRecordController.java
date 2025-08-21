@@ -122,7 +122,7 @@ public class WorkRecordController {
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期"};
+        String[] titles = {"通知单号","产品名称","图号","工序代码","单件工时","计划数","人员代码","姓名","数量分配","单件工时分配","起始时间"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -167,8 +167,21 @@ public class WorkRecordController {
                 }
                 else row.createCell(c++).setCellValue("");
 
-                row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
-                row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
+                String timeCell = "";
+                if (r.getStartTime() != null) {
+                    java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                    String s = r.getStartTime().toLocalDate().format(fmt);
+                    if (r.getEndTime() != null && !r.getEndTime().toLocalDate().isEqual(r.getStartTime().toLocalDate())) {
+                        String e = r.getEndTime().toLocalDate().format(fmt);
+                        timeCell = s + "-" + e;
+                    } else {
+                        timeCell = s;
+                    }
+                } else if (r.getEndTime() != null) {
+                    java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                    timeCell = r.getEndTime().toLocalDate().format(fmt);
+                }
+                row.createCell(c++).setCellValue(timeCell);
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -324,7 +337,7 @@ public class WorkRecordController {
                 String notification = getString(row, 42);   // AQ
                 String prodName = getString(row, 5);        // F
                 String drawing = getString(row, 4);         // E
-                Integer qty = getInt(row, 1);               // B -> 产量
+                Integer qty = getInt(row, 1);               // B -> 计划数
 
                 for (int c = 9; c <= 28; c += 2) {          // J..AC pairs
                     String process = getString(row, c);

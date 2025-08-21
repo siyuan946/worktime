@@ -27,7 +27,7 @@
             <th class="plan-col no-print">计划数</th>
             <th class="no-print">工序代码</th>
             <th class="process-col">工序</th>
-            <th class="hours-col">工时</th>
+            <th class="hours-col">单件工时</th>
             <th class="print-only">人员代码</th>
             <th class="print-only">合格件数</th>
             <th class="print-only">起始时间</th>
@@ -160,7 +160,7 @@ export default {
       this.fileId = res.data.fileId
       this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
       const warn = this.preview.filter(r => r.codeMissing || r.hoursMissing)
-      if (warn.length) alert(`发现${warn.length}条记录缺少工时或工序码，请检查`)
+      if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
       await this.fetchFiles()
       this.loading = false
     },

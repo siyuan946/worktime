@@ -16,7 +16,9 @@
       <button class="btn btn-outline-primary btn-sm ms-1" @click="exportByDate" :disabled="!exportDate">按日期导出</button>
     </div>
     <div class="mb-2" v-if="records.length">
-      产量: {{ planQty }} | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
+      计划数:
+      <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" />
+      | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
       <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
@@ -27,8 +29,8 @@
           <th>产品名称</th>
           <th>图号</th>
           <th>工序代码</th>
-          <th>工时</th>
-          <th>产量</th>
+          <th>单件工时</th>
+          <th>计划数</th>
           <th>人员代码</th>
           <th>数量分配</th>
           <th>姓名</th>
@@ -37,8 +39,8 @@
           <th>起始日期</th>
           <th>结束日期</th>
           <th>合格数</th>
-          <th>工时小计</th>
-          <th>工时分配</th>
+          <th>单件工时小计</th>
+          <th>单件工时分配</th>
           <th v-if="!viewOnly"></th>
         </tr>
       </thead>
@@ -141,7 +143,8 @@ export default {
       selectedFileId: '',
       exportDate: '',
       viewOnly: false,
-      scanBuffer: ''
+      scanBuffer: '',
+      planQtyInput: null
     }
   },
   created() {
@@ -227,7 +230,7 @@ export default {
     async updateRecord(rec) {
       const total = this.records.reduce((sum, r) => sum + (r === rec ? (rec.qualifiedQty || 0) : (r.qualifiedQty || 0)), 0)
       if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过产量，请确认')
+        alert('总合格数已超过计划数，请确认')
       }
       this.validateQtyAllocation(rec)
       this.validateHourAllocation(rec)
@@ -303,6 +306,7 @@ export default {
         endDate: r.endTime ? r.endTime.slice(0,10) : '',
         _hourOverflowShown: false
       }))
+      this.planQtyInput = this.planQty
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
           rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -340,7 +344,7 @@ export default {
     validatePlanQty() {
       const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
       if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过产量，请确认')
+        alert('总合格数已超过计划数，请确认')
       }
     },
     validateQtyAllocation(rec) {
@@ -355,11 +359,15 @@ export default {
       const sum = rec.workerHourVals.reduce((a,b) => a + (parseFloat(b) || 0), 0)
       const total = (rec.qualifiedQty || 0) * (rec.hours || 0)
       if (total && sum > total) {
-        if (!rec._hourOverflowShown) alert('填写的工时超过总工时')
+        if (!rec._hourOverflowShown) alert('填写的单件工时超过总工时')
         rec._hourOverflowShown = true
       } else {
         rec._hourOverflowShown = false
       }
+    },
+    updatePlanQty() {
+      this.records.forEach(r => { r.planQty = this.planQtyInput })
+      this.validatePlanQty()
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
