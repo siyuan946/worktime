@@ -2,7 +2,7 @@
   <section class="section-card">
     <h2 class="h5">扫码录入</h2>
     <div class="input-group mb-2" style="max-width:300px;">
-      <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" />
+      <input class="form-control form-control-sm" v-model="searchBarcode" placeholder="扫码条形码" @keyup.enter="searchByBarcode" />
       <button class="btn btn-outline-secondary btn-sm" @click="searchByBarcode">查询</button>
     </div>
     <div class="input-group mb-2" style="max-width:400px;">
@@ -16,7 +16,9 @@
       <button class="btn btn-outline-primary btn-sm ms-1" @click="exportByDate" :disabled="!exportDate">按日期导出</button>
     </div>
     <div class="mb-2" v-if="records.length">
-      产量: {{ planQty }} | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
+      计划数:
+      <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" />
+      | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
       <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
@@ -26,10 +28,9 @@
           <th>通知单号</th>
           <th>产品名称</th>
           <th>图号</th>
-          <th>批次号</th>
           <th>工序代码</th>
-          <th>工时</th>
-          <th>产量</th>
+          <th>单件工时</th>
+          <th>计划数</th>
           <th>人员代码</th>
           <th>数量分配</th>
           <th>姓名</th>
@@ -38,8 +39,8 @@
           <th>起始日期</th>
           <th>结束日期</th>
           <th>合格数</th>
-          <th>工时小计</th>
-          <th>工时分配</th>
+          <th>单件工时小计</th>
+          <th>单件工时分配</th>
           <th v-if="!viewOnly"></th>
         </tr>
       </thead>
@@ -49,13 +50,19 @@
           <td class="wrap-text">{{ rec.notificationNumber }}</td>
           <td class="wrap-text">{{ rec.productName }}</td>
           <td class="wrap-text">{{ rec.drawingNumber }}</td>
-          <td>
-            <span v-if="!rec.editing">{{ rec.batchNumber }}</span>
-            <input v-else class="form-control form-control-sm edit-highlight" v-model="rec.batchNumber" style="width:80px" />
-          </td>
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
-          <td>{{ rec.planQty }}</td>
+          <td>
+            <span v-if="!rec.editing">{{ rec.planQty }}</span>
+            <input
+              v-else
+              type="number"
+              class="form-control form-control-sm edit-highlight"
+              style="width:80px"
+              v-model.number="rec.planQty"
+              @blur="onPlanQtyCellChange(rec)"
+            />
+          </td>
           <td class="wrap-text">
             <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
             <textarea
@@ -92,11 +99,11 @@
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
             <span v-if="!rec.editing">{{ rec.startDate }}</span>
-            <input v-else type="date" class="form-control form-control-sm edit-highlight" v-model="rec.startDate" style="width:130px" />
+            <input v-else type="text" class="form-control form-control-sm edit-highlight" v-model="rec.startDate" @blur="normalizeStart(rec)" style="width:130px" placeholder="MM/DD" />
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.endDate }}</span>
-            <input v-else type="date" class="form-control form-control-sm edit-highlight" v-model="rec.endDate" style="width:130px" />
+            <input v-else type="text" class="form-control form-control-sm edit-highlight" v-model="rec.endDate" @blur="normalizeEnd(rec)" style="width:130px" placeholder="MM/DD" />
           </td>
           <td>
             <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
@@ -145,11 +152,19 @@ export default {
       files: [],
       selectedFileId: '',
       exportDate: '',
-      viewOnly: false
+      viewOnly: false,
+      scanBuffer: '',
+      planQtyInput: null
     }
   },
   created() {
     this.fetchFiles()
+  },
+  mounted() {
+    window.addEventListener('keydown', this.handleScanKey)
+  },
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleScanKey)
   },
   computed: {
     planQty() {
@@ -191,7 +206,8 @@ export default {
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
       a.href = url
-      a.download = 'records.xlsx'
+      const f = this.files.find(x => x.id === this.selectedFileId)
+      a.download = f ? f.fileName : 'records.xlsx'
       a.click()
       window.URL.revokeObjectURL(url)
     },
@@ -224,10 +240,12 @@ export default {
     async updateRecord(rec) {
       const total = this.records.reduce((sum, r) => sum + (r === rec ? (rec.qualifiedQty || 0) : (r.qualifiedQty || 0)), 0)
       if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过产量，请确认')
+        alert('总合格数已超过计划数，请确认')
       }
       this.validateQtyAllocation(rec)
       this.validateHourAllocation(rec)
+      this.normalizeStart(rec)
+      this.normalizeEnd(rec)
       const payload = {
         ...rec,
         startTime: rec.startDate ? rec.startDate + 'T00:00:00' : null,
@@ -257,7 +275,8 @@ export default {
           workerNamesList: [],
           codeToName: {},
           startDate: '',
-          endDate: ''
+          endDate: '',
+          _hourOverflowShown: false
         }
       if (rec.qualifiedQty != null && rec.hours != null) {
         rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -294,8 +313,10 @@ export default {
         workerNamesList: [],
         codeToName: {},
         startDate: r.startTime ? r.startTime.slice(0,10) : '',
-        endDate: r.endTime ? r.endTime.slice(0,10) : ''
+        endDate: r.endTime ? r.endTime.slice(0,10) : '',
+        _hourOverflowShown: false
       }))
+      this.planQtyInput = this.planQty
       for (const rec of this.records) {
         if (rec.qualifiedQty != null && rec.hours != null) {
           rec.hourSubtotal = rec.qualifiedQty * rec.hours
@@ -333,7 +354,7 @@ export default {
     validatePlanQty() {
       const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
       if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过产量，请确认')
+        alert('总合格数已超过计划数，请确认')
       }
     },
     validateQtyAllocation(rec) {
@@ -348,8 +369,19 @@ export default {
       const sum = rec.workerHourVals.reduce((a,b) => a + (parseFloat(b) || 0), 0)
       const total = (rec.qualifiedQty || 0) * (rec.hours || 0)
       if (total && sum > total) {
-        alert('填写的工时超过总工时')
+        if (!rec._hourOverflowShown) alert('填写的单件工时超过总工时')
+        rec._hourOverflowShown = true
+      } else {
+        rec._hourOverflowShown = false
       }
+    },
+    onPlanQtyCellChange(rec) {
+      this.planQtyInput = rec.planQty
+      this.updatePlanQty()
+    },
+    updatePlanQty() {
+      this.records.forEach(r => { r.planQty = this.planQtyInput })
+      this.validatePlanQty()
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []
@@ -467,6 +499,41 @@ export default {
       if (!el) return
       el.style.height = 'auto'
       el.style.height = el.scrollHeight + 'px'
+    },
+    handleScanKey(e) {
+      const t = e.target.tagName
+      if (t === 'INPUT' || t === 'TEXTAREA') return
+      if (e.key === 'Enter') {
+        if (this.scanBuffer) {
+          this.searchBarcode = this.scanBuffer
+          this.scanBuffer = ''
+          this.searchByBarcode()
+        }
+      } else if (e.key.length === 1) {
+        this.scanBuffer += e.key
+      }
+    },
+    normalizeDate(str) {
+      if (!str) return ''
+      str = str.trim()
+      if (/^\d{1,2}\/\d{1,2}$/.test(str)) {
+        const [m, d] = str.split('/')
+        const y = new Date().getFullYear()
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+      }
+      if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(str)) {
+        const [y,m,d] = str.split('-')
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+      }
+      return str
+    },
+    normalizeStart(rec) {
+      rec.startDate = this.normalizeDate(rec.startDate)
+      if (!rec.endDate) rec.endDate = rec.startDate
+    },
+    normalizeEnd(rec) {
+      rec.endDate = this.normalizeDate(rec.endDate)
+      if (!rec.endDate) rec.endDate = rec.startDate
     }
   }
 }

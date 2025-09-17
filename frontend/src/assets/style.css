@@ -3,6 +3,14 @@ body {
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
+/* width variables so print layout can be customised */
+:root {
+  --drawing-col-width: 110px;
+  --process-col-width: 220px;
+  --hours-col-width: 70px;
+  --barcode-col-width: 300px;
+}
+
 .section-card {
   background-color: #fff;
   border: 1px solid #dee2e6;
@@ -53,10 +61,24 @@ body {
   border-color: #f0ad4e;
 }
 
+.print-text {
+  display: none;
+}
+
+.print-only {
+  display: none;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {
     visibility: hidden;
+  }
+  #preview-table .plan-col {
+    width: 50px !important;  /* 设置计划数列的宽度 */
+  }
+  #preview-table .notification-col {
+    width: 60px !important;  /* 设置通知单号列的宽度 */
   }
   #preview-table, #preview-table * {
     visibility: visible;
@@ -69,5 +91,46 @@ body {
   }
   .no-print {
     display: none !important;
+  }
+  .print-text {
+    display: inline !important;
+  }
+  .print-only {
+     width: 50px;
+    display: table-cell !important;
+  }
+  #preview-table table {
+    table-layout: fixed;
+    font-size: 10px;
+  }
+  #preview-table .process-col {
+    width: var(--process-col-width) !important;
+  }
+  #preview-table .drawing-col {
+    width: var(--drawing-col-width) !important;
+  }
+  #preview-table .hours-col {
+    width: var(--hours-col-width) !important;
+  }
+  #preview-table .hours-col input {
+    width: var(--hours-col-width) !important;
+  }
+  #preview-table th,
+  #preview-table td {
+    white-space: nowrap;
+  }
+  #preview-table tr {
+    page-break-inside: avoid;
+  }
+  #preview-table .barcode-cell {
+    width: var(--barcode-col-width);
+  }
+  #preview-table .barcode-cell img {
+    width: var(--barcode-col-width);
+    height: 80px;
+  }
+  @page {
+    size: A4;
+    margin: 10mm;
   }
 }

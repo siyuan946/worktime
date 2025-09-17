@@ -20,33 +20,57 @@
       <table class="table table-bordered table-sm table-striped">
         <thead>
           <tr>
-            <th>通知单号</th>
-            <th>产品名称</th>
-            <th>图号</th>
-            <th>名称</th>
-            <th>计划数</th>
-            <th>工序代码</th>
-            <th>工序</th>
-            <th>工时</th>
+            <th class="notification-col">通知单号</th>
+            <th class="no-print">产品名称</th>
+            <th class="drawing-col">图号</th>
+            <th class="print-only plan-col">计划数</th>
+            <th class="no-print">名称</th>
+            <th class="plan-col no-print">计划数</th>
+            <th class="hours-col">单件工时</th>
+            <th class="no-print">工序代码</th>
+            <th class="process-col">工序</th>
+            <th class="print-only">人员代码</th>
+            <th class="print-only">合格件数</th>
+            <th class="print-only">起始时间</th>
+            <th class="print-only">结束时间</th>
+            <th class="print-only">检验员</th>
             <th>条形码</th>
             <th class="no-print"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(r,i) in preview" :key="i" :class="{'table-danger': r.codeMissing || r.hoursMissing}">
-            <td>{{ r.notificationNumber }}</td>
-            <td>{{ r.productName }}</td>
-            <td>{{ r.drawingNumber }}</td>
-            <td>{{ r.partName }}</td>
-            <td>{{ r.planQty }}</td>
-            <td>{{ r.processCode }}</td>
-            <td><input class="form-control form-control-sm" v-model="r.processName" @blur="updateProcess(r)"/></td>
-            <td><input type="number" class="form-control form-control-sm" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px"/></td>
+            <td class="notification-col">{{ r.notificationNumber }}</td>
+            <td class="no-print">{{ r.productName }}</td>
+            <td class="drawing-col">{{ r.drawingNumber }}</td>
+            <td class="print-only plan-col">{{ r.planQty }}</td>
+            <td class="no-print">{{ r.partName }}</td>
+            <td class="plan-col no-print">
+              <input type="number" class="form-control form-control-sm" v-model.number="r.planQty" />
+              <span class="print-text">{{ r.planQty }}</span>
+            </td>
+            <td class="hours-col">
+              <input type="number" class="form-control form-control-sm no-print" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px" />
+              <span class="print-text">{{ r.hours }}</span>
+            </td>
+            <td class="no-print">{{ r.processCode }}</td>
+            <td class="process-col">
+              <input class="form-control form-control-sm no-print" v-model="r.processName" @blur="updateProcess(r)" />
+              <span class="print-text">{{ r.processName }}</span>
+            </td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
+            <td class="print-only"></td>
             <td class="barcode-cell">
               <div>{{ r.barcode }}</div>
               <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
             </td>
-            <td class="no-print"><button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button></td>
+            <td class="no-print">
+              <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(i)">新增</button>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -69,6 +93,14 @@ export default {
   },
   created() {
     this.fetchFiles()
+  },
+  computed: {
+    currentFileName() {
+      if (this.file) return this.file.name
+      const id = this.fileId || this.selectedFileId
+      const f = this.files.find(x => x.id === id)
+      return f ? f.fileName : ''
+    }
   },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
@@ -128,7 +160,7 @@ export default {
       this.fileId = res.data.fileId
       this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
       const warn = this.preview.filter(r => r.codeMissing || r.hoursMissing)
-      if (warn.length) alert(`发现${warn.length}条记录缺少工时或工序码，请检查`)
+      if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
       await this.fetchFiles()
       this.loading = false
     },
@@ -150,20 +182,10 @@ export default {
       this.$emit('saved')
     },
     print() {
-      if (!this.fileId) {
-        alert('请先保存文件后再打印')
-        return
-      }
-      axios.get(`http://localhost:8080/api/workrecords/file/${this.fileId}/print`, { responseType: 'blob' })
-        .then(res => {
-          const url = window.URL.createObjectURL(new Blob([res.data]))
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'print.xlsx'
-          a.click()
-          window.URL.revokeObjectURL(url)
-        })
-        .catch(() => alert('打印文件生成失败'))
+      const title = document.title
+      if (this.currentFileName) document.title = this.currentFileName
+      window.print()
+      document.title = title
     },
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
@@ -197,6 +219,29 @@ export default {
       if (confirm('确定删除该行? 删除后不可恢复')) {
         this.preview.splice(index, 1)
       }
+    },
+    addRow(index) {
+      const base = this.preview[index]
+      const blank = {
+        notificationNumber: base.notificationNumber,
+        productName: base.productName,
+        drawingNumber: base.drawingNumber,
+        partName: base.partName,
+        planQty: null,
+        processCode: '',
+        processName: '',
+        hours: null,
+        workerCodes: '',
+        qualifiedQty: null,
+        startTime: '',
+        endTime: '',
+        inspector: '',
+        barcode: '',
+        barcodeImage: '',
+        codeMissing: true,
+        hoursMissing: true
+      }
+      this.preview.splice(index + 1, 0, blank)
     },
     deleteZero() {
       if (!this.preview.length) return
