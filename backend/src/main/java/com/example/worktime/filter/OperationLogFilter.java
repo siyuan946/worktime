@@ -29,7 +29,8 @@ public class OperationLogFilter extends OncePerRequestFilter {
                 && !request.getRequestURI().startsWith("/api/logs")) {
             OperationLog log = new OperationLog();
             log.setUsername(user);
-            log.setAction(request.getMethod() + " " + request.getRequestURI());
+            String path = request.getRequestURI().replaceFirst("^/api", "");
+            log.setAction(request.getMethod() + " " + path);
             log.setTimestamp(LocalDateTime.now());
             repository.save(log);
         }

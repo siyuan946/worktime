@@ -27,6 +27,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
 
 @RestController
@@ -73,7 +76,8 @@ public class WorkRecordController {
     @GetMapping("/file/{fileId}/export")
     public void exportFilled(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
         List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
-        exportList(list, response);
+        String name = fileRepository.findById(fileId).map(UploadedFile::getFileName).orElse("records.xlsx");
+        exportList(list, name, response);
     }
 
     @GetMapping("/date/{date}/export")
@@ -82,7 +86,46 @@ public class WorkRecordController {
         java.time.LocalDateTime start = date.atStartOfDay();
         java.time.LocalDateTime end = start.plusDays(1);
         List<WorkRecord> list = repository.findByUploadDate(start, end);
-        exportList(list, response);
+        exportList(list, "records_" + date.toString() + ".xlsx", response);
+    }
+
+    @GetMapping("/natural-month/{year}/{month}/export")
+    @Transactional(readOnly = true)
+    public void exportByNaturalMonth(@PathVariable int year,
+                                     @PathVariable int month,
+                                     HttpServletResponse response) throws IOException {
+        YearMonth ym;
+        try {
+            ym = YearMonth.of(year, month);
+        } catch (DateTimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的月份");
+        }
+        List<WorkRecord> filled = repository.findByFilledTrue();
+        List<WorkRecord> filtered = new ArrayList<>();
+        for (WorkRecord record : filled) {
+            YearMonth recordMonth = determineNaturalMonth(record);
+            if (ym.equals(recordMonth)) {
+                filtered.add(record);
+            }
+        }
+        String fileName = String.format("records_%s.xlsx", ym);
+        exportList(filtered, fileName, response);
+    }
+
+    private YearMonth determineNaturalMonth(WorkRecord record) {
+        LocalDate date = null;
+        if (record.getEndTime() != null) {
+            date = record.getEndTime().toLocalDate();
+        } else if (record.getStartTime() != null) {
+            date = record.getStartTime().toLocalDate();
+        } else if (record.getFile() != null && record.getFile().getUploadTime() != null) {
+            date = record.getFile().getUploadTime().toLocalDate();
+        }
+        if (date == null) return null;
+        if (date.getDayOfMonth() >= 26) {
+            date = date.plusMonths(1);
+        }
+        return YearMonth.from(date);
     }
 
     private java.util.List<String> splitWorkers(String codes) {
@@ -115,13 +158,13 @@ public class WorkRecordController {
         return vals;
     }
 
-    private void exportList(java.util.List<WorkRecord> list, HttpServletResponse response) throws IOException {
+    private void exportList(java.util.List<WorkRecord> list, String fileName, HttpServletResponse response) throws IOException {
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期","合格数","工时小计"};
+        String[] titles = {"日期","通知单号","人员代码","人数","图号","工序代码","数量分配","单件工时","劳资系数","分配调整","单件工时分配","姓名","计划数","产品名称"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -132,24 +175,32 @@ public class WorkRecordController {
             java.util.List<String> names = splitNames(r.getWorkerNames());
             java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
             int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
+            int numWorkers = max;
+
+            String timeCell = "";
+            if (r.getStartTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                String s = r.getStartTime().toLocalDate().format(fmt);
+                if (r.getEndTime() != null && !r.getEndTime().toLocalDate().isEqual(r.getStartTime().toLocalDate())) {
+                    String e = r.getEndTime().toLocalDate().format(fmt);
+                    timeCell = s + "-" + e;
+                } else {
+                    timeCell = s;
+                }
+            } else if (r.getEndTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                timeCell = r.getEndTime().toLocalDate().format(fmt);
+            }
 
             for (int i = 0; i < max; i++) {
                 Row row = sheet.createRow(rowIdx++);
                 int c = 0;
+                row.createCell(c++).setCellValue(timeCell);
                 row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
-                row.createCell(c++).setCellValue(n(r.getProductName()));
-                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
-                row.createCell(c++).setCellValue(n(r.getBatchNumber()));
-                row.createCell(c++).setCellValue(n(r.getProcessCode()));
-                if (r.getHours() != null) {
-                    Cell cell = row.createCell(c++);
-                    cell.setCellValue(r.getHours());
-                    cell.setCellStyle(twoDec);
-                } else row.createCell(c++).setCellValue("");
-                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
-                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
-
+                row.createCell(c++).setCellValue(numWorkers);
+                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+                row.createCell(c++).setCellValue(n(r.getProcessCode()));
                 Double q = i < qtys.size() ? qtys.get(i) : null;
                 if (q != null) {
                     Cell cell = row.createCell(c++);
@@ -157,7 +208,13 @@ public class WorkRecordController {
                     cell.setCellStyle(twoDec);
                 }
                 else row.createCell(c++).setCellValue("");
-
+                if (r.getHours() != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(r.getHours());
+                    cell.setCellStyle(twoDec);
+                } else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue("");
                 Double workerHours = null;
                 if (q != null && r.getHours() != null) workerHours = q * r.getHours();
                 if (workerHours != null) {
@@ -166,32 +223,14 @@ public class WorkRecordController {
                     cell.setCellStyle(twoDec);
                 }
                 else row.createCell(c++).setCellValue("");
-
-                if (i == 0) {
-                    row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
-                    row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
-                    if (r.getQualifiedQty() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getQualifiedQty());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
-                    if (r.getHourSubtotal() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getHourSubtotal());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
-                } else {
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                }
+                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
+                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue(n(r.getProductName()));
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=records.xlsx");
+        String fname = fileName == null || fileName.isEmpty() ? "records.xlsx" : java.net.URLEncoder.encode(fileName, "UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
         wb.write(response.getOutputStream());
         wb.close();
     }
@@ -342,7 +381,7 @@ public class WorkRecordController {
                 String notification = getString(row, 42);   // AQ
                 String prodName = getString(row, 5);        // F
                 String drawing = getString(row, 4);         // E
-                Integer qty = getInt(row, 1);               // B -> 产量
+                Integer qty = getInt(row, 1);               // B -> 计划数
 
                 for (int c = 9; c <= 28; c += 2) {          // J..AC pairs
                     String process = getString(row, c);

@@ -17,7 +17,7 @@ public class OperationLogController {
     }
 
     @GetMapping
-    public List<OperationLog> logs(@RequestHeader("X-User") String username) {
-        return repository.findByUsernameOrderByTimestampDesc(username);
+    public List<OperationLog> logs() {
+        return repository.findAllByOrderByTimestampDesc();
     }
 }
