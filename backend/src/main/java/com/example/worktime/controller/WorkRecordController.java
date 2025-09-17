@@ -112,6 +112,23 @@ public class WorkRecordController {
         exportList(filtered, fileName, response);
     }
 
+    @GetMapping("/drawing/{drawing}/export")
+    @Transactional(readOnly = true)
+    public void exportByDrawing(@PathVariable("drawing") String drawing,
+                                HttpServletResponse response) throws IOException {
+        if (drawing == null || drawing.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图号不能为空");
+        }
+        String normalized = drawing.trim();
+        List<WorkRecord> list = repository.findByDrawingNumber(normalized);
+        String sanitized = normalized.replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (sanitized.isEmpty()) {
+            sanitized = "records";
+        }
+        String fileName = sanitized.endsWith(".xlsx") ? sanitized : sanitized + ".xlsx";
+        exportList(list, fileName, response);
+    }
+
     private YearMonth determineNaturalMonth(WorkRecord record) {
         LocalDate date = null;
         if (record.getEndTime() != null) {
@@ -273,6 +290,34 @@ public class WorkRecordController {
     public String generateBarcodeEndpoint(@RequestParam("text") String text) {
         byte[] img = generateBarcode(sanitizeBarcode(text));
         return img == null ? null : java.util.Base64.getEncoder().encodeToString(img);
+    }
+
+    @PutMapping("/bulk")
+    @Transactional
+    public List<WorkRecord> bulkUpdate(@RequestBody List<WorkRecord> records,
+                                       @RequestHeader("X-User") String user) {
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<WorkRecord> result = new ArrayList<>();
+        for (WorkRecord record : records) {
+            if (record == null || record.getId() == null) {
+                continue;
+            }
+            WorkRecord existing = repository.findById(record.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found: " + record.getId()));
+            if (record.getFile() == null) {
+                record.setFile(existing.getFile());
+            }
+            if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
+            if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
+            prepare(record);
+            if (record.getQualifiedQty() != null) record.setFilled(true);
+            result.add(repository.save(record));
+        }
+        repository.flush();
+        logService.log(user, "批量更新记录", "count=" + result.size());
+        return result;
     }
 
     @PutMapping("/{id}")

@@ -15,27 +15,36 @@
         <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
       </select>
       <button class="btn btn-outline-secondary btn-sm" @click="loadFile" :disabled="!selectedFileId">加载</button>
-      <button class="btn btn-outline-primary btn-sm" @click="exportFile" :disabled="!records.length">导出</button>
-      <input
-        type="date"
-        class="form-control form-control-sm"
-        style="min-width: 160px; flex: 0 1 auto;"
-        v-model="exportDate"
-      >
-      <button class="btn btn-outline-primary btn-sm" @click="exportByDate" :disabled="!exportDate">按日期导出</button>
-      <input
-        type="month"
-        class="form-control form-control-sm"
-        style="min-width: 160px; flex: 0 1 auto;"
-        v-model="exportMonth"
-      >
-      <button class="btn btn-outline-primary btn-sm" @click="exportByNaturalMonth" :disabled="!exportMonth">按自然月导出</button>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <input
+          type="month"
+          class="form-control form-control-sm"
+          style="min-width: 160px; flex: 0 1 auto;"
+          v-model="exportMonth"
+        >
+        <button class="btn btn-outline-primary btn-sm" @click="exportByNaturalMonth" :disabled="!exportMonth">按自然月导出</button>
+      </div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <input
+          class="form-control form-control-sm"
+          style="min-width: 180px; flex: 0 1 auto;"
+          v-model="exportDrawing"
+          placeholder="输入图号导出"
+        >
+        <button class="btn btn-outline-primary btn-sm" @click="exportByDrawing" :disabled="!exportDrawingReady">按图号导出</button>
+      </div>
     </div>
     <div class="mb-2" v-if="records.length">
       计划数:
       <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" :disabled="viewOnly" />
       | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
       <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
+      <button
+        v-if="!viewOnly"
+        class="btn btn-sm btn-primary ms-2"
+        @click="saveAllRecords"
+        :disabled="savingAll || !records.length"
+      >保存全部</button>
     </div>
     <table class="table table-bordered table-sm table-striped">
       <thead>
@@ -164,11 +173,12 @@ export default {
       searchBarcode: '',
       files: [],
       selectedFileId: '',
-      exportDate: '',
       exportMonth: '',
+      exportDrawing: '',
       viewOnly: false,
       scanBuffer: '',
-      planQtyInput: null
+      planQtyInput: null,
+      savingAll: false
     }
   },
   created() {
@@ -186,6 +196,9 @@ export default {
     },
     totalQualified() {
       return this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
+    },
+    exportDrawingReady() {
+      return !!(this.exportDrawing && this.exportDrawing.trim())
     }
   },
   methods: {
@@ -212,33 +225,6 @@ export default {
         alert('加载失败')
       }
     },
-    async exportFile() {
-      if (!this.selectedFileId || !this.records.length) return
-      const res = await axios.get(
-        `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/export`,
-        { responseType: 'blob' }
-      )
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const a = document.createElement('a')
-      a.href = url
-      const f = this.files.find(x => x.id === this.selectedFileId)
-      a.download = f ? f.fileName : 'records.xlsx'
-      a.click()
-      window.URL.revokeObjectURL(url)
-    },
-    async exportByDate() {
-      if (!this.exportDate) return
-      const res = await axios.get(
-        `http://localhost:8080/api/workrecords/date/${this.exportDate}/export`,
-        { responseType: 'blob' }
-      )
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `records_${this.exportDate}.xlsx`
-      a.click()
-      window.URL.revokeObjectURL(url)
-    },
     async exportByNaturalMonth() {
       if (!this.exportMonth) return
       const [year, month] = this.exportMonth.split('-')
@@ -250,6 +236,20 @@ export default {
       const a = document.createElement('a')
       a.href = url
       a.download = `records_${year}-${month}.xlsx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    },
+    async exportByDrawing() {
+      if (!this.exportDrawingReady) return
+      const drawing = this.exportDrawing.trim()
+      const res = await axios.get(
+        `http://localhost:8080/api/workrecords/drawing/${encodeURIComponent(drawing)}/export`,
+        { responseType: 'blob' }
+      )
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${drawing}.xlsx`
       a.click()
       window.URL.revokeObjectURL(url)
     },
@@ -277,22 +277,60 @@ export default {
       if (this.planQty != null && total > this.planQty) {
         alert('总合格数已超过计划数，请确认')
       }
-      this.validateQtyAllocation(rec)
-      this.validateHourAllocation(rec)
+      const qtyOk = this.validateQtyAllocation(rec)
+      const hourOk = this.validateHourAllocation(rec)
+      if (!qtyOk || !hourOk) return
       const missing = this.collectMissingFields(rec)
       if (missing.length) {
         const proceed = confirm(`以下信息未填写：${missing.join('、')}，是否继续保存？`)
         if (!proceed) return
       }
-      this.normalizeStart(rec)
-      this.normalizeEnd(rec)
-      const payload = {
-        ...rec,
-        startTime: rec.startDate ? rec.startDate + 'T00:00:00' : null,
-        endTime: rec.endDate ? rec.endDate + 'T00:00:00' : null
+      const payload = this.buildPayload(rec)
+      try {
+        const res = await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
+        await this.processRecords([res.data], { replace: false })
+      } catch (e) {
+        console.error(e)
+        alert('保存失败')
       }
-      const res = await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
-      await this.processRecords([res.data], { replace: false })
+    },
+    async saveAllRecords() {
+      if (!this.records.length || this.viewOnly) return
+      const planOk = this.validatePlanQty()
+      if (!planOk) return
+      let valid = true
+      for (const rec of this.records) {
+        const qtyOk = this.validateQtyAllocation(rec)
+        const hourOk = this.validateHourAllocation(rec)
+        if (!qtyOk || !hourOk) {
+          valid = false
+        }
+      }
+      if (!valid) return
+      const missingRows = []
+      const payloads = []
+      this.records.forEach((rec, idx) => {
+        const missing = this.collectMissingFields(rec)
+        if (missing.length) {
+          const identifier = rec.notificationNumber ? `${rec.notificationNumber}-${rec.id || idx + 1}` : `第${idx + 1}行`
+          missingRows.push(`${identifier}：${missing.join('、')}`)
+        }
+        payloads.push(this.buildPayload(rec))
+      })
+      if (missingRows.length) {
+        const proceed = confirm(`以下记录未填写完整：\n${missingRows.join('\n')}\n是否继续保存？`)
+        if (!proceed) return
+      }
+      this.savingAll = true
+      try {
+        const res = await axios.put('http://localhost:8080/api/workrecords/bulk', payloads)
+        await this.processRecords(res.data, { replace: false })
+      } catch (e) {
+        console.error(e)
+        alert('保存失败')
+      } finally {
+        this.savingAll = false
+      }
     },
     async addRecord() {
       if (!this.records.length) return
@@ -387,25 +425,31 @@ export default {
       const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
       if (this.planQty != null && total > this.planQty) {
         alert('总合格数已超过计划数，请确认')
+        return false
       }
+      return true
     },
     validateQtyAllocation(rec) {
-      if (!rec || !Array.isArray(rec.workerQtyVals)) return
+      if (!rec || !Array.isArray(rec.workerQtyVals)) return true
       const sum = rec.workerQtyVals.reduce((a, b) => a + (parseFloat(b) || 0), 0)
       if (rec.qualifiedQty != null && sum > rec.qualifiedQty) {
         alert('分配数量超过合格数量')
+        return false
       }
+      return true
     },
     validateHourAllocation(rec) {
-      if (!rec || !Array.isArray(rec.workerHourVals)) return
+      if (!rec || !Array.isArray(rec.workerHourVals)) return true
       const sum = rec.workerHourVals.reduce((a,b) => a + (parseFloat(b) || 0), 0)
       const total = (rec.qualifiedQty || 0) * (rec.hours || 0)
       if (total && sum > total) {
         if (!rec._hourOverflowShown) alert('填写的单件工时超过总工时')
         rec._hourOverflowShown = true
+        return false
       } else {
         rec._hourOverflowShown = false
       }
+      return true
     },
     onPlanQtyCellChange(rec) {
       this.planQtyInput = rec.planQty
@@ -543,6 +587,46 @@ export default {
       } else if (e.key.length === 1) {
         this.scanBuffer += e.key
       }
+    },
+    buildPayload(rec) {
+      if (Array.isArray(rec.workerNamesList) && rec.workerNamesList.length) {
+        rec.workerQtys = this.formatAllocString(rec.workerNamesList, rec.workerQtyVals)
+        rec.workerHours = this.formatAllocString(rec.workerNamesList, rec.workerHourVals)
+      }
+      this.normalizeStart(rec)
+      this.normalizeEnd(rec)
+      const allowed = [
+        'id',
+        'notificationNumber',
+        'productName',
+        'drawingNumber',
+        'productCode',
+        'partName',
+        'planQty',
+        'processName',
+        'processCode',
+        'barcode',
+        'barcodeImage',
+        'batchNumber',
+        'hours',
+        'supplemental',
+        'workerCodes',
+        'workerNames',
+        'workerQtys',
+        'qualifiedQty',
+        'hourSubtotal',
+        'filled',
+        'inspector',
+        'remark1',
+        'remark2'
+      ]
+      const payload = {}
+      allowed.forEach(key => {
+        if (rec[key] !== undefined) payload[key] = rec[key]
+      })
+      payload.startTime = rec.startDate ? rec.startDate + 'T00:00:00' : null
+      payload.endTime = rec.endDate ? rec.endDate + 'T00:00:00' : null
+      return payload
     },
     normalizeDate(str) {
       if (!str) return ''
