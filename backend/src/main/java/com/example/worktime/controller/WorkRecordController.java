@@ -27,6 +27,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
 
 @RestController
@@ -84,6 +87,45 @@ public class WorkRecordController {
         java.time.LocalDateTime end = start.plusDays(1);
         List<WorkRecord> list = repository.findByUploadDate(start, end);
         exportList(list, "records_" + date.toString() + ".xlsx", response);
+    }
+
+    @GetMapping("/natural-month/{year}/{month}/export")
+    @Transactional(readOnly = true)
+    public void exportByNaturalMonth(@PathVariable int year,
+                                     @PathVariable int month,
+                                     HttpServletResponse response) throws IOException {
+        YearMonth ym;
+        try {
+            ym = YearMonth.of(year, month);
+        } catch (DateTimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的月份");
+        }
+        List<WorkRecord> filled = repository.findByFilledTrue();
+        List<WorkRecord> filtered = new ArrayList<>();
+        for (WorkRecord record : filled) {
+            YearMonth recordMonth = determineNaturalMonth(record);
+            if (ym.equals(recordMonth)) {
+                filtered.add(record);
+            }
+        }
+        String fileName = String.format("records_%s.xlsx", ym);
+        exportList(filtered, fileName, response);
+    }
+
+    private YearMonth determineNaturalMonth(WorkRecord record) {
+        LocalDate date = null;
+        if (record.getEndTime() != null) {
+            date = record.getEndTime().toLocalDate();
+        } else if (record.getStartTime() != null) {
+            date = record.getStartTime().toLocalDate();
+        } else if (record.getFile() != null && record.getFile().getUploadTime() != null) {
+            date = record.getFile().getUploadTime().toLocalDate();
+        }
+        if (date == null) return null;
+        if (date.getDayOfMonth() >= 26) {
+            date = date.plusMonths(1);
+        }
+        return YearMonth.from(date);
     }
 
     private java.util.List<String> splitWorkers(String codes) {

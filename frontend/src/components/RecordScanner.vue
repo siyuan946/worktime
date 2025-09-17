@@ -14,6 +14,8 @@
       <button class="btn btn-outline-primary btn-sm" @click="exportFile" :disabled="!records.length">导出</button>
       <input type="date" class="form-control form-control-sm ms-1" style="max-width:160px" v-model="exportDate">
       <button class="btn btn-outline-primary btn-sm ms-1" @click="exportByDate" :disabled="!exportDate">按日期导出</button>
+      <input type="month" class="form-control form-control-sm ms-1" style="max-width:160px" v-model="exportMonth">
+      <button class="btn btn-outline-primary btn-sm ms-1" @click="exportByNaturalMonth" :disabled="!exportMonth">按自然月导出</button>
     </div>
     <div class="mb-2" v-if="records.length">
       计划数:
@@ -152,6 +154,7 @@ export default {
       files: [],
       selectedFileId: '',
       exportDate: '',
+      exportMonth: '',
       viewOnly: false,
       scanBuffer: '',
       planQtyInput: null
@@ -188,6 +191,7 @@ export default {
         if (!Array.isArray(res.data) || !res.data.length) {
           alert('该文件暂无填写记录')
           this.records = []
+          this.planQtyInput = null
         } else {
           await this.processRecords(res.data)
           this.viewOnly = true
@@ -224,14 +228,34 @@ export default {
       a.click()
       window.URL.revokeObjectURL(url)
     },
+    async exportByNaturalMonth() {
+      if (!this.exportMonth) return
+      const [year, month] = this.exportMonth.split('-')
+      const res = await axios.get(
+        `http://localhost:8080/api/workrecords/natural-month/${year}/${month}/export`,
+        { responseType: 'blob' }
+      )
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `records_${year}-${month}.xlsx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    },
     async searchByBarcode() {
       const code = this.searchBarcode.trim()
-      if (!code) { this.records = []; return }
+      if (!code) { this.records = []; this.planQtyInput = null; this.viewOnly = false; return }
+      if (this.viewOnly) {
+        this.records = []
+        this.viewOnly = false
+        this.planQtyInput = null
+      }
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
-        await this.processRecords(res.data)
+        await this.processRecords(res.data, { replace: false })
         this.viewOnly = false
+        this.searchBarcode = ''
       } catch (e) {
         console.error(e)
         alert('查询失败')
@@ -244,6 +268,11 @@ export default {
       }
       this.validateQtyAllocation(rec)
       this.validateHourAllocation(rec)
+      const missing = this.collectMissingFields(rec)
+      if (missing.length) {
+        const proceed = confirm(`以下信息未填写：${missing.join('、')}，是否继续保存？`)
+        if (!proceed) return
+      }
       this.normalizeStart(rec)
       this.normalizeEnd(rec)
       const payload = {
@@ -251,9 +280,9 @@ export default {
         startTime: rec.startDate ? rec.startDate + 'T00:00:00' : null,
         endTime: rec.endDate ? rec.endDate + 'T00:00:00' : null
       }
-      await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
+      const res = await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
       rec.editing = false
-      this.searchByBarcode()
+      await this.processRecords([res.data], { replace: false })
     },
     async addRecord() {
       if (this.records.some(r => r.editing)) {
@@ -262,30 +291,8 @@ export default {
       }
       if (!this.records.length) return
       const id = this.records[0].id
-        const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
-        const rec = {
-          ...res.data,
-          editing: false,
-          workshop: '',
-          team: '',
-          workerQtys: '',
-          workerHours: '',
-          workerQtyVals: [],
-          workerHourVals: [],
-          workerNamesList: [],
-          codeToName: {},
-          startDate: '',
-          endDate: '',
-          _hourOverflowShown: false
-        }
-      if (rec.qualifiedQty != null && rec.hours != null) {
-        rec.hourSubtotal = rec.qualifiedQty * rec.hours
-      }
-      if (rec.workerCodes) await this.lookupWorker(rec)
-      this.computeWorkerHours(rec)
-      this.records.push(rec)
-      // reload from backend to ensure state consistent
-      this.searchByBarcode()
+      const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+      await this.processRecords([res.data], { replace: false })
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
@@ -293,36 +300,58 @@ export default {
         await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
         const idx = this.records.indexOf(rec)
         if (idx !== -1) this.records.splice(idx, 1)
-        // ensure UI reflects backend state
-        this.searchByBarcode()
+        if (!this.records.length) this.planQtyInput = null
       } catch (e) {
         console.error(e)
         alert('删除失败')
       }
     },
-    async processRecords(list) {
-      this.records = list.map(r => ({
-        ...r,
+    async processRecords(list, options = {}) {
+      const replace = options.replace === undefined ? true : options.replace
+      const prepared = []
+      for (const raw of list) {
+        const rec = this.decorateRecord(raw)
+        this.computeSubtotal(rec)
+        if (rec.workerCodes) await this.lookupWorker(rec)
+        this.computeWorkerHours(rec)
+        prepared.push(rec)
+      }
+      if (replace) {
+        this.records = prepared
+        this.planQtyInput = this.planQty
+      } else {
+        const existingMap = new Map(this.records.map(r => [r.id, r]))
+        for (const rec of prepared) {
+          const existing = existingMap.get(rec.id)
+          if (existing) {
+            const wasEditing = existing.editing
+            Object.assign(existing, rec)
+            existing.editing = wasEditing
+          } else {
+            this.records.push(rec)
+          }
+        }
+        if (this.planQtyInput == null && this.planQty != null) {
+          this.planQtyInput = this.planQty
+        }
+      }
+    },
+    decorateRecord(raw) {
+      return {
+        ...raw,
         editing: false,
         workshop: '',
         team: '',
-        workerQtys: r.workerQtys || '',
-        workerHours: '',
-        workerQtyVals: this.parseAllocValues(r.workerQtys),
+        workerQtys: raw.workerQtys || '',
+        workerHours: raw.workerHours || '',
+        workerQtyVals: this.parseAllocValues(raw.workerQtys),
         workerHourVals: [],
         workerNamesList: [],
         codeToName: {},
-        startDate: r.startTime ? r.startTime.slice(0,10) : '',
-        endDate: r.endTime ? r.endTime.slice(0,10) : '',
+        startDate: raw.startTime ? raw.startTime.slice(0, 10) : '',
+        endDate: raw.endTime ? raw.endTime.slice(0, 10) : '',
+        hourSubtotal: raw.hourSubtotal != null ? raw.hourSubtotal : (raw.qualifiedQty != null && raw.hours != null ? raw.qualifiedQty * raw.hours : null),
         _hourOverflowShown: false
-      }))
-      this.planQtyInput = this.planQty
-      for (const rec of this.records) {
-        if (rec.qualifiedQty != null && rec.hours != null) {
-          rec.hourSubtotal = rec.qualifiedQty * rec.hours
-        }
-        if (rec.workerCodes) await this.lookupWorker(rec)
-        this.computeWorkerHours(rec)
       }
     },
     computeSubtotal(row) {
@@ -504,11 +533,10 @@ export default {
       const t = e.target.tagName
       if (t === 'INPUT' || t === 'TEXTAREA') return
       if (e.key === 'Enter') {
-        if (this.scanBuffer) {
-          this.searchBarcode = this.scanBuffer
-          this.scanBuffer = ''
-          this.searchByBarcode()
-        }
+        if (!this.scanBuffer) return
+        this.searchBarcode = this.scanBuffer
+        this.scanBuffer = ''
+        this.searchByBarcode()
       } else if (e.key.length === 1) {
         this.scanBuffer += e.key
       }
@@ -534,6 +562,15 @@ export default {
     normalizeEnd(rec) {
       rec.endDate = this.normalizeDate(rec.endDate)
       if (!rec.endDate) rec.endDate = rec.startDate
+    },
+    collectMissingFields(rec) {
+      const missing = []
+      if (rec.planQty == null || rec.planQty === '') missing.push('计划数')
+      if (!rec.workerCodes || !rec.workerCodes.trim()) missing.push('人员代码')
+      if (rec.qualifiedQty == null || rec.qualifiedQty === '') missing.push('合格数')
+      if (!rec.startDate || !rec.startDate.toString().trim()) missing.push('起始日期')
+      if (!rec.endDate || !rec.endDate.toString().trim()) missing.push('结束日期')
+      return missing
     }
   }
 }
