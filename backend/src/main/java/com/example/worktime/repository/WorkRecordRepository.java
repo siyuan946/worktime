@@ -14,6 +14,8 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
     java.util.List<WorkRecord> findByUploadDate(@org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start,
                                                 @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
 
+    java.util.List<WorkRecord> findByFilledTrue();
+
     void deleteByFileId(Long fileId);
 
     long countByFileId(Long fileId);

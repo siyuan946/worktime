@@ -34,6 +34,7 @@ public class UploadedFileController {
     public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         UploadedFile file = repository.findById(id).orElse(null);
         long cnt = recordRepository.countByFileId(id);
+        recordRepository.deleteByFileId(id);
         repository.deleteById(id);
         String name = file != null ? file.getFileName() : String.valueOf(id);
         logService.log(user, "删除文件 " + name, "records=" + cnt);

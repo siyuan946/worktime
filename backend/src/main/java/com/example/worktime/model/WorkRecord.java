@@ -32,7 +32,7 @@ public class WorkRecord {
     // 名称
     private String partName;
 
-    // 产量 -> 计划数
+    // 计划数
     private Integer planQty;
 
     // 工序名称
@@ -81,7 +81,7 @@ public class WorkRecord {
     @javax.persistence.Column(precision = 10, scale = 2)
     private Double qualifiedQty;
 
-    // 工时小计 = 合格数量 * 单件工时
+    // 单件工时小计 = 合格数量 * 单件工时
     private Double hourSubtotal;
 
     // 是否已填写合格数
