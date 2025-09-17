@@ -33,7 +33,7 @@
     </div>
     <div class="mb-2" v-if="records.length">
       计划数:
-      <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" />
+      <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" :disabled="viewOnly" />
       | 总合格数: {{ totalQualified }} | 已填写 {{ records.length }} 条
       <button v-if="!viewOnly" class="btn btn-sm btn-outline-secondary ms-2" @click="addRecord">新增记录</button>
     </div>
@@ -69,7 +69,7 @@
           <td>{{ rec.processCode }}</td>
           <td>{{ rec.hours }}</td>
           <td>
-            <span v-if="!rec.editing">{{ rec.planQty }}</span>
+            <span v-if="viewOnly">{{ rec.planQty }}</span>
             <input
               v-else
               type="number"
@@ -80,7 +80,7 @@
             />
           </td>
           <td class="wrap-text">
-            <span v-if="!rec.editing">{{ rec.workerCodes }}</span>
+            <span v-if="viewOnly">{{ rec.workerCodes }}</span>
             <textarea
               v-else
               class="form-control form-control-sm auto-grow edit-highlight"
@@ -92,7 +92,7 @@
             ></textarea>
           </td>
           <td>
-            <span v-if="!rec.editing">{{ rec.workerQtys }}</span>
+            <span v-if="viewOnly">{{ rec.workerQtys }}</span>
             <div v-else class="d-flex flex-wrap">
               <div
                 v-for="(name, idx) in rec.workerNamesList"
@@ -114,20 +114,20 @@
           <td class="wrap-text">{{ rec.workshop }}</td>
           <td class="wrap-text">{{ rec.team }}</td>
           <td>
-            <span v-if="!rec.editing">{{ rec.startDate }}</span>
+            <span v-if="viewOnly">{{ rec.startDate }}</span>
             <input v-else type="text" class="form-control form-control-sm edit-highlight" v-model="rec.startDate" @blur="normalizeStart(rec)" style="width:130px" placeholder="MM/DD" />
           </td>
           <td>
-            <span v-if="!rec.editing">{{ rec.endDate }}</span>
+            <span v-if="viewOnly">{{ rec.endDate }}</span>
             <input v-else type="text" class="form-control form-control-sm edit-highlight" v-model="rec.endDate" @blur="normalizeEnd(rec)" style="width:130px" placeholder="MM/DD" />
           </td>
           <td>
-            <span v-if="!rec.editing">{{ rec.qualifiedQty }}</span>
+            <span v-if="viewOnly">{{ rec.qualifiedQty }}</span>
             <input v-else type="number" step="0.01" class="form-control form-control-sm edit-highlight" v-model.number="rec.qualifiedQty" @input="onQtyChange(rec)" @blur="validatePlanQty();validateQtyAllocation(rec);validateHourAllocation(rec)" style="width:80px" />
           </td>
           <td>{{ rec.hourSubtotal }}</td>
           <td class="wrap-text">
-            <span v-if="!rec.editing">{{ rec.workerHours }}</span>
+            <span v-if="viewOnly">{{ rec.workerHours }}</span>
             <div v-else class="d-flex flex-wrap">
               <div
                 v-for="(name, idx) in rec.workerNamesList"
@@ -146,11 +146,8 @@
             </div>
           </td>
           <td v-if="!viewOnly">
-            <template v-if="!rec.editing">
-              <button class="btn btn-sm btn-outline-primary me-1" @click="rec.editing=true">编辑</button>
-              <button class="btn btn-sm btn-outline-danger" @click="deleteRecord(rec)">删除</button>
-            </template>
-            <button class="btn btn-sm btn-primary" v-else @click="updateRecord(rec)">保存</button>
+            <button class="btn btn-sm btn-primary me-1" @click="updateRecord(rec)">保存</button>
+            <button class="btn btn-sm btn-outline-danger" @click="deleteRecord(rec)">删除</button>
           </td>
         </tr>
       </tbody>
@@ -207,8 +204,8 @@ export default {
           this.records = []
           this.planQtyInput = null
         } else {
-          await this.processRecords(res.data)
           this.viewOnly = true
+          await this.processRecords(res.data)
         }
       } catch (e) {
         console.error(e)
@@ -267,8 +264,8 @@ export default {
       const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
-        await this.processRecords(res.data, { replace: false })
         this.viewOnly = false
+        await this.processRecords(res.data, { replace: false })
         this.searchBarcode = ''
       } catch (e) {
         console.error(e)
@@ -295,14 +292,9 @@ export default {
         endTime: rec.endDate ? rec.endDate + 'T00:00:00' : null
       }
       const res = await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
-      rec.editing = false
       await this.processRecords([res.data], { replace: false })
     },
     async addRecord() {
-      if (this.records.some(r => r.editing)) {
-        alert('请先保存当前编辑的记录后再新增')
-        return
-      }
       if (!this.records.length) return
       const id = this.records[0].id
       const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
@@ -338,9 +330,7 @@ export default {
         for (const rec of prepared) {
           const existing = existingMap.get(rec.id)
           if (existing) {
-            const wasEditing = existing.editing
             Object.assign(existing, rec)
-            existing.editing = wasEditing
           } else {
             this.records.push(rec)
           }
@@ -353,7 +343,6 @@ export default {
     decorateRecord(raw) {
       return {
         ...raw,
-        editing: false,
         workshop: '',
         team: '',
         workerQtys: raw.workerQtys || '',
