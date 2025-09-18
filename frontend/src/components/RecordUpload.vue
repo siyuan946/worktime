@@ -16,64 +16,101 @@
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
     <div v-if="preview.length" id="preview-table">
-      <h2 class="h5">预览</h2>
-      <table class="table table-bordered table-sm table-striped">
-        <thead>
-          <tr>
-            <th class="notification-col">通知单号</th>
-            <th class="no-print">产品名称</th>
-            <th class="drawing-col">图号</th>
-            <th class="print-only plan-col">计划数</th>
-            <th class="no-print">名称</th>
-            <th class="plan-col no-print">计划数</th>
-            <th class="hours-col">单件工时</th>
-            <th class="no-print">工序代码</th>
-            <th class="process-col">工序</th>
-            <th class="print-only">人员代码</th>
-            <th class="print-only">合格件数</th>
-            <th class="print-only">起始时间</th>
-            <th class="print-only">结束时间</th>
-            <th class="print-only">检验员</th>
-            <th>条形码</th>
-            <th class="no-print"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(r,i) in preview" :key="i" :class="{'table-danger': r.codeMissing || r.hoursMissing}">
-            <td class="notification-col">{{ r.notificationNumber }}</td>
-            <td class="no-print">{{ r.productName }}</td>
-            <td class="drawing-col">{{ r.drawingNumber }}</td>
-            <td class="print-only plan-col">{{ r.planQty }}</td>
-            <td class="no-print">{{ r.partName }}</td>
-            <td class="plan-col no-print">
-              <input type="number" class="form-control form-control-sm" v-model.number="r.planQty" />
-              <span class="print-text">{{ r.planQty }}</span>
-            </td>
-            <td class="hours-col">
-              <input type="number" class="form-control form-control-sm no-print" v-model.number="r.hours" @blur="checkHours(r)" style="width:80px" />
-              <span class="print-text">{{ r.hours }}</span>
-            </td>
-            <td class="no-print">{{ r.processCode }}</td>
-            <td class="process-col">
-              <input class="form-control form-control-sm no-print" v-model="r.processName" @blur="updateProcess(r)" />
-              <span class="print-text">{{ r.processName }}</span>
-            </td>
-            <td class="print-only"></td>
-            <td class="print-only"></td>
-            <td class="print-only"></td>
-            <td class="print-only"></td>
-            <td class="print-only"></td>
-            <td class="barcode-cell">
-              <div>{{ r.barcode }}</div>
-              <img v-if="r.barcodeImage" :src="'data:image/png;base64,'+r.barcodeImage" />
-            </td>
-            <td class="no-print">
-              <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(i)">新增</button>
-              <button class="btn btn-sm btn-outline-danger" @click="deleteRow(i)">删除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
+        <h2 class="h5 mb-0">预览</h2>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <div>当前图号：{{ currentPageInfo?.drawingNumber || '—' }}（第 {{ currentPage + 1 }} / {{ pages.length }} 页）</div>
+          <div class="input-group input-group-sm" style="width: 220px;">
+            <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
+            <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" @click="prevPage" :disabled="currentPage === 0">上一页</button>
+            <button class="btn btn-outline-secondary" @click="nextPage" :disabled="currentPage >= pages.length - 1">下一页</button>
+          </div>
+        </div>
+      </div>
+      <div v-for="(page, pageIndex) in pages" :key="pageIndex" class="preview-page" :class="{ 'active-page': pageIndex === currentPage }">
+        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+          <span class="text-muted">第 {{ pageIndex + 1 }} 页 / 共 {{ pages.length }} 页</span>
+        </div>
+        <table class="table table-bordered table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th class="notification-col">通知单号</th>
+              <th class="no-print">产品名称</th>
+              <th class="drawing-col">图号</th>
+              <th class="print-only plan-col">计划数</th>
+              <th class="no-print">名称</th>
+              <th class="plan-col no-print">计划数</th>
+              <th class="hours-col">单件工时</th>
+              <th class="no-print">工序代码</th>
+              <th class="process-col">工序</th>
+              <th class="print-only">人员代码</th>
+              <th class="print-only">合格件数</th>
+              <th class="print-only">起始时间</th>
+              <th class="print-only">结束时间</th>
+              <th class="print-only">检验员</th>
+              <th>条形码</th>
+              <th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in page.entries" :key="entry.index" :class="{'table-danger': entry.record.codeMissing || entry.record.hoursMissing}">
+              <td class="notification-col">{{ entry.record.notificationNumber }}</td>
+              <td class="no-print">{{ entry.record.productName }}</td>
+              <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
+              <td class="print-only plan-col">{{ entry.record.planQty }}</td>
+              <td class="no-print">{{ entry.record.partName }}</td>
+              <td class="plan-col no-print">
+                <input type="number" class="form-control form-control-sm" v-model.number="entry.record.planQty" />
+                <span class="print-text">{{ entry.record.planQty }}</span>
+              </td>
+              <td class="hours-col">
+                <input type="number" class="form-control form-control-sm no-print" style="width:80px" v-model.number="entry.record.hours" @blur="checkHours(entry.record)" />
+                <span class="print-text">{{ entry.record.hours }}</span>
+              </td>
+              <td class="no-print">{{ entry.record.processCode }}</td>
+              <td class="process-col">
+                <input class="form-control form-control-sm no-print" v-model="entry.record.processName" @blur="updateProcess(entry.record)" />
+                <span class="print-text">{{ entry.record.processName }}</span>
+              </td>
+              <td class="print-only"></td>
+              <td class="print-only"></td>
+              <td class="print-only"></td>
+              <td class="print-only"></td>
+              <td class="print-only"></td>
+              <td class="barcode-cell">
+                <div>{{ entry.record.barcode }}</div>
+                <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
+              </td>
+              <td class="no-print">
+                <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
+                <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
+              </td>
+            </tr>
+            <tr v-for="n in page.blankCount" :key="'blank-'+pageIndex+'-'+n" class="blank-row">
+              <td class="notification-col">&nbsp;</td>
+              <td class="no-print">&nbsp;</td>
+              <td class="drawing-col">&nbsp;</td>
+              <td class="print-only plan-col">&nbsp;</td>
+              <td class="no-print">&nbsp;</td>
+              <td class="plan-col no-print">&nbsp;</td>
+              <td class="hours-col">&nbsp;</td>
+              <td class="no-print">&nbsp;</td>
+              <td class="process-col">&nbsp;</td>
+              <td class="print-only">&nbsp;</td>
+              <td class="print-only">&nbsp;</td>
+              <td class="print-only">&nbsp;</td>
+              <td class="print-only">&nbsp;</td>
+              <td class="print-only">&nbsp;</td>
+              <td class="barcode-cell"><div>&nbsp;</div></td>
+              <td class="no-print"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 </template>
@@ -88,7 +125,10 @@ export default {
       loading: false,
       fileId: null,
       files: [],
-      selectedFileId: ''
+      selectedFileId: '',
+      currentPage: 0,
+      drawingSearch: '',
+      minRowsPerPage: 12
     }
   },
   created() {
@@ -100,6 +140,26 @@ export default {
       const id = this.fileId || this.selectedFileId
       const f = this.files.find(x => x.id === id)
       return f ? f.fileName : ''
+    },
+    pages() {
+      if (!this.preview.length) return []
+      const groups = []
+      let current = null
+      this.preview.forEach((record, index) => {
+        const drawing = record.drawingNumber || ''
+        if (!current || current.drawingNumber !== drawing) {
+          current = { drawingNumber: drawing, entries: [] }
+          groups.push(current)
+        }
+        current.entries.push({ record, index })
+      })
+      return groups.map(group => {
+        const fill = group.entries.length < this.minRowsPerPage ? this.minRowsPerPage - group.entries.length : 0
+        return { drawingNumber: group.drawingNumber, entries: group.entries, blankCount: fill }
+      })
+    },
+    currentPageInfo() {
+      return this.pages[this.currentPage] || null
     }
   },
   methods: {
@@ -128,6 +188,8 @@ export default {
         }
         this.fileId = this.selectedFileId
         this.file = null
+        this.currentPage = 0
+        this.$nextTick(() => this.ensurePageInRange())
       } catch (e) {
         console.error(e)
         alert('加载失败')
@@ -142,6 +204,7 @@ export default {
       this.loading = false
       this.selectedFileId = ''
       this.preview = []
+      this.currentPage = 0
       await this.fetchFiles()
       alert('已删除')
     },
@@ -163,6 +226,8 @@ export default {
       if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
       await this.fetchFiles()
       this.loading = false
+      this.currentPage = 0
+      this.$nextTick(() => this.ensurePageInRange())
     },
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
@@ -218,6 +283,7 @@ export default {
     deleteRow(index) {
       if (confirm('确定删除该行? 删除后不可恢复')) {
         this.preview.splice(index, 1)
+        this.$nextTick(() => this.ensurePageInRange())
       }
     },
     addRow(index) {
@@ -242,6 +308,7 @@ export default {
         hoursMissing: true
       }
       this.preview.splice(index + 1, 0, blank)
+      this.$nextTick(() => this.ensurePageInRange())
     },
     deleteZero() {
       if (!this.preview.length) return
@@ -266,6 +333,32 @@ export default {
         r.barcode = this.sanitize(bar)
         r.barcodeImage = res.data
       }
+    },
+    prevPage() {
+      if (this.currentPage > 0) this.currentPage -= 1
+    },
+    nextPage() {
+      if (this.currentPage < this.pages.length - 1) this.currentPage += 1
+    },
+    jumpToDrawing() {
+      const term = (this.drawingSearch || '').trim().toLowerCase()
+      if (!term) return
+      const index = this.pages.findIndex(p => (p.drawingNumber || '').toLowerCase().includes(term))
+      if (index >= 0) {
+        this.currentPage = index
+      } else {
+        alert('未找到对应图号')
+      }
+    },
+    ensurePageInRange() {
+      if (!this.pages.length) {
+        this.currentPage = 0
+        return
+      }
+      if (this.currentPage >= this.pages.length) {
+        this.currentPage = this.pages.length - 1
+      }
+      if (this.currentPage < 0) this.currentPage = 0
     }
   }
 }

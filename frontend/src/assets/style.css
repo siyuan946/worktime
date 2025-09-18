@@ -69,6 +69,24 @@ body {
   display: none;
 }
 
+.preview-page {
+  display: none;
+  margin-bottom: 1.5rem;
+}
+
+.preview-page.active-page {
+  display: block;
+}
+
+.page-heading {
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: .25rem;
+}
+
+.blank-row td {
+  height: 26px;
+}
+
 /* Only show the preview table when printing */
 @media print {
   body * {
@@ -88,6 +106,13 @@ body {
     left: 0;
     top: 0;
     width: 100%;
+  }
+  .preview-page {
+    display: block !important;
+    break-after: page;
+  }
+  .preview-page:last-child {
+    break-after: auto;
   }
   .no-print {
     display: none !important;
