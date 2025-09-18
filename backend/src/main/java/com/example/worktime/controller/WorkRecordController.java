@@ -14,6 +14,7 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
+import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -417,6 +418,7 @@ public class WorkRecordController {
     @PostMapping("/parse")
     @Transactional
     public Map<String, Object> parse(@RequestParam("file") MultipartFile file,
+                                     @RequestParam(value = "password", required = false) String password,
                                      @RequestHeader("X-User") String user) throws IOException {
         UploadedFile uf = new UploadedFile();
         uf.setFileName(file.getOriginalFilename());
@@ -424,7 +426,7 @@ public class WorkRecordController {
         uf.setUploadTime(java.time.LocalDateTime.now());
         uf = fileRepository.saveAndFlush(uf);
 
-        List<WorkRecord> records = parseExcel(file);
+        List<WorkRecord> records = parseExcel(file, password);
 
         Map<String, Object> result = new HashMap<>();
         result.put("fileId", uf.getId());
@@ -434,10 +436,10 @@ public class WorkRecordController {
         return result;
     }
 
-    private List<WorkRecord> parseExcel(MultipartFile file) throws IOException {
+    private List<WorkRecord> parseExcel(MultipartFile file, String password) throws IOException {
         List<WorkRecord> result = new ArrayList<>();
-        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = wb.getSheetAt(0);
+        try (Workbook wb = openWorkbook(file, password)) {
+            Sheet sheet = resolvePlanSheet(wb);
             if (sheet.getPhysicalNumberOfRows() < 1) return result;
 
             // Fixed column indexes: F=5, E=4, J=9 ... AC=28, AQ=42
@@ -498,6 +500,40 @@ public class WorkRecordController {
             }
         }
         return result;
+    }
+
+    private Workbook openWorkbook(MultipartFile file, String password) throws IOException {
+        try (InputStream is = file.getInputStream()) {
+            Workbook wb;
+            if (password != null && !password.trim().isEmpty()) {
+                wb = WorkbookFactory.create(is, password);
+            } else {
+                wb = WorkbookFactory.create(is);
+            }
+            return wb;
+        } catch (EncryptedDocumentException ex) {
+            if (password == null || password.trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "该文件已加密，请提供密码");
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件密码错误或无法解密");
+        }
+    }
+
+    private Sheet resolvePlanSheet(Workbook wb) {
+        Sheet sheet = wb.getSheet("计划表");
+        if (sheet != null) {
+            return sheet;
+        }
+        for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+            Sheet candidate = wb.getSheetAt(i);
+            if (candidate != null) {
+                String name = candidate.getSheetName();
+                if (name != null && "计划表".equals(name.trim())) {
+                    return candidate;
+                }
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "未找到名称为“计划表”的工作表");
     }
 
     private String getString(Row row, Integer idx) {
