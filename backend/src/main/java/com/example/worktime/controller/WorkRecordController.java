@@ -20,6 +20,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import javax.servlet.http.HttpServletResponse;
@@ -521,6 +523,14 @@ public class WorkRecordController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public Map<String, String> handleUploadTooLarge(Exception ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "上传的文件超过系统允许的大小，请压缩或拆分后再试。");
+        return body;
     }
 
     private Integer getInt(Row row, Integer idx) {
