@@ -15,6 +15,11 @@
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
+    <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
+      <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
+        {{ parseProgress }}%
+      </div>
+    </div>
     <div v-if="preview.length" id="preview-table">
       <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
         <h2 class="h5 mb-0">预览</h2>
@@ -130,7 +135,10 @@ export default {
       drawingSearch: '',
       minRowsPerPage: 12,
       processCache: {},
-      processCacheLoaded: false
+      processCacheLoaded: false,
+      barcodeCache: {},
+      showProgress: false,
+      parseProgress: 0
     }
   },
   created() {
@@ -165,6 +173,11 @@ export default {
       return this.pages[this.currentPage] || null
     }
   },
+  watch: {
+    currentPage(val) {
+      this.$nextTick(() => this.loadBarcodesForPage(val))
+    }
+  },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
     async fetchFiles() {
@@ -174,6 +187,7 @@ export default {
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
+      this.barcodeCache = {}
       try {
         const res = await axios.get(
           `http://localhost:8080/api/workrecords/file/${this.selectedFileId}`
@@ -182,17 +196,22 @@ export default {
           alert('未找到该文件的记录')
           this.preview = []
         } else {
-          this.preview = res.data.map(r => ({
+          const processed = res.data.map(r => ({
             ...r,
-            codeMissing: false,
+            barcode: this.sanitize(r.barcode),
+            barcodeImage: '',
+            codeMissing: !r.processCode,
             hoursMissing: r.hours == null
           }))
-          await this.refreshProcesses()
+          this.preview = processed
         }
         this.fileId = this.selectedFileId
         this.file = null
         this.currentPage = 0
-        this.$nextTick(() => this.ensurePageInRange())
+        this.$nextTick(() => {
+          this.ensurePageInRange()
+          this.loadBarcodesForPage(this.currentPage)
+        })
       } catch (e) {
         console.error(e)
         alert('加载失败')
@@ -220,17 +239,59 @@ export default {
         }
       }
       this.loading = true
-      const data = new FormData()
-      data.append('file', this.file)
-      const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
-      this.fileId = res.data.fileId
-      this.preview = res.data.records.map(r => ({ ...r, workerCodes:'', qualifiedQty:null, hourSubtotal:null }))
-      const warn = this.preview.filter(r => r.codeMissing || r.hoursMissing)
-      if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
-      await this.fetchFiles()
+      this.showProgress = true
+      this.parseProgress = 5
+      this.barcodeCache = {}
+      try {
+        const data = new FormData()
+        data.append('file', this.file)
+        const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+        this.fileId = res.data.fileId
+        const records = Array.isArray(res.data.records) ? res.data.records : []
+        const processed = []
+        const total = records.length
+        if (!total) {
+          this.parseProgress = 100
+        }
+        for (let i = 0; i < records.length; i++) {
+          const r = records[i] || {}
+          processed.push({
+            ...r,
+            workerCodes: '',
+            qualifiedQty: null,
+            hourSubtotal: null,
+            barcode: this.sanitize(r.barcode),
+            barcodeImage: '',
+            codeMissing: !!r.codeMissing,
+            hoursMissing: r.hours == null
+          })
+          if (total) {
+            const percent = Math.min(100, Math.round(((i + 1) / total) * 100))
+            if (percent > this.parseProgress) this.parseProgress = percent
+          }
+          if ((i + 1) % 50 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0))
+          }
+        }
+        const warn = processed.filter(r => r.codeMissing || r.hoursMissing)
+        this.preview = processed
+        if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
+        await this.fetchFiles()
+        this.currentPage = 0
+        this.$nextTick(() => {
+          this.ensurePageInRange()
+          this.loadBarcodesForPage(this.currentPage)
+        })
+      } catch (e) {
+        console.error(e)
+        alert('解析失败')
+        this.showProgress = false
+      }
       this.loading = false
-      this.currentPage = 0
-      this.$nextTick(() => this.ensurePageInRange())
+      if (this.showProgress) {
+        this.parseProgress = 100
+        setTimeout(() => { this.showProgress = false }, 600)
+      }
     },
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
@@ -249,9 +310,21 @@ export default {
       await this.fetchFiles()
       this.$emit('saved')
     },
-    print() {
+    async print() {
+      if (!this.preview.length) return
+      this.loading = true
+      try {
+        for (let i = 0; i < this.pages.length; i++) {
+          // sequentially load to avoid overwhelming the server
+          // eslint-disable-next-line no-await-in-loop
+          await this.loadBarcodesForPage(i)
+        }
+      } finally {
+        this.loading = false
+      }
       const title = document.title
       if (this.currentFileName) document.title = this.currentFileName
+      await this.$nextTick()
       window.print()
       document.title = title
     },
@@ -357,6 +430,45 @@ export default {
       const removed = before - this.preview.length
       alert(`已删除${removed}行`)
     },
+    async loadBarcodesForPage(pageIndex) {
+      const page = this.pages[pageIndex]
+      if (!page) return
+      if (!this._barcodeLoading) this._barcodeLoading = new Set()
+      if (this._barcodeLoading.has(pageIndex)) return
+      const missing = []
+      for (const entry of page.entries) {
+        const code = this.sanitize(entry.record.barcode)
+        if (!code) continue
+        if (this.barcodeCache[code]) {
+          if (entry.record.barcodeImage !== this.barcodeCache[code]) {
+            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          }
+        } else if (!entry.record.barcodeImage) {
+          missing.push(code)
+        }
+      }
+      if (!missing.length) return
+      const unique = Array.from(new Set(missing))
+      this._barcodeLoading.add(pageIndex)
+      try {
+        const res = await axios.post('http://localhost:8080/api/workrecords/generateBarcodes', unique)
+        const data = res && res.data ? res.data : {}
+        Object.keys(data || {}).forEach(key => {
+          if (!key) return
+          this.$set(this.barcodeCache, key, data[key])
+        })
+        for (const entry of page.entries) {
+          const code = this.sanitize(entry.record.barcode)
+          if (code && this.barcodeCache[code]) {
+            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          }
+        }
+      } catch (e) {
+        console.error('加载条码失败', e)
+      } finally {
+        this._barcodeLoading.delete(pageIndex)
+      }
+    },
     async refreshProcesses() {
       await this.ensureProcessCache()
       for (const r of this.preview) {
@@ -366,9 +478,31 @@ export default {
     async updateBarcode(r) {
       if (r.drawingNumber && r.notificationNumber && r.processCode) {
         const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
-        const res = await axios.get('http://localhost:8080/api/workrecords/generateBarcode', { params: { text: bar } })
-        r.barcode = this.sanitize(bar)
-        r.barcodeImage = res.data
+        const clean = this.sanitize(bar)
+        r.barcode = clean
+        if (!clean) {
+          r.barcodeImage = ''
+          return
+        }
+        if (this.barcodeCache[clean]) {
+          r.barcodeImage = this.barcodeCache[clean]
+          return
+        }
+        try {
+          const res = await axios.get('http://localhost:8080/api/workrecords/generateBarcode', { params: { text: bar } })
+          if (res && res.data) {
+            this.$set(this.barcodeCache, clean, res.data)
+            r.barcodeImage = res.data
+          } else {
+            r.barcodeImage = ''
+          }
+        } catch (e) {
+          console.error('获取条码失败', e)
+          r.barcodeImage = ''
+        }
+      } else {
+        r.barcode = ''
+        r.barcodeImage = ''
       }
     },
     prevPage() {

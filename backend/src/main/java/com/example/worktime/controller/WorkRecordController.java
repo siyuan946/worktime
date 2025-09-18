@@ -292,6 +292,26 @@ public class WorkRecordController {
         return img == null ? null : java.util.Base64.getEncoder().encodeToString(img);
     }
 
+    @PostMapping("/generateBarcodes")
+    public Map<String, String> generateBarcodes(@RequestBody List<String> barcodes) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (barcodes == null) {
+            return result;
+        }
+        for (String raw : barcodes) {
+            if (raw == null) continue;
+            String clean = sanitizeBarcode(raw);
+            if (clean == null || clean.isEmpty() || result.containsKey(clean)) {
+                continue;
+            }
+            byte[] img = generateBarcode(clean);
+            if (img != null) {
+                result.put(clean, java.util.Base64.getEncoder().encodeToString(img));
+            }
+        }
+        return result;
+    }
+
     @PutMapping("/bulk")
     @Transactional
     public List<WorkRecord> bulkUpdate(@RequestBody List<WorkRecord> records,
@@ -466,7 +486,6 @@ public class WorkRecordController {
                         String bar = drawing + "-" + notification + "-" + code;
                         String clean = sanitizeBarcode(bar);
                         wr.setBarcode(clean);
-                        wr.setBarcodeImage(generateBarcode(clean));
                     }
 
                     wr.setHours(hours);
