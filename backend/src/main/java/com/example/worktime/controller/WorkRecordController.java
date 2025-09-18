@@ -419,6 +419,7 @@ public class WorkRecordController {
             if (sheet.getPhysicalNumberOfRows() < 1) return result;
 
             // Fixed column indexes: F=5, E=4, J=9 ... AC=28, AQ=42
+            Map<String, String> codeCache = processService.loadCacheSnapshot();
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
@@ -430,8 +431,9 @@ public class WorkRecordController {
 
                 for (int c = 9; c <= 28; c += 2) {          // J..AC pairs
                     String process = getString(row, c);
+                    String normalizedProcess = process != null ? process.trim() : null;
                     Double hours = getDouble(row, c + 1);
-                    if ((process == null || process.trim().isEmpty()) && hours == null) continue;
+                    if ((normalizedProcess == null || normalizedProcess.isEmpty()) && hours == null) continue;
 
                     WorkRecord wr = new WorkRecord();
                     wr.setNotificationNumber(notification);
@@ -441,10 +443,20 @@ public class WorkRecordController {
                     wr.setPlanQty(qty);
                     wr.setProcessName(process);
 
-                    String code = processService.getCode(process);
+                    String code = null;
+                    if (normalizedProcess != null && !normalizedProcess.isEmpty()) {
+                        code = codeCache.get(normalizedProcess);
+                        if (code == null) {
+                            code = processService.getCode(normalizedProcess);
+                            if (code != null && !code.trim().isEmpty()) {
+                                code = code.trim();
+                                codeCache.put(normalizedProcess, code);
+                            }
+                        }
+                    }
                     boolean codeMissing = false;
                     if (code == null || code.trim().isEmpty()) {
-                        code = process; // fallback to name
+                        code = normalizedProcess != null && !normalizedProcess.isEmpty() ? normalizedProcess : process;
                         codeMissing = true;
                     }
                     wr.setProcessCode(code);

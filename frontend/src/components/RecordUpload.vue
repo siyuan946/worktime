@@ -128,11 +128,14 @@ export default {
       selectedFileId: '',
       currentPage: 0,
       drawingSearch: '',
-      minRowsPerPage: 12
+      minRowsPerPage: 12,
+      processCache: {},
+      processCacheLoaded: false
     }
   },
   created() {
     this.fetchFiles()
+    this.ensureProcessCache()
   },
   computed: {
     currentFileName() {
@@ -255,24 +258,57 @@ export default {
     sanitize(text) {
       return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
     },
-    async updateProcess(r) {
-      if (!r.processName) {
+    async ensureProcessCache(force = false) {
+      if (this.processCacheLoaded && !force) return
+      try {
+        const res = await axios.get('http://localhost:8080/api/processcodes')
+        const map = {}
+        if (Array.isArray(res.data)) {
+          for (const item of res.data) {
+            if (!item || !item.name || !item.code) continue
+            const name = String(item.name).trim()
+            const code = String(item.code).trim()
+            if (!name || !code) continue
+            map[name] = code
+          }
+        }
+        this.processCache = map
+        this.processCacheLoaded = true
+      } catch (e) {
+        console.error('加载工序缓存失败', e)
+      }
+    },
+    async updateProcess(r, cacheReady = false) {
+      if (!cacheReady) {
+        await this.ensureProcessCache()
+      }
+      const rawName = r.processName || ''
+      const name = rawName.trim()
+      if (!name) {
         r.processCode = ''
         r.codeMissing = true
         await this.updateBarcode(r)
         return
       }
-      try {
-        const res = await axios.get(`http://localhost:8080/api/processcodes/name/${encodeURIComponent(r.processName)}`)
-        if (res.data) {
-          r.processCode = res.data.code
-          r.codeMissing = false
-        } else {
-          r.processCode = r.processName
-          r.codeMissing = true
+      let code = this.processCache[name]
+      if (!code) {
+        try {
+          const res = await axios.get(`http://localhost:8080/api/processcodes/name/${encodeURIComponent(name)}`)
+          if (res.data && res.data.code) {
+            code = String(res.data.code).trim()
+            if (code) {
+              this.$set(this.processCache, name, code)
+            }
+          }
+        } catch (e) {
+          console.warn('未在缓存中找到工序，尝试远程查询失败', e)
         }
-      } catch (e) {
-        r.processCode = r.processName
+      }
+      if (code) {
+        r.processCode = code
+        r.codeMissing = false
+      } else {
+        r.processCode = rawName
         r.codeMissing = true
       }
       await this.updateBarcode(r)
@@ -322,8 +358,9 @@ export default {
       alert(`已删除${removed}行`)
     },
     async refreshProcesses() {
+      await this.ensureProcessCache()
       for (const r of this.preview) {
-        await this.updateProcess(r)
+        await this.updateProcess(r, true)
       }
     },
     async updateBarcode(r) {
