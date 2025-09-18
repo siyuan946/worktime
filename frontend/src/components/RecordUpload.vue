@@ -133,7 +133,7 @@ export default {
       selectedFileId: '',
       currentPage: 0,
       drawingSearch: '',
-      minRowsPerPage: 12,
+      rowsPerPage: 12,
       processCache: {},
       processCacheLoaded: false,
       barcodeCache: {},
@@ -154,20 +154,31 @@ export default {
     },
     pages() {
       if (!this.preview.length) return []
-      const groups = []
+      const grouped = []
       let current = null
       this.preview.forEach((record, index) => {
         const drawing = record.drawingNumber || ''
         if (!current || current.drawingNumber !== drawing) {
           current = { drawingNumber: drawing, entries: [] }
-          groups.push(current)
+          grouped.push(current)
         }
         current.entries.push({ record, index })
       })
-      return groups.map(group => {
-        const fill = group.entries.length < this.minRowsPerPage ? this.minRowsPerPage - group.entries.length : 0
-        return { drawingNumber: group.drawingNumber, entries: group.entries, blankCount: fill }
+
+      const pages = []
+      const size = this.rowsPerPage
+      grouped.forEach(group => {
+        if (!group.entries.length) {
+          pages.push({ drawingNumber: group.drawingNumber, entries: [], blankCount: size })
+          return
+        }
+        for (let offset = 0; offset < group.entries.length; offset += size) {
+          const slice = group.entries.slice(offset, offset + size)
+          const blanks = size > slice.length ? size - slice.length : 0
+          pages.push({ drawingNumber: group.drawingNumber, entries: slice, blankCount: blanks })
+        }
       })
+      return pages
     },
     currentPageInfo() {
       return this.pages[this.currentPage] || null
