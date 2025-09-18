@@ -110,9 +110,15 @@ body {
   .preview-page {
     display: block !important;
     break-after: page;
+    page-break-after: always;
   }
   .preview-page:last-child {
     break-after: auto;
+    page-break-after: auto;
+  }
+  .preview-page + .preview-page {
+    break-before: page;
+    page-break-before: always;
   }
   .no-print {
     display: none !important;
