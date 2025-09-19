@@ -1,5 +1,5 @@
 <template>
-<section class="section-card">
+  <section class="section-card">
     <h2 class="h5">Excel上传</h2>
     <div class="input-group mb-2">
       <input class="form-control" type="file" @change="onFileChange">
@@ -15,11 +15,13 @@
       <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
+
     <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
       <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
         {{ parseProgress }}%
       </div>
     </div>
+
     <div v-if="preview.length" id="preview-table">
       <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
         <h2 class="h5 mb-0">预览</h2>
@@ -35,11 +37,19 @@
           </div>
         </div>
       </div>
-      <div v-for="(page, pageIndex) in pages" :key="pageIndex" class="preview-page" :class="{ 'active-page': pageIndex === currentPage }">
+
+      <!-- 保持不变：force-new-page 确保新图号必换页 -->
+      <div
+        v-for="(page, pageIndex) in pages"
+        :key="pageIndex"
+        class="preview-page"
+        :class="{ 'active-page': pageIndex === currentPage, 'force-new-page': page.isFirstOfDrawing && pageIndex !== 0 }"
+      >
         <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
           <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
           <span class="text-muted">第 {{ pageIndex + 1 }} 页 / 共 {{ pages.length }} 页</span>
         </div>
+
         <table class="table table-bordered table-sm table-striped mb-0">
           <thead>
             <tr>
@@ -57,10 +67,11 @@
               <th class="print-only">起始时间</th>
               <th class="print-only">结束时间</th>
               <th class="print-only">检验员</th>
-              <th>条形码</th>
+              <th class="barcode-cell">条形码</th>
               <th class="no-print"></th>
             </tr>
           </thead>
+
           <tbody>
             <tr v-for="entry in page.entries" :key="entry.index" :class="{'table-danger': entry.record.codeMissing || entry.record.hoursMissing}">
               <td class="notification-col">{{ entry.record.notificationNumber }}</td>
@@ -95,6 +106,8 @@
                 <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
               </td>
             </tr>
+
+            <!-- 仍然渲染补白行，但屏幕隐藏、打印显示（见 style.css） -->
             <tr v-for="n in page.blankCount" :key="'blank-'+pageIndex+'-'+n" class="blank-row">
               <td class="notification-col">&nbsp;</td>
               <td class="no-print">&nbsp;</td>
@@ -154,6 +167,7 @@ export default {
     },
     pages() {
       if (!this.preview.length) return []
+      // 按图号分段
       const grouped = []
       let current = null
       this.preview.forEach((record, index) => {
@@ -164,76 +178,69 @@ export default {
         }
         current.entries.push({ record, index })
       })
-
+      // 按 rowsPerPage 分页，标记每个图号的第一页
       const pages = []
       const size = this.rowsPerPage
       grouped.forEach(group => {
         if (!group.entries.length) {
-          pages.push({ drawingNumber: group.drawingNumber, entries: [], blankCount: size })
+          pages.push({
+            drawingNumber: group.drawingNumber,
+            entries: [],
+            blankCount: size,
+            isFirstOfDrawing: true
+          })
           return
         }
         for (let offset = 0; offset < group.entries.length; offset += size) {
           const slice = group.entries.slice(offset, offset + size)
           const blanks = size > slice.length ? size - slice.length : 0
-          pages.push({ drawingNumber: group.drawingNumber, entries: slice, blankCount: blanks })
+          pages.push({
+            drawingNumber: group.drawingNumber,
+            entries: slice,
+            blankCount: blanks,
+            isFirstOfDrawing: offset === 0
+          })
         }
       })
       return pages
     },
-    currentPageInfo() {
-      return this.pages[this.currentPage] || null
-    }
+    currentPageInfo() { return this.pages[this.currentPage] || null }
   },
   watch: {
-    currentPage(val) {
-      this.$nextTick(() => this.loadBarcodesForPage(val))
-    }
+    currentPage(val) { this.$nextTick(() => this.loadBarcodesForPage(val)) }
   },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
-    async fetchFiles() {
-      const res = await axios.get('http://localhost:8080/api/files')
-      this.files = res.data
-    },
+    async fetchFiles() { const res = await axios.get('/api/api/files'); this.files = res.data },
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
       this.barcodeCache = {}
       try {
-        const res = await axios.get(
-          `http://localhost:8080/api/workrecords/file/${this.selectedFileId}`
-        )
+        const res = await axios.get(`/api/api/workrecords/file/${this.selectedFileId}`)
         if (!Array.isArray(res.data) || !res.data.length) {
-          alert('未找到该文件的记录')
-          this.preview = []
+          alert('未找到该文件的记录'); this.preview = []
         } else {
-          const processed = res.data.map(r => ({
+          this.preview = res.data.map(r => ({
             ...r,
             barcode: this.sanitize(r.barcode),
             barcodeImage: '',
             codeMissing: !r.processCode,
             hoursMissing: r.hours == null
           }))
-          this.preview = processed
         }
         this.fileId = this.selectedFileId
         this.file = null
         this.currentPage = 0
-        this.$nextTick(() => {
-          this.ensurePageInRange()
-          this.loadBarcodesForPage(this.currentPage)
-        })
-      } catch (e) {
-        console.error(e)
-        alert('加载失败')
-      }
+        this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
+      } catch (e) { console.error(e); alert('加载失败') }
       this.loading = false
     },
     async remove() {
       if (!this.selectedFileId) return
       if (!confirm('删除该文件及其所有记录，确定删除?')) return
       this.loading = true
-      await axios.delete(`http://localhost:8080/api/files/${this.selectedFileId}`)
+      await axios.delete(`/api/api/files/${this.selectedFileId}`)
       this.loading = false
       this.selectedFileId = ''
       this.preview = []
@@ -244,26 +251,16 @@ export default {
     async parse() {
       if (this.file) {
         const dup = this.files.find(f => f.fileName === this.file.name)
-        if (dup) {
-          const cont = confirm('发现同名文件，若内容相同请勿重复上传。继续上传?')
-          if (!cont) return
-        }
+        if (dup) { const cont = confirm('发现同名文件，若内容相同请勿重复上传。继续上传?'); if (!cont) return }
       }
-      this.loading = true
-      this.showProgress = true
-      this.parseProgress = 5
-      this.barcodeCache = {}
+      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}
       try {
-        const data = new FormData()
-        data.append('file', this.file)
-        const res = await axios.post('http://localhost:8080/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+        const data = new FormData(); data.append('file', this.file)
+        const res = await axios.post('/api/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
         this.fileId = res.data.fileId
         const records = Array.isArray(res.data.records) ? res.data.records : []
-        const processed = []
-        const total = records.length
-        if (!total) {
-          this.parseProgress = 100
-        }
+        const processed = []; const total = records.length
+        if (!total) this.parseProgress = 100
         for (let i = 0; i < records.length; i++) {
           const r = records[i] || {}
           processed.push({
@@ -280,72 +277,50 @@ export default {
             const percent = Math.min(100, Math.round(((i + 1) / total) * 100))
             if (percent > this.parseProgress) this.parseProgress = percent
           }
-          if ((i + 1) % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0))
-          }
+          if ((i + 1) % 50 === 0) { await new Promise(resolve => setTimeout(resolve, 0)) }
         }
         const warn = processed.filter(r => r.codeMissing || r.hoursMissing)
         this.preview = processed
         if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
         await this.fetchFiles()
         this.currentPage = 0
-        this.$nextTick(() => {
-          this.ensurePageInRange()
-          this.loadBarcodesForPage(this.currentPage)
-        })
-      } catch (e) {
-        console.error(e)
-        alert('解析失败')
-        this.showProgress = false
-      }
+        this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
+      } catch (e) { console.error(e); alert('解析失败'); this.showProgress = false }
       this.loading = false
-      if (this.showProgress) {
-        this.parseProgress = 100
-        setTimeout(() => { this.showProgress = false }, 600)
-      }
+      if (this.showProgress) { this.parseProgress = 100; setTimeout(() => { this.showProgress = false }, 600) }
     },
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
       this.loading = true
       await this.refreshProcesses()
       const valid = this.preview.filter(r => r.processCode && r.barcode)
-      const res = await axios.post(`http://localhost:8080/api/workrecords?fileId=${this.fileId}`, valid)
-      if (valid.length < this.preview.length) {
-        alert('部分记录因缺少工序代码或条形码已被忽略')
-      }
+      const res = await axios.post(`/api/api/workrecords?fileId=${this.fileId}`, valid)
+      if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
       const hasSupp = res.data.some(r => r.supplemental)
-      this.preview = []
-      this.file = null
-      this.loading = false
+      this.preview = []; this.file = null; this.loading = false
       alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
-      await this.fetchFiles()
-      this.$emit('saved')
+      await this.fetchFiles(); this.$emit('saved')
     },
     async print() {
       if (!this.preview.length) return
       this.loading = true
       try {
         for (let i = 0; i < this.pages.length; i++) {
-          // sequentially load to avoid overwhelming the server
           // eslint-disable-next-line no-await-in-loop
           await this.loadBarcodesForPage(i)
         }
-      } finally {
-        this.loading = false
-      }
+      } finally { this.loading = false }
       const title = document.title
       if (this.currentFileName) document.title = this.currentFileName
       await this.$nextTick()
       window.print()
       document.title = title
     },
-    sanitize(text) {
-      return text ? text.replace(/[^\x00-\x7F]/g, '') : ''
-    },
+    sanitize(text) { return text ? text.replace(/[^\x00-\x7F]/g, '') : '' },
     async ensureProcessCache(force = false) {
       if (this.processCacheLoaded && !force) return
       try {
-        const res = await axios.get('http://localhost:8080/api/processcodes')
+        const res = await axios.get('/api/api/processcodes')
         const map = {}
         if (Array.isArray(res.data)) {
           for (const item of res.data) {
@@ -356,55 +331,31 @@ export default {
             map[name] = code
           }
         }
-        this.processCache = map
-        this.processCacheLoaded = true
-      } catch (e) {
-        console.error('加载工序缓存失败', e)
-      }
+        this.processCache = map; this.processCacheLoaded = true
+      } catch (e) { console.error('加载工序缓存失败', e) }
     },
     async updateProcess(r, cacheReady = false) {
-      if (!cacheReady) {
-        await this.ensureProcessCache()
-      }
-      const rawName = r.processName || ''
-      const name = rawName.trim()
-      if (!name) {
-        r.processCode = ''
-        r.codeMissing = true
-        await this.updateBarcode(r)
-        return
-      }
+      if (!cacheReady) await this.ensureProcessCache()
+      const rawName = r.processName || ''; const name = rawName.trim()
+      if (!name) { r.processCode = ''; r.codeMissing = true; await this.updateBarcode(r); return }
       let code = this.processCache[name]
       if (!code) {
         try {
-          const res = await axios.get(`http://localhost:8080/api/processcodes/name/${encodeURIComponent(name)}`)
+          const res = await axios.get(`/api/api/processcodes/name/${encodeURIComponent(name)}`)
           if (res.data && res.data.code) {
             code = String(res.data.code).trim()
-            if (code) {
-              this.$set(this.processCache, name, code)
-            }
+            if (code) this.$set(this.processCache, name, code)
           }
-        } catch (e) {
-          console.warn('未在缓存中找到工序，尝试远程查询失败', e)
-        }
+        } catch (e) { /* ignore */ }
       }
-      if (code) {
-        r.processCode = code
-        r.codeMissing = false
-      } else {
-        r.processCode = rawName
-        r.codeMissing = true
-      }
+      if (code) { r.processCode = code; r.codeMissing = false } else { r.processCode = rawName; r.codeMissing = true }
       await this.updateBarcode(r)
     },
-    async checkHours(r) {
-      r.hoursMissing = r.hours == null || r.hours === ''
-    },
+    async checkHours(r) { r.hoursMissing = r.hours == null || r.hours === '' },
     deleteRow(index) {
-      if (confirm('确定删除该行? 删除后不可恢复')) {
-        this.preview.splice(index, 1)
-        this.$nextTick(() => this.ensurePageInRange())
-      }
+      if (!confirm('确定删除该行? 删除后不可恢复')) return
+      this.preview.splice(index, 1)
+      this.$nextTick(() => this.ensurePageInRange())
     },
     addRow(index) {
       const base = this.preview[index]
@@ -442,8 +393,7 @@ export default {
       alert(`已删除${removed}行`)
     },
     async loadBarcodesForPage(pageIndex) {
-      const page = this.pages[pageIndex]
-      if (!page) return
+      const page = this.pages[pageIndex]; if (!page) return
       if (!this._barcodeLoading) this._barcodeLoading = new Set()
       if (this._barcodeLoading.has(pageIndex)) return
       const missing = []
@@ -462,7 +412,7 @@ export default {
       const unique = Array.from(new Set(missing))
       this._barcodeLoading.add(pageIndex)
       try {
-        const res = await axios.post('http://localhost:8080/api/workrecords/generateBarcodes', unique)
+        const res = await axios.post('/api/api/workrecords/generateBarcodes', unique)
         const data = res && res.data ? res.data : {}
         Object.keys(data || {}).forEach(key => {
           if (!key) return
@@ -474,15 +424,13 @@ export default {
             this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
           }
         }
-      } catch (e) {
-        console.error('加载条码失败', e)
-      } finally {
-        this._barcodeLoading.delete(pageIndex)
-      }
+      } catch (e) { console.error('加载条码失败', e) }
+      finally { this._barcodeLoading.delete(pageIndex) }
     },
     async refreshProcesses() {
       await this.ensureProcessCache()
-      for (const r of this.preview) {
+      for (const r of this.preview) { // 串行
+        // eslint-disable-next-line no-await-in-loop
         await this.updateProcess(r, true)
       }
     },
@@ -491,55 +439,27 @@ export default {
         const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
         const clean = this.sanitize(bar)
         r.barcode = clean
-        if (!clean) {
-          r.barcodeImage = ''
-          return
-        }
-        if (this.barcodeCache[clean]) {
-          r.barcodeImage = this.barcodeCache[clean]
-          return
-        }
+        if (!clean) { r.barcodeImage = ''; return }
+        if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
         try {
-          const res = await axios.get('http://localhost:8080/api/workrecords/generateBarcode', { params: { text: bar } })
-          if (res && res.data) {
-            this.$set(this.barcodeCache, clean, res.data)
-            r.barcodeImage = res.data
-          } else {
-            r.barcodeImage = ''
-          }
-        } catch (e) {
-          console.error('获取条码失败', e)
-          r.barcodeImage = ''
-        }
-      } else {
-        r.barcode = ''
-        r.barcodeImage = ''
-      }
+          const res = await axios.get('/api/api/workrecords/generateBarcode', { params: { text: bar } })
+          if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }
+          else { r.barcodeImage = '' }
+        } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }
+      } else { r.barcode = ''; r.barcodeImage = '' }
     },
-    prevPage() {
-      if (this.currentPage > 0) this.currentPage -= 1
-    },
-    nextPage() {
-      if (this.currentPage < this.pages.length - 1) this.currentPage += 1
-    },
+    prevPage() { if (this.currentPage > 0) this.currentPage -= 1 },
+    nextPage() { if (this.currentPage < this.pages.length - 1) this.currentPage += 1 },
     jumpToDrawing() {
       const term = (this.drawingSearch || '').trim().toLowerCase()
       if (!term) return
       const index = this.pages.findIndex(p => (p.drawingNumber || '').toLowerCase().includes(term))
-      if (index >= 0) {
-        this.currentPage = index
-      } else {
-        alert('未找到对应图号')
-      }
+      if (index >= 0) this.currentPage = index
+      else alert('未找到对应图号')
     },
     ensurePageInRange() {
-      if (!this.pages.length) {
-        this.currentPage = 0
-        return
-      }
-      if (this.currentPage >= this.pages.length) {
-        this.currentPage = this.pages.length - 1
-      }
+      if (!this.pages.length) { this.currentPage = 0; return }
+      if (this.currentPage >= this.pages.length) this.currentPage = this.pages.length - 1
       if (this.currentPage < 0) this.currentPage = 0
     }
   }
