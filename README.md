@@ -12,7 +12,7 @@ This project is a simple work time management demo built with **Spring Boot 2.7.
 ## Backend Setup
 
 1. Create a MySQL database named `worktime` and run [`backend/src/main/resources/schema.sql`](backend/src/main/resources/schema.sql) to create the tables. The file [`backend/src/main/resources/data.sql`](backend/src/main/resources/data.sql) seeds a default admin user.
-2. Edit `backend/src/main/resources/application.properties` to configure your MySQL username and password.
+2. Edit `backend/src/main/resources/application.properties` to configure your MySQL username and password. The file also contains the multipart upload limits (defaulted to 100MB) used when uploading Excel workbooks.
 2.5. If Maven is not installed, run `sudo apt-get install maven` (or use your OS package manager).
 3. Build the backend:
 
@@ -39,6 +39,10 @@ npm run --prefix frontend build
 
 The built files will be placed in `frontend/dist` and can be served by any web server.
 After登录后,顶部导航栏可在“Excel上传”“扫码录入”“人员管理”和“工序代码”页面之间切换。
+
+### Large uploads behind a reverse proxy
+
+If you deploy the application behind nginx, IIS, or another reverse proxy, make sure the proxy's maximum request body size is at least as large as the Spring Boot limit configured in `application.properties`. Otherwise large Excel uploads will be rejected by the proxy before they reach the backend.
 
 ## Versions
 

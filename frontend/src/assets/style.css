@@ -3,6 +3,14 @@ body {
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
+/* width variables so print layout can be customised */
+:root {
+  --drawing-col-width: 110px;
+  --process-col-width: 220px;
+  --hours-col-width: 70px;
+  --barcode-col-width: 300px;
+}
+
 .section-card {
   background-color: #fff;
   border: 1px solid #dee2e6;
@@ -12,62 +20,85 @@ body {
   box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
-.table th, .table td {
-  vertical-align: middle;
-}
-
+.table th, .table td { vertical-align: middle; }
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
-.barcode-cell {
-  width: 320px;
-  height: 90px;
-}
-
-.barcode-cell img {
-  display: block;
-  height: 80px;
-  width: 300px;
-}
+.barcode-cell { width: 320px; height: 90px; }
+.barcode-cell img { display: block; height: 80px; width: 300px; }
 
 /* allow table cells to wrap long text without widening the table */
-.wrap-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-width: 320px;
-}
+.wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
 
 /* wider inputs for worker allocations */
-.alloc-input {
-  width: 90px;
-}
+.alloc-input { width: 90px; }
 
 /* textarea that expands vertically to fit its content */
-.auto-grow {
-  overflow: hidden;
-  resize: none;
-}
+.auto-grow { overflow: hidden; resize: none; }
 
 /* highlight editable fields so they stand out against table background */
-.edit-highlight {
-  background-color: #fffbe6;
-  border-color: #f0ad4e;
-}
+.edit-highlight { background-color: #fffbe6; border-color: #f0ad4e; }
 
-/* Only show the preview table when printing */
+.print-text { display: none; }
+.print-only { display: none; }
+
+.preview-page { display: none; margin-bottom: 1.5rem; }
+.preview-page.active-page { display: block; }
+
+.page-heading { border-bottom: 1px solid #dee2e6; padding-bottom: .25rem; }
+
+/* 屏幕时的补白行高度 (不再影响显示，因为我们将隐藏它) */
+.blank-row td { height: 26px; }
+
+/* ✅ 新增：屏幕预览完全隐藏补白行 */
+.blank-row { display: none; }
+
+/* ===================== PRINT ===================== */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  #preview-table, #preview-table * {
-    visibility: visible;
-  }
+
+  /* 🔧 不再使用全局 visibility/绝对定位，避免分页失效
+     保持你上次的修复逻辑：正常文档流 + 强制分页类 */
+  /* 列宽（保留你原设置） */
+  #preview-table .plan-col { width: 50px !important; }
+  #preview-table .notification-col { width: 60px !important; }
+
+  /* 关键：确保正常文档流 */
   #preview-table {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
   }
-  .no-print {
-    display: none !important;
+
+  .preview-page { display: block !important; break-after: page; page-break-after: always; }
+  .preview-page:last-child { break-after: auto; page-break-after: auto; }
+  .preview-page + .preview-page { break-before: page; page-break-before: always; }
+  .preview-page.force-new-page { break-before: page; page-break-before: always; }
+
+  .no-print { display: none !important; }
+  .print-text { display: inline !important; }
+  .print-only { width: 50px; display: table-cell !important; }
+
+  #preview-table table { table-layout: fixed; font-size: 10px; }
+  #preview-table .process-col { width: var(--process-col-width) !important; }
+  #preview-table .drawing-col { width: var(--drawing-col-width) !important; }
+  #preview-table .hours-col { width: var(--hours-col-width) !important; }
+  #preview-table .hours-col input { width: var(--hours-col-width) !important; }
+
+  #preview-table th, #preview-table td { white-space: nowrap; }
+  #preview-table thead { display: table-header-group; }
+  #preview-table tr { page-break-inside: avoid; break-inside: avoid; }
+
+  #preview-table .barcode-cell { width: var(--barcode-col-width); }
+  #preview-table .barcode-cell img { width: var(--barcode-col-width); height: 80px; }
+
+  /* ✅ 新增：打印时显示补白行，并保持行高一致，填满整页 */
+  .blank-row { display: table-row !important; }
+  #preview-table th, #preview-table td {
+    height: 26px;
+    line-height: 26px;
+    vertical-align: middle;
   }
+  #preview-table .blank-row td { height: 26px !important; }
+
+  @page { size: A4; margin: 10mm; }
 }

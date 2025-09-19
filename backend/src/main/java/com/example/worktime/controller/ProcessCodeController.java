@@ -2,6 +2,7 @@ package com.example.worktime.controller;
 
 import com.example.worktime.model.ProcessCode;
 import com.example.worktime.repository.ProcessCodeRepository;
+import com.example.worktime.service.OperationLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,9 +14,11 @@ import java.util.List;
 @CrossOrigin
 public class ProcessCodeController {
     private final ProcessCodeRepository repository;
+    private final OperationLogService logService;
 
-    public ProcessCodeController(ProcessCodeRepository repository) {
+    public ProcessCodeController(ProcessCodeRepository repository, OperationLogService logService) {
         this.repository = repository;
+        this.logService = logService;
     }
 
     @GetMapping
@@ -38,21 +41,26 @@ public class ProcessCodeController {
     }
 
     @PostMapping
-    public ProcessCode create(@RequestBody ProcessCode pc) {
+    public ProcessCode create(@RequestBody ProcessCode pc, @RequestHeader("X-User") String user) {
         validate(pc);
-        return repository.save(pc);
+        ProcessCode saved = repository.save(pc);
+        logService.log(user, "新增工序 " + pc.getName(), "id=" + saved.getId());
+        return saved;
     }
 
     @PutMapping("/{id}")
-    public ProcessCode update(@PathVariable Long id, @RequestBody ProcessCode pc) {
+    public ProcessCode update(@PathVariable Long id, @RequestBody ProcessCode pc, @RequestHeader("X-User") String user) {
         pc.setId(id);
         validate(pc);
-        return repository.save(pc);
+        ProcessCode saved = repository.save(pc);
+        logService.log(user, "更新工序 " + id, null);
+        return saved;
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
+        logService.log(user, "删除工序 " + id, null);
     }
 
     private void validate(ProcessCode pc) {

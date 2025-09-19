@@ -14,12 +14,15 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
+import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import javax.servlet.http.HttpServletResponse;
@@ -27,6 +30,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
 
 @RestController
@@ -73,7 +79,8 @@ public class WorkRecordController {
     @GetMapping("/file/{fileId}/export")
     public void exportFilled(@PathVariable Long fileId, HttpServletResponse response) throws IOException {
         List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
-        exportList(list, response);
+        String name = fileRepository.findById(fileId).map(UploadedFile::getFileName).orElse("records.xlsx");
+        exportList(list, name, response);
     }
 
     @GetMapping("/date/{date}/export")
@@ -82,7 +89,63 @@ public class WorkRecordController {
         java.time.LocalDateTime start = date.atStartOfDay();
         java.time.LocalDateTime end = start.plusDays(1);
         List<WorkRecord> list = repository.findByUploadDate(start, end);
-        exportList(list, response);
+        exportList(list, "records_" + date.toString() + ".xlsx", response);
+    }
+
+    @GetMapping("/natural-month/{year}/{month}/export")
+    @Transactional(readOnly = true)
+    public void exportByNaturalMonth(@PathVariable int year,
+                                     @PathVariable int month,
+                                     HttpServletResponse response) throws IOException {
+        YearMonth ym;
+        try {
+            ym = YearMonth.of(year, month);
+        } catch (DateTimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的月份");
+        }
+        List<WorkRecord> filled = repository.findByFilledTrue();
+        List<WorkRecord> filtered = new ArrayList<>();
+        for (WorkRecord record : filled) {
+            YearMonth recordMonth = determineNaturalMonth(record);
+            if (ym.equals(recordMonth)) {
+                filtered.add(record);
+            }
+        }
+        String fileName = String.format("records_%s.xlsx", ym);
+        exportList(filtered, fileName, response);
+    }
+
+    @GetMapping("/drawing/{drawing}/export")
+    @Transactional(readOnly = true)
+    public void exportByDrawing(@PathVariable("drawing") String drawing,
+                                HttpServletResponse response) throws IOException {
+        if (drawing == null || drawing.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图号不能为空");
+        }
+        String normalized = drawing.trim();
+        List<WorkRecord> list = repository.findByDrawingNumber(normalized);
+        String sanitized = normalized.replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (sanitized.isEmpty()) {
+            sanitized = "records";
+        }
+        String fileName = sanitized.endsWith(".xlsx") ? sanitized : sanitized + ".xlsx";
+        exportList(list, fileName, response);
+    }
+
+    private YearMonth determineNaturalMonth(WorkRecord record) {
+        LocalDate date = null;
+        if (record.getEndTime() != null) {
+            date = record.getEndTime().toLocalDate();
+        } else if (record.getStartTime() != null) {
+            date = record.getStartTime().toLocalDate();
+        } else if (record.getFile() != null && record.getFile().getUploadTime() != null) {
+            date = record.getFile().getUploadTime().toLocalDate();
+        }
+        if (date == null) return null;
+        if (date.getDayOfMonth() >= 26) {
+            date = date.plusMonths(1);
+        }
+        return YearMonth.from(date);
     }
 
     private java.util.List<String> splitWorkers(String codes) {
@@ -115,13 +178,13 @@ public class WorkRecordController {
         return vals;
     }
 
-    private void exportList(java.util.List<WorkRecord> list, HttpServletResponse response) throws IOException {
+    private void exportList(java.util.List<WorkRecord> list, String fileName, HttpServletResponse response) throws IOException {
         Workbook wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
         Sheet sheet = wb.createSheet("records");
         CellStyle twoDec = wb.createCellStyle();
         twoDec.setDataFormat(wb.createDataFormat().getFormat("0.00"));
         Row head = sheet.createRow(0);
-        String[] titles = {"通知单号","产品名称","图号","批次号","工序代码","工时","产量","人员代码","姓名","数量分配","工时分配","起始日期","结束日期","合格数","工时小计"};
+        String[] titles = {"日期","通知单号","人员代码","人数","图号","工序代码","数量分配","单件工时","劳资系数","分配调整","单件工时分配","姓名","计划数","产品名称"};
         for (int i = 0; i < titles.length; i++) {
             head.createCell(i).setCellValue(titles[i]);
         }
@@ -132,24 +195,32 @@ public class WorkRecordController {
             java.util.List<String> names = splitNames(r.getWorkerNames());
             java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
             int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
+            int numWorkers = max;
+
+            String timeCell = "";
+            if (r.getStartTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                String s = r.getStartTime().toLocalDate().format(fmt);
+                if (r.getEndTime() != null && !r.getEndTime().toLocalDate().isEqual(r.getStartTime().toLocalDate())) {
+                    String e = r.getEndTime().toLocalDate().format(fmt);
+                    timeCell = s + "-" + e;
+                } else {
+                    timeCell = s;
+                }
+            } else if (r.getEndTime() != null) {
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("M.d");
+                timeCell = r.getEndTime().toLocalDate().format(fmt);
+            }
 
             for (int i = 0; i < max; i++) {
                 Row row = sheet.createRow(rowIdx++);
                 int c = 0;
+                row.createCell(c++).setCellValue(timeCell);
                 row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
-                row.createCell(c++).setCellValue(n(r.getProductName()));
-                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
-                row.createCell(c++).setCellValue(n(r.getBatchNumber()));
-                row.createCell(c++).setCellValue(n(r.getProcessCode()));
-                if (r.getHours() != null) {
-                    Cell cell = row.createCell(c++);
-                    cell.setCellValue(r.getHours());
-                    cell.setCellStyle(twoDec);
-                } else row.createCell(c++).setCellValue("");
-                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
-                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
-
+                row.createCell(c++).setCellValue(numWorkers);
+                row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
+                row.createCell(c++).setCellValue(n(r.getProcessCode()));
                 Double q = i < qtys.size() ? qtys.get(i) : null;
                 if (q != null) {
                     Cell cell = row.createCell(c++);
@@ -157,7 +228,13 @@ public class WorkRecordController {
                     cell.setCellStyle(twoDec);
                 }
                 else row.createCell(c++).setCellValue("");
-
+                if (r.getHours() != null) {
+                    Cell cell = row.createCell(c++);
+                    cell.setCellValue(r.getHours());
+                    cell.setCellStyle(twoDec);
+                } else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue("");
                 Double workerHours = null;
                 if (q != null && r.getHours() != null) workerHours = q * r.getHours();
                 if (workerHours != null) {
@@ -166,32 +243,14 @@ public class WorkRecordController {
                     cell.setCellStyle(twoDec);
                 }
                 else row.createCell(c++).setCellValue("");
-
-                if (i == 0) {
-                    row.createCell(c++).setCellValue(r.getStartTime() == null ? "" : r.getStartTime().toLocalDate().toString());
-                    row.createCell(c++).setCellValue(r.getEndTime() == null ? "" : r.getEndTime().toLocalDate().toString());
-                    if (r.getQualifiedQty() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getQualifiedQty());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
-                    if (r.getHourSubtotal() != null) {
-                        Cell cell = row.createCell(c++);
-                        cell.setCellValue(r.getHourSubtotal());
-                        cell.setCellStyle(twoDec);
-                    }
-                    else row.createCell(c++).setCellValue("");
-                } else {
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                    row.createCell(c++).setCellValue("");
-                }
+                row.createCell(c++).setCellValue(i < names.size() ? n(names.get(i)) : "");
+                if (r.getPlanQty() != null) row.createCell(c++).setCellValue(r.getPlanQty()); else row.createCell(c++).setCellValue("");
+                row.createCell(c++).setCellValue(n(r.getProductName()));
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=records.xlsx");
+        String fname = fileName == null || fileName.isEmpty() ? "records.xlsx" : java.net.URLEncoder.encode(fileName, "UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
         wb.write(response.getOutputStream());
         wb.close();
     }
@@ -234,6 +293,54 @@ public class WorkRecordController {
     public String generateBarcodeEndpoint(@RequestParam("text") String text) {
         byte[] img = generateBarcode(sanitizeBarcode(text));
         return img == null ? null : java.util.Base64.getEncoder().encodeToString(img);
+    }
+
+    @PostMapping("/generateBarcodes")
+    public Map<String, String> generateBarcodes(@RequestBody List<String> barcodes) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (barcodes == null) {
+            return result;
+        }
+        for (String raw : barcodes) {
+            if (raw == null) continue;
+            String clean = sanitizeBarcode(raw);
+            if (clean == null || clean.isEmpty() || result.containsKey(clean)) {
+                continue;
+            }
+            byte[] img = generateBarcode(clean);
+            if (img != null) {
+                result.put(clean, java.util.Base64.getEncoder().encodeToString(img));
+            }
+        }
+        return result;
+    }
+
+    @PutMapping("/bulk")
+    @Transactional
+    public List<WorkRecord> bulkUpdate(@RequestBody List<WorkRecord> records,
+                                       @RequestHeader("X-User") String user) {
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<WorkRecord> result = new ArrayList<>();
+        for (WorkRecord record : records) {
+            if (record == null || record.getId() == null) {
+                continue;
+            }
+            WorkRecord existing = repository.findById(record.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found: " + record.getId()));
+            if (record.getFile() == null) {
+                record.setFile(existing.getFile());
+            }
+            if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
+            if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
+            prepare(record);
+            if (record.getQualifiedQty() != null) record.setFilled(true);
+            result.add(repository.save(record));
+        }
+        repository.flush();
+        logService.log(user, "批量更新记录", "count=" + result.size());
+        return result;
     }
 
     @PutMapping("/{id}")
@@ -311,6 +418,7 @@ public class WorkRecordController {
     @PostMapping("/parse")
     @Transactional
     public Map<String, Object> parse(@RequestParam("file") MultipartFile file,
+                                     @RequestParam(value = "password", required = false) String password,
                                      @RequestHeader("X-User") String user) throws IOException {
         UploadedFile uf = new UploadedFile();
         uf.setFileName(file.getOriginalFilename());
@@ -318,7 +426,7 @@ public class WorkRecordController {
         uf.setUploadTime(java.time.LocalDateTime.now());
         uf = fileRepository.saveAndFlush(uf);
 
-        List<WorkRecord> records = parseExcel(file);
+        List<WorkRecord> records = parseExcel(file, password);
 
         Map<String, Object> result = new HashMap<>();
         result.put("fileId", uf.getId());
@@ -328,13 +436,14 @@ public class WorkRecordController {
         return result;
     }
 
-    private List<WorkRecord> parseExcel(MultipartFile file) throws IOException {
+    private List<WorkRecord> parseExcel(MultipartFile file, String password) throws IOException {
         List<WorkRecord> result = new ArrayList<>();
-        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = wb.getSheetAt(0);
+        try (Workbook wb = openWorkbook(file, password)) {
+            Sheet sheet = resolvePlanSheet(wb);
             if (sheet.getPhysicalNumberOfRows() < 1) return result;
 
             // Fixed column indexes: F=5, E=4, J=9 ... AC=28, AQ=42
+            Map<String, String> codeCache = processService.loadCacheSnapshot();
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
@@ -342,12 +451,13 @@ public class WorkRecordController {
                 String notification = getString(row, 42);   // AQ
                 String prodName = getString(row, 5);        // F
                 String drawing = getString(row, 4);         // E
-                Integer qty = getInt(row, 1);               // B -> 产量
+                Integer qty = getInt(row, 1);               // B -> 计划数
 
                 for (int c = 9; c <= 28; c += 2) {          // J..AC pairs
                     String process = getString(row, c);
+                    String normalizedProcess = process != null ? process.trim() : null;
                     Double hours = getDouble(row, c + 1);
-                    if ((process == null || process.trim().isEmpty()) && hours == null) continue;
+                    if ((normalizedProcess == null || normalizedProcess.isEmpty()) && hours == null) continue;
 
                     WorkRecord wr = new WorkRecord();
                     wr.setNotificationNumber(notification);
@@ -357,10 +467,20 @@ public class WorkRecordController {
                     wr.setPlanQty(qty);
                     wr.setProcessName(process);
 
-                    String code = processService.getCode(process);
+                    String code = null;
+                    if (normalizedProcess != null && !normalizedProcess.isEmpty()) {
+                        code = codeCache.get(normalizedProcess);
+                        if (code == null) {
+                            code = processService.getCode(normalizedProcess);
+                            if (code != null && !code.trim().isEmpty()) {
+                                code = code.trim();
+                                codeCache.put(normalizedProcess, code);
+                            }
+                        }
+                    }
                     boolean codeMissing = false;
                     if (code == null || code.trim().isEmpty()) {
-                        code = process; // fallback to name
+                        code = normalizedProcess != null && !normalizedProcess.isEmpty() ? normalizedProcess : process;
                         codeMissing = true;
                     }
                     wr.setProcessCode(code);
@@ -370,7 +490,6 @@ public class WorkRecordController {
                         String bar = drawing + "-" + notification + "-" + code;
                         String clean = sanitizeBarcode(bar);
                         wr.setBarcode(clean);
-                        wr.setBarcodeImage(generateBarcode(clean));
                     }
 
                     wr.setHours(hours);
@@ -381,6 +500,40 @@ public class WorkRecordController {
             }
         }
         return result;
+    }
+
+    private Workbook openWorkbook(MultipartFile file, String password) throws IOException {
+        try (InputStream is = file.getInputStream()) {
+            Workbook wb;
+            if (password != null && !password.trim().isEmpty()) {
+                wb = WorkbookFactory.create(is, password);
+            } else {
+                wb = WorkbookFactory.create(is);
+            }
+            return wb;
+        } catch (EncryptedDocumentException ex) {
+            if (password == null || password.trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "该文件已加密，请提供密码");
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件密码错误或无法解密");
+        }
+    }
+
+    private Sheet resolvePlanSheet(Workbook wb) {
+        Sheet sheet = wb.getSheet("计划表");
+        if (sheet != null) {
+            return sheet;
+        }
+        for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+            Sheet candidate = wb.getSheetAt(i);
+            if (candidate != null) {
+                String name = candidate.getSheetName();
+                if (name != null && "计划表".equals(name.trim())) {
+                    return candidate;
+                }
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "未找到名称为“计划表”的工作表");
     }
 
     private String getString(Row row, Integer idx) {
@@ -406,6 +559,14 @@ public class WorkRecordController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public Map<String, String> handleUploadTooLarge(Exception ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "上传的文件超过系统允许的大小，请压缩或拆分后再试。");
+        return body;
     }
 
     private Integer getInt(Row row, Integer idx) {
