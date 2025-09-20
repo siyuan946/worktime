@@ -210,6 +210,28 @@ export default {
     currentPage(val) { this.$nextTick(() => this.loadBarcodesForPage(val)) }
   },
   methods: {
+    handleRequestError(error, fallback) {
+      if (error instanceof Error && error.message === 'missing-user') return
+      console.error(error)
+      const response = error && error.response
+      let message = null
+      if (response && response.data != null) {
+        const data = response.data
+        if (typeof data === 'string') {
+          message = data
+        } else if (typeof data === 'object') {
+          message = data.message || data.error || data.detail || null
+          if (!message && Array.isArray(data.errors) && data.errors.length) {
+            const first = data.errors[0]
+            message = typeof first === 'string' ? first : (first && first.message) || null
+          }
+        }
+      }
+      if (!message && error && typeof error.message === 'string') {
+        message = error.message
+      }
+      alert(message || fallback || '操作失败')
+    },
     requireUserHeaders() {
       const user = (localStorage.getItem('username') || '').trim()
       if (!user) {
@@ -305,10 +327,7 @@ export default {
         this.currentPage = 0
         this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
       } catch (e) {
-        if (!(e instanceof Error && e.message === 'missing-user')) {
-          console.error(e)
-          alert('解析失败')
-        }
+        this.handleRequestError(e, '解析失败')
         this.showProgress = false
       }
       this.loading = false
