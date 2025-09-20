@@ -256,7 +256,9 @@ export default {
       this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}
       try {
         const data = new FormData(); data.append('file', this.file)
-        const res = await axios.post('/api/api/workrecords/parse', data)
+        const user = localStorage.getItem('username')
+        const headers = user ? { 'X-User': user } : {}
+        const res = await axios.post('/api/api/workrecords/parse', data, { headers })
         this.fileId = res.data.fileId
         const records = Array.isArray(res.data.records) ? res.data.records : []
         const processed = []; const total = records.length
