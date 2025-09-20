@@ -135,6 +135,11 @@
 
 <script>
 import axios from 'axios'
+
+const rawBase = import.meta.env.VITE_API_BASE_URL
+const API_BASE = rawBase
+  ? rawBase.replace(/\/+$/, '')
+  : '/api'
 export default {
   data() {
     return {
@@ -211,13 +216,13 @@ export default {
   },
   methods: {
     onFileChange(e) { this.file = e.target.files[0] },
-    async fetchFiles() { const res = await axios.get('/api/api/files'); this.files = res.data },
+    async fetchFiles() { const res = await axios.get(`${API_BASE}/files`); this.files = res.data },
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
       this.barcodeCache = {}
       try {
-        const res = await axios.get(`/api/api/workrecords/file/${this.selectedFileId}`)
+        const res = await axios.get(`${API_BASE}/workrecords/file/${this.selectedFileId}`)
         if (!Array.isArray(res.data) || !res.data.length) {
           alert('未找到该文件的记录'); this.preview = []
         } else {
@@ -240,7 +245,7 @@ export default {
       if (!this.selectedFileId) return
       if (!confirm('删除该文件及其所有记录，确定删除?')) return
       this.loading = true
-      await axios.delete(`/api/api/files/${this.selectedFileId}`)
+      await axios.delete(`${API_BASE}/files/${this.selectedFileId}`)
       this.loading = false
       this.selectedFileId = ''
       this.preview = []
@@ -258,7 +263,7 @@ export default {
         const data = new FormData(); data.append('file', this.file)
         const user = localStorage.getItem('username')
         const headers = user ? { 'X-User': user } : {}
-        const res = await axios.post('/api/api/workrecords/parse', data, { headers })
+        const res = await axios.post(`${API_BASE}/workrecords/parse`, data, { headers })
         this.fileId = res.data.fileId
         const records = Array.isArray(res.data.records) ? res.data.records : []
         const processed = []; const total = records.length
@@ -296,7 +301,7 @@ export default {
       this.loading = true
       await this.refreshProcesses()
       const valid = this.preview.filter(r => r.processCode && r.barcode)
-      const res = await axios.post(`/api/api/workrecords?fileId=${this.fileId}`, valid)
+      const res = await axios.post(`${API_BASE}/workrecords?fileId=${this.fileId}`, valid)
       if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
       const hasSupp = res.data.some(r => r.supplemental)
       this.preview = []; this.file = null; this.loading = false
@@ -322,7 +327,7 @@ export default {
     async ensureProcessCache(force = false) {
       if (this.processCacheLoaded && !force) return
       try {
-        const res = await axios.get('/api/api/processcodes')
+        const res = await axios.get(`${API_BASE}/processcodes`)
         const map = {}
         if (Array.isArray(res.data)) {
           for (const item of res.data) {
@@ -343,7 +348,7 @@ export default {
       let code = this.processCache[name]
       if (!code) {
         try {
-          const res = await axios.get(`/api/api/processcodes/name/${encodeURIComponent(name)}`)
+          const res = await axios.get(`${API_BASE}/processcodes/name/${encodeURIComponent(name)}`)
           if (res.data && res.data.code) {
             code = String(res.data.code).trim()
             if (code) this.$set(this.processCache, name, code)
@@ -414,7 +419,7 @@ export default {
       const unique = Array.from(new Set(missing))
       this._barcodeLoading.add(pageIndex)
       try {
-        const res = await axios.post('/api/api/workrecords/generateBarcodes', unique)
+        const res = await axios.post(`${API_BASE}/workrecords/generateBarcodes`, unique)
         const data = res && res.data ? res.data : {}
         Object.keys(data || {}).forEach(key => {
           if (!key) return
@@ -444,7 +449,7 @@ export default {
         if (!clean) { r.barcodeImage = ''; return }
         if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
         try {
-          const res = await axios.get('/api/api/workrecords/generateBarcode', { params: { text: bar } })
+          const res = await axios.get(`${API_BASE}/workrecords/generateBarcode`, { params: { text: bar } })
           if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }
           else { r.barcodeImage = '' }
         } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }
