@@ -341,17 +341,29 @@ export default {
       this.loading = true
       await this.refreshProcesses()
       const valid = this.preview.filter(r => r.processCode && r.barcode)
+      const chunkSize = 1000
+      const url = `/api/api/workrecords?fileId=${this.fileId}`
+      const responses = []
       try {
-        const res = await axios.post(`/api/api/workrecords?fileId=${this.fileId}`, valid, { headers })
+        for (let offset = 0; offset < valid.length; offset += chunkSize) {
+          const chunk = valid.slice(offset, offset + chunkSize)
+          // eslint-disable-next-line no-await-in-loop
+          const res = await axios.post(url, chunk, { headers })
+          if (Array.isArray(res.data)) responses.push(...res.data)
+        }
         if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
-        const hasSupp = res.data.some(r => r.supplemental)
-        this.preview = []; this.file = null; this.loading = false
+        const hasSupp = responses.some(r => r && r.supplemental)
+        this.preview = []
+        this.file = null
         alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
-        await this.fetchFiles(); this.$emit('saved')
+        await this.fetchFiles()
+        this.$emit('saved')
       } catch (e) {
         console.error(e)
-        this.loading = false
         alert('保存失败')
+        return
+      } finally {
+        this.loading = false
       }
     },
     async print() {
