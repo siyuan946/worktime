@@ -87,6 +87,9 @@ public class WorkRecord {
     // 是否已填写合格数
     private Boolean filled;
 
+    // 冗余：所属自然月（YYYY-MM）
+    private String naturalMonth;
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
@@ -180,5 +183,8 @@ public class WorkRecord {
 
     public Boolean getFilled() { return filled; }
     public void setFilled(Boolean filled) { this.filled = filled; }
+
+    public String getNaturalMonth() { return naturalMonth; }
+    public void setNaturalMonth(String naturalMonth) { this.naturalMonth = naturalMonth; }
 }
 
