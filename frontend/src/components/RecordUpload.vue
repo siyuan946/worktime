@@ -1,42 +1,43 @@
 <template>
-  <section class="section-card">
-    <h2 class="h5">Excel上传</h2>
-    <div class="input-group mb-2 screen-only">
-      <input class="form-control" type="file" @change="onFileChange" :disabled="loading || printing">
-      <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading || printing">解析</button>
-      <select class="form-select" style="max-width: 180px" v-model="selectedFileId" :disabled="loading || printing">
-        <option value="" disabled>选择历史文件</option>
-        <option v-for="f in files" :key="f.id" :value="f.id">
-          {{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0, 10) : '' }})
-        </option>
-      </select>
-      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading || printing">加载</button>
-      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading || printing">删除</button>
-      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading || printing">清除0工序</button>
-      <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading || printing">保存</button>
-      <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading || printing">打印</button>
-      <div class="spinner-border ms-2" v-if="loading"></div>
-    </div>
-
-    <div class="progress mb-2 screen-only" v-if="showProgress" style="height: 0.75rem;">
-      <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
-        {{ parseProgress }}%
+  <div class="record-upload">
+    <section class="section-card">
+      <h2 class="h5">Excel上传</h2>
+      <div class="input-group mb-2 screen-only">
+        <input class="form-control" type="file" @change="onFileChange" :disabled="loading || printing">
+        <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading || printing">解析</button>
+        <select class="form-select" style="max-width: 180px" v-model="selectedFileId" :disabled="loading || printing">
+          <option value="" disabled>选择历史文件</option>
+          <option v-for="f in files" :key="f.id" :value="f.id">
+            {{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0, 10) : '' }})
+          </option>
+        </select>
+        <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading || printing">加载</button>
+        <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading || printing">删除</button>
+        <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading || printing">清除0工序</button>
+        <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading || printing">保存</button>
+        <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading || printing">打印</button>
+        <div class="spinner-border ms-2" v-if="loading"></div>
       </div>
-    </div>
 
-    <div class="alert alert-info py-2 px-3 screen-only" v-if="summary">
-      <span>共 {{ summary.total || 0 }} 条记录</span>
-      <span class="ms-3">缺少工序码：{{ summary.codeMissing || 0 }}</span>
-      <span class="ms-3">缺少工时：{{ summary.hoursMissing || 0 }}</span>
-    </div>
-
-    <div class="screen-only" v-if="printing">
-      <div class="alert alert-info py-2 px-3 mb-3">
-        正在准备打印数据，请稍候...
+      <div class="progress mb-2 screen-only" v-if="showProgress" style="height: 0.75rem;">
+        <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
+          {{ parseProgress }}%
+        </div>
       </div>
-    </div>
 
-    <div v-if="hasPreview" id="preview-table" class="screen-only preview-container">
+      <div class="alert alert-info py-2 px-3 screen-only" v-if="summary">
+        <span>共 {{ summary.total || 0 }} 条记录</span>
+        <span class="ms-3">缺少工序码：{{ summary.codeMissing || 0 }}</span>
+        <span class="ms-3">缺少工时：{{ summary.hoursMissing || 0 }}</span>
+      </div>
+
+      <div class="screen-only" v-if="printing">
+        <div class="alert alert-info py-2 px-3 mb-3">
+          正在准备打印数据，请稍候...
+        </div>
+      </div>
+
+      <div v-if="hasPreview" id="preview-table" class="screen-only preview-container">
       <div class="navigation-toolbar mb-3">
         <div class="nav-section">
           <div class="nav-label">当前图号</div>
@@ -160,75 +161,76 @@
             <td class="no-print"></td>
           </tr>
         </tbody>
-      </table>
-    </div>
-  </section>
-
-  <div v-if="printPages.length" id="print-area" class="print-area">
-    <div v-for="page in printPages" :key="page.key" class="print-page">
-      <div class="print-page-header">
-        <div class="print-title">{{ currentFileName || '工时记录' }}</div>
-        <div class="print-meta">
-          图号：{{ page.drawingNumber || '—' }}（第 {{ page.pageNumber }} / {{ page.totalPages || 1 }} 页）
-        </div>
+        </table>
       </div>
-      <table class="table table-bordered table-sm table-striped mb-4">
-        <thead>
-          <tr>
-            <th class="notification-col">通知单号</th>
-            <th>产品名称</th>
-            <th class="drawing-col">图号</th>
-            <th>名称</th>
-            <th class="plan-col">计划数</th>
-            <th class="hours-col">单件工时</th>
-            <th>工序代码</th>
-            <th class="process-col">工序</th>
-            <th>人员代码</th>
-            <th>合格件数</th>
-            <th>起始时间</th>
-            <th>结束时间</th>
-            <th>检验员</th>
-            <th class="barcode-cell">条形码</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="record in page.records" :key="record.id || record._localKey">
-            <td class="notification-col">{{ record.notificationNumber }}</td>
-            <td>{{ record.productName }}</td>
-            <td class="drawing-col">{{ record.drawingNumber }}</td>
-            <td>{{ record.partName }}</td>
-            <td class="plan-col">{{ record.planQty }}</td>
-            <td class="hours-col">{{ record.hours }}</td>
-            <td>{{ record.processCode }}</td>
-            <td class="process-col">{{ record.processName }}</td>
-            <td>{{ record.workerCodes }}</td>
-            <td>{{ record.qualifiedQty }}</td>
-            <td>{{ record.startTime }}</td>
-            <td>{{ record.endTime }}</td>
-            <td>{{ record.inspector }}</td>
-            <td class="barcode-cell">
-              <div>{{ record.barcode }}</div>
-              <img v-if="record.barcodeImage" :src="'data:image/png;base64,' + record.barcodeImage" />
-            </td>
-          </tr>
-          <tr v-for="n in page.blankCount" :key="page.key + '-blank-' + n" class="blank-row">
-            <td class="notification-col">&nbsp;</td>
-            <td>&nbsp;</td>
-            <td class="drawing-col">&nbsp;</td>
-            <td>&nbsp;</td>
-            <td class="plan-col">&nbsp;</td>
-            <td class="hours-col">&nbsp;</td>
-            <td>&nbsp;</td>
-            <td class="process-col">&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td class="barcode-cell"><div>&nbsp;</div></td>
-          </tr>
-        </tbody>
-      </table>
+    </section>
+
+    <div v-if="printPages.length" id="print-area" class="print-area">
+      <div v-for="page in printPages" :key="page.key" class="print-page">
+        <div class="print-page-header">
+          <div class="print-title">{{ currentFileName || '工时记录' }}</div>
+          <div class="print-meta">
+            图号：{{ page.drawingNumber || '—' }}（第 {{ page.pageNumber }} / {{ page.totalPages || 1 }} 页）
+          </div>
+        </div>
+        <table class="table table-bordered table-sm table-striped mb-4">
+          <thead>
+            <tr>
+              <th class="notification-col">通知单号</th>
+              <th>产品名称</th>
+              <th class="drawing-col">图号</th>
+              <th>名称</th>
+              <th class="plan-col">计划数</th>
+              <th class="hours-col">单件工时</th>
+              <th>工序代码</th>
+              <th class="process-col">工序</th>
+              <th>人员代码</th>
+              <th>合格件数</th>
+              <th>起始时间</th>
+              <th>结束时间</th>
+              <th>检验员</th>
+              <th class="barcode-cell">条形码</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="record in page.records" :key="record.id || record._localKey">
+              <td class="notification-col">{{ record.notificationNumber }}</td>
+              <td>{{ record.productName }}</td>
+              <td class="drawing-col">{{ record.drawingNumber }}</td>
+              <td>{{ record.partName }}</td>
+              <td class="plan-col">{{ record.planQty }}</td>
+              <td class="hours-col">{{ record.hours }}</td>
+              <td>{{ record.processCode }}</td>
+              <td class="process-col">{{ record.processName }}</td>
+              <td>{{ record.workerCodes }}</td>
+              <td>{{ record.qualifiedQty }}</td>
+              <td>{{ record.startTime }}</td>
+              <td>{{ record.endTime }}</td>
+              <td>{{ record.inspector }}</td>
+              <td class="barcode-cell">
+                <div>{{ record.barcode }}</div>
+                <img v-if="record.barcodeImage" :src="'data:image/png;base64,' + record.barcodeImage" />
+              </td>
+            </tr>
+            <tr v-for="n in page.blankCount" :key="page.key + '-blank-' + n" class="blank-row">
+              <td class="notification-col">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td class="drawing-col">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td class="plan-col">&nbsp;</td>
+              <td class="hours-col">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td class="process-col">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+              <td class="barcode-cell"><div>&nbsp;</div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
