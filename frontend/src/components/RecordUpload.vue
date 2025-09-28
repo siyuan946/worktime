@@ -1,54 +1,65 @@
 <template>
   <section class="section-card">
     <h2 class="h5">Excel上传</h2>
-    <div class="input-group mb-2">
-      <input class="form-control" type="file" @change="onFileChange" :disabled="loading">
-      <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading">解析</button>
-      <select class="form-select" style="max-width: 180px" v-model="selectedFileId" :disabled="loading">
+    <div class="input-group mb-2 screen-only">
+      <input class="form-control" type="file" @change="onFileChange" :disabled="loading || printing">
+      <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading || printing">解析</button>
+      <select class="form-select" style="max-width: 180px" v-model="selectedFileId" :disabled="loading || printing">
         <option value="" disabled>选择历史文件</option>
         <option v-for="f in files" :key="f.id" :value="f.id">
           {{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0, 10) : '' }})
         </option>
       </select>
-      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading">加载</button>
-      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading">删除</button>
-      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading">清除0工序</button>
-      <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading">保存</button>
-      <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading">打印</button>
+      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading || printing">加载</button>
+      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading || printing">删除</button>
+      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading || printing">清除0工序</button>
+      <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading || printing">保存</button>
+      <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading || printing">打印</button>
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
 
-    <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
+    <div class="progress mb-2 screen-only" v-if="showProgress" style="height: 0.75rem;">
       <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
         {{ parseProgress }}%
       </div>
     </div>
 
-    <div class="alert alert-info py-2 px-3" v-if="summary">
+    <div class="alert alert-info py-2 px-3 screen-only" v-if="summary">
       <span>共 {{ summary.total || 0 }} 条记录</span>
       <span class="ms-3">缺少工序码：{{ summary.codeMissing || 0 }}</span>
       <span class="ms-3">缺少工时：{{ summary.hoursMissing || 0 }}</span>
     </div>
 
-    <div v-if="hasPreview" id="preview-table">
-      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
-        <h2 class="h5 mb-0">预览</h2>
-        <div class="d-flex flex-wrap align-items-center gap-2">
-          <div>
-            当前图号：{{ currentPageInfo?.drawingNumber || '—' }}
-            （第 {{ currentPageDisplay }} / {{ pageTotalPages || 1 }} 页）
-          </div>
-          <div class="input-group input-group-sm" style="width: 220px;">
-            <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
-            <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
-          </div>
+    <div class="screen-only" v-if="printing">
+      <div class="alert alert-info py-2 px-3 mb-3">
+        正在准备打印数据，请稍候...
+      </div>
+    </div>
+
+    <div v-if="hasPreview" id="preview-table" class="screen-only preview-container">
+      <div class="navigation-toolbar mb-3">
+        <div class="nav-section">
+          <div class="nav-label">当前图号</div>
+          <div class="nav-value">{{ currentPageInfo?.drawingNumber || '—' }}</div>
+          <div class="nav-meta" v-if="drawings.length">（{{ drawingPositionText }}，共 {{ currentDrawingCount }} 条）</div>
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-secondary" @click="prevDrawing" :disabled="!canPrevDrawing">上一图号</button>
-            <button class="btn btn-outline-secondary" @click="nextDrawing" :disabled="!canNextDrawing">下一图号</button>
+            <button class="btn btn-outline-secondary" @click="prevDrawing" :disabled="!canPrevDrawing || loading || printing">上一图号</button>
+            <button class="btn btn-outline-secondary" @click="nextDrawing" :disabled="!canNextDrawing || loading || printing">下一图号</button>
           </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-label">分页</div>
+          <div class="nav-value">第 {{ currentPageDisplay }} / {{ pageTotalPages || 1 }} 页</div>
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-secondary" @click="prevPage" :disabled="!canPrevPage">上一页</button>
-            <button class="btn btn-outline-secondary" @click="nextPage" :disabled="!canNextPage">下一页</button>
+            <button class="btn btn-outline-secondary" @click="prevPage" :disabled="!canPrevPage || loading || printing">上一页</button>
+            <button class="btn btn-outline-secondary" @click="nextPage" :disabled="!canNextPage || loading || printing">下一页</button>
+          </div>
+        </div>
+        <div class="nav-section flex-grow-1">
+          <div class="nav-label">快速跳转</div>
+          <div class="input-group input-group-sm">
+            <input class="form-control" placeholder="输入图号关键词" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing" :disabled="loading || printing">
+            <button class="btn btn-outline-secondary" @click="jumpToDrawing" :disabled="loading || printing">跳转</button>
           </div>
         </div>
       </div>
@@ -152,6 +163,74 @@
       </table>
     </div>
   </section>
+
+  <div v-if="printPages.length" id="print-area" class="print-area">
+    <div v-for="page in printPages" :key="page.key" class="print-page">
+      <div class="print-page-header">
+        <div class="print-title">{{ currentFileName || '工时记录' }}</div>
+        <div class="print-meta">
+          图号：{{ page.drawingNumber || '—' }}（第 {{ page.pageNumber }} / {{ page.totalPages || 1 }} 页）
+        </div>
+      </div>
+      <table class="table table-bordered table-sm table-striped mb-4">
+        <thead>
+          <tr>
+            <th class="notification-col">通知单号</th>
+            <th>产品名称</th>
+            <th class="drawing-col">图号</th>
+            <th>名称</th>
+            <th class="plan-col">计划数</th>
+            <th class="hours-col">单件工时</th>
+            <th>工序代码</th>
+            <th class="process-col">工序</th>
+            <th>人员代码</th>
+            <th>合格件数</th>
+            <th>起始时间</th>
+            <th>结束时间</th>
+            <th>检验员</th>
+            <th class="barcode-cell">条形码</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="record in page.records" :key="record.id || record._localKey">
+            <td class="notification-col">{{ record.notificationNumber }}</td>
+            <td>{{ record.productName }}</td>
+            <td class="drawing-col">{{ record.drawingNumber }}</td>
+            <td>{{ record.partName }}</td>
+            <td class="plan-col">{{ record.planQty }}</td>
+            <td class="hours-col">{{ record.hours }}</td>
+            <td>{{ record.processCode }}</td>
+            <td class="process-col">{{ record.processName }}</td>
+            <td>{{ record.workerCodes }}</td>
+            <td>{{ record.qualifiedQty }}</td>
+            <td>{{ record.startTime }}</td>
+            <td>{{ record.endTime }}</td>
+            <td>{{ record.inspector }}</td>
+            <td class="barcode-cell">
+              <div>{{ record.barcode }}</div>
+              <img v-if="record.barcodeImage" :src="'data:image/png;base64,' + record.barcodeImage" />
+            </td>
+          </tr>
+          <tr v-for="n in page.blankCount" :key="page.key + '-blank-' + n" class="blank-row">
+            <td class="notification-col">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="drawing-col">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="plan-col">&nbsp;</td>
+            <td class="hours-col">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="process-col">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="barcode-cell"><div>&nbsp;</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -168,17 +247,19 @@ export default {
       drawings: [],
       currentDrawingIndex: 0,
       pageNo: 0,
-      pageSize: 200,
+      rowsPerPage: 12,
+      pageSize: 12,
       pageTotalPages: 0,
       pageRecords: [],
-      rowsPerPage: 12,
       drawingSearch: '',
       processCache: {},
       processCacheLoaded: false,
       barcodeCache: {},
       showProgress: false,
       parseProgress: 0,
-      summary: null
+      summary: null,
+      printing: false,
+      printPages: []
     }
   },
   created() {
@@ -203,7 +284,7 @@ export default {
       }
     },
     hasPreview() {
-      return this.pageRecords.length > 0
+      return (this.pageRecords && this.pageRecords.length > 0) || ((this.summary && (this.summary.total || 0) > 0))
     },
     blankRows() {
       return Math.max(0, this.rowsPerPage - this.pageRecords.length)
@@ -213,6 +294,14 @@ export default {
         return this.pageRecords.length ? 1 : 0
       }
       return Math.min(this.pageNo + 1, this.pageTotalPages)
+    },
+    drawingPositionText() {
+      if (!this.drawings.length) return '0 / 0'
+      return `${this.currentDrawingIndex + 1} / ${this.drawings.length}`
+    },
+    currentDrawingCount() {
+      const drawing = this.currentDrawing
+      return drawing && typeof drawing.count === 'number' ? drawing.count : 0
     },
     canPrevDrawing() {
       return this.currentDrawingIndex > 0
@@ -319,6 +408,15 @@ export default {
         this.pageTotalPages = 0
       }
     },
+    async fetchPageData(drawingNumber, pageIndex, size) {
+      if (!this.fileId) {
+        return { content: [], totalPages: 0 }
+      }
+      const res = await axios.get(`/api/api/workrecords/file/${this.fileId}/page`, {
+        params: { drawing: drawingNumber, page: pageIndex, size }
+      })
+      return (res && res.data) || { content: [], totalPages: 0 }
+    },
     async fetchPage() {
       const drawing = this.currentDrawing
       if (!drawing) {
@@ -327,17 +425,21 @@ export default {
         return
       }
       try {
-        const res = await axios.get(`/api/api/workrecords/file/${this.fileId}/page`, {
-          params: { drawing: drawing.drawing, page: this.pageNo, size: this.pageSize }
-        })
-        const data = res && res.data ? res.data : {}
+        const data = await this.fetchPageData(drawing.drawing, this.pageNo, this.pageSize)
         const list = Array.isArray(data.content) ? data.content : []
-        this.pageTotalPages = data.totalPages || (list.length ? 1 : 0)
-        if (this.pageTotalPages && this.pageNo >= this.pageTotalPages) {
-          this.pageNo = Math.max(this.pageTotalPages - 1, 0)
+        const baseCount = (drawing && typeof drawing.count === 'number' && drawing.count > 0)
+          ? drawing.count
+          : list.length
+        const fallbackPages = baseCount > 0 ? Math.max(1, Math.ceil(baseCount / this.pageSize)) : 0
+        const totalPages = (data && typeof data.totalPages === 'number' && data.totalPages > 0)
+          ? data.totalPages
+          : fallbackPages
+        if (totalPages && this.pageNo >= totalPages) {
+          this.pageNo = Math.max(totalPages - 1, 0)
           await this.fetchPage()
           return
         }
+        this.pageTotalPages = totalPages || (list.length ? 1 : 0)
         this.pageRecords = list.map(item => this.decorateRecord(item))
         this.$nextTick(() => this.loadBarcodesForCurrentPage())
       } catch (e) {
@@ -515,13 +617,13 @@ export default {
         record.barcodeImage = ''
       }
     },
-    async loadBarcodesForCurrentPage() {
-      if (!this.pageRecords.length) return
+    async loadBarcodes(records, cacheKey = '') {
+      if (!records || !records.length) return
       if (!this._barcodeLoading) this._barcodeLoading = new Set()
-      const key = `${this.currentDrawingIndex}-${this.pageNo}`
+      const key = cacheKey || `page-${Date.now()}`
       if (this._barcodeLoading.has(key)) return
       const missing = []
-      for (const record of this.pageRecords) {
+      for (const record of records) {
         const code = this.sanitize(record.barcode)
         if (!code) continue
         if (this.barcodeCache[code]) {
@@ -542,7 +644,7 @@ export default {
           if (!code) return
           this.$set(this.barcodeCache, code, data[code])
         })
-        for (const record of this.pageRecords) {
+        for (const record of records) {
           const code = this.sanitize(record.barcode)
           if (code && this.barcodeCache[code]) {
             this.$set(record, 'barcodeImage', this.barcodeCache[code])
@@ -553,6 +655,11 @@ export default {
       } finally {
         this._barcodeLoading.delete(key)
       }
+    },
+    async loadBarcodesForCurrentPage() {
+      if (!this.pageRecords.length) return
+      const key = `${this.currentDrawingIndex}-${this.pageNo}`
+      await this.loadBarcodes(this.pageRecords, key)
     },
     checkHours(record) {
       record.hoursMissing = record.hours == null || record.hours === ''
@@ -719,14 +826,67 @@ export default {
         alert('未找到对应图号')
       }
     },
+    async collectPrintPages() {
+      const pages = []
+      if (!this.fileId || !this.drawings.length) return pages
+      for (let i = 0; i < this.drawings.length; i += 1) {
+        const drawing = this.drawings[i]
+        if (!drawing) continue
+        const drawingNumber = drawing.drawing
+        let pageIndex = 0
+        while (true) {
+          const data = await this.fetchPageData(drawingNumber, pageIndex, this.rowsPerPage)
+          const list = data && Array.isArray(data.content) ? data.content : []
+          if (!list.length) break
+          const decorated = list.map(item => this.decorateRecord(item))
+          const baseCount = (drawing && typeof drawing.count === 'number' && drawing.count > 0)
+            ? drawing.count
+            : decorated.length
+          const totalPages = (data && typeof data.totalPages === 'number' && data.totalPages > 0)
+            ? data.totalPages
+            : Math.max(1, Math.ceil(baseCount / this.rowsPerPage))
+          const pageInfo = {
+            key: `${(drawingNumber || 'drawing')}-${pageIndex}`,
+            drawingNumber,
+            pageNumber: pageIndex + 1,
+            totalPages,
+            records: decorated,
+            blankCount: Math.max(0, this.rowsPerPage - decorated.length)
+          }
+          await this.loadBarcodes(decorated, pageInfo.key)
+          pages.push(pageInfo)
+          pageIndex += 1
+          if (pageIndex >= totalPages) break
+        }
+      }
+      return pages
+    },
     async print() {
-      if (!this.hasPreview) return
-      await this.loadBarcodesForCurrentPage()
-      const title = document.title
-      if (this.currentFileName) document.title = this.currentFileName
-      await this.$nextTick()
-      window.print()
-      document.title = title
+      if (!this.hasPreview || !this.fileId) return
+      const originalTitle = document.title
+      this.printing = true
+      try {
+        if (!this.drawings.length) {
+          await this.fetchDrawings()
+        }
+        const pages = await this.collectPrintPages()
+        if (!pages.length) {
+          alert('没有可打印的数据')
+          return
+        }
+        this.printPages = pages
+        await this.$nextTick()
+        if (this.currentFileName) {
+          document.title = this.currentFileName
+        }
+        window.print()
+      } catch (e) {
+        this.handleRequestError(e, '打印失败')
+      } finally {
+        document.title = originalTitle
+        this.printPages = []
+        this.printing = false
+      }
     }
   }
 }
