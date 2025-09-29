@@ -87,6 +87,9 @@ public class WorkRecordController {
             Map<String, Object> map = new HashMap<>();
             map.put("drawing", row[0]);
             map.put("count", row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L);
+            if (row.length > 2 && row[2] instanceof Number) {
+                map.put("startRow", ((Number) row[2]).longValue());
+            }
             result.add(map);
         }
         return result;
@@ -544,6 +547,7 @@ public class WorkRecordController {
                     wr.setDrawingNumber(drawing);
                     wr.setPartName(prodName);
                     wr.setPlanQty(qty);
+                    wr.setSourceRowNumber(i + 1);
                     wr.setProcessName(process);
 
                     String code = null;

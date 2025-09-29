@@ -2,21 +2,42 @@
   <div class="record-upload">
     <section class="section-card">
       <h2 class="h5">Excel上传</h2>
-      <div class="input-group mb-2 screen-only">
-        <input class="form-control" type="file" @change="onFileChange" :disabled="loading || printing">
-        <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading || printing">解析</button>
-        <select class="form-select" style="max-width: 180px" v-model="selectedFileId" :disabled="loading || printing">
-          <option value="" disabled>选择历史文件</option>
-          <option v-for="f in files" :key="f.id" :value="f.id">
-            {{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0, 10) : '' }})
-          </option>
-        </select>
-        <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading || printing">加载</button>
-        <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading || printing">删除</button>
-        <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading || printing">清除0工序</button>
-        <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading || printing">保存</button>
-        <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading || printing">打印</button>
-        <div class="spinner-border ms-2" v-if="loading"></div>
+      <div class="upload-toolbar screen-only">
+        <div class="toolbar-row">
+          <div class="toolbar-block flex-grow-1">
+            <label class="form-label mb-1">选择Excel文件</label>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <input class="form-control" type="file" @change="onFileChange" :disabled="loading || printing">
+              <button class="btn btn-outline-primary" @click="parse" :disabled="!file || loading || printing">解析</button>
+              <div class="spinner-border" v-if="loading"></div>
+            </div>
+          </div>
+          <div class="toolbar-block">
+            <label class="form-label mb-1">快速操作</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!hasPreview || loading || printing">清除0工序</button>
+              <button class="btn btn-primary" @click="save" :disabled="!hasPreview || loading || printing">保存</button>
+              <button class="btn btn-secondary" @click="print" :disabled="!hasPreview || loading || printing">打印</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-row">
+          <div class="toolbar-block flex-grow-1">
+            <label class="form-label mb-1">历史文件</label>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <select class="form-select" v-model="selectedFileId" :disabled="loading || printing">
+                <option value="" disabled>选择历史文件</option>
+                <option v-for="f in files" :key="f.id" :value="f.id">
+                  {{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0, 10) : '' }})
+                </option>
+              </select>
+              <div class="btn-group">
+                <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId || loading || printing">加载</button>
+                <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId || loading || printing">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="progress mb-2 screen-only" v-if="showProgress" style="height: 0.75rem;">
@@ -43,6 +64,7 @@
           <div class="nav-label">当前图号</div>
           <div class="nav-value">{{ currentPageInfo?.drawingNumber || '—' }}</div>
           <div class="nav-meta" v-if="drawings.length">（{{ drawingPositionText }}，共 {{ currentDrawingCount }} 条）</div>
+          <div class="nav-meta" v-if="currentDrawingExcelRow">原始Excel第 {{ currentDrawingExcelRow }} 行</div>
           <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-secondary" @click="prevDrawing" :disabled="!canPrevDrawing || loading || printing">上一图号</button>
             <button class="btn btn-outline-secondary" @click="nextDrawing" :disabled="!canNextDrawing || loading || printing">下一图号</button>
@@ -142,24 +164,6 @@
             </td>
           </tr>
 
-          <tr v-for="n in blankRows" :key="'blank-' + n" class="blank-row">
-            <td class="notification-col">&nbsp;</td>
-            <td class="no-print">&nbsp;</td>
-            <td class="drawing-col">&nbsp;</td>
-            <td class="print-only plan-col">&nbsp;</td>
-            <td class="no-print">&nbsp;</td>
-            <td class="plan-col no-print">&nbsp;</td>
-            <td class="hours-col">&nbsp;</td>
-            <td class="no-print">&nbsp;</td>
-            <td class="process-col">&nbsp;</td>
-            <td class="print-only">&nbsp;</td>
-            <td class="print-only">&nbsp;</td>
-            <td class="print-only">&nbsp;</td>
-            <td class="print-only">&nbsp;</td>
-            <td class="print-only">&nbsp;</td>
-            <td class="barcode-cell"><div>&nbsp;</div></td>
-            <td class="no-print"></td>
-          </tr>
         </tbody>
         </table>
       </div>
@@ -172,6 +176,7 @@
           <div class="print-meta">
             图号：{{ page.drawingNumber || '—' }}（第 {{ page.pageNumber }} / {{ page.totalPages || 1 }} 页）
           </div>
+          <div class="print-meta" v-if="page.sourceRowNumber">原始Excel第 {{ page.sourceRowNumber }} 行</div>
         </div>
         <table class="table table-bordered table-sm table-striped mb-4">
           <thead>
@@ -288,9 +293,6 @@ export default {
     hasPreview() {
       return (this.pageRecords && this.pageRecords.length > 0) || ((this.summary && (this.summary.total || 0) > 0))
     },
-    blankRows() {
-      return Math.max(0, this.rowsPerPage - this.pageRecords.length)
-    },
     currentPageDisplay() {
       if (!this.pageTotalPages) {
         return this.pageRecords.length ? 1 : 0
@@ -304,6 +306,12 @@ export default {
     currentDrawingCount() {
       const drawing = this.currentDrawing
       return drawing && typeof drawing.count === 'number' ? drawing.count : 0
+    },
+    currentDrawingExcelRow() {
+      const drawing = this.currentDrawing
+      if (!drawing) return null
+      const value = drawing.startRow != null ? drawing.startRow : drawing.minRow
+      return typeof value === 'number' && value > 0 ? value : null
     },
     canPrevDrawing() {
       return this.currentDrawingIndex > 0
@@ -395,7 +403,16 @@ export default {
       }
       try {
         const res = await axios.get(`/api/api/workrecords/file/${this.fileId}/drawings`)
-        this.drawings = Array.isArray(res.data) ? res.data : []
+        const items = Array.isArray(res.data) ? res.data : []
+        this.drawings = items.map(item => {
+          const count = item && typeof item.count === 'number' ? item.count : Number(item && item.count)
+          const startRow = item && item.startRow != null ? Number(item.startRow) : (item && item.minRow != null ? Number(item.minRow) : null)
+          return {
+            drawing: item ? item.drawing : undefined,
+            count: Number.isFinite(count) ? count : 0,
+            startRow: Number.isFinite(startRow) && startRow > 0 ? startRow : null
+          }
+        })
         if (!this.drawings.length) {
           this.pageRecords = []
           this.pageTotalPages = 0
@@ -847,13 +864,26 @@ export default {
           const totalPages = (data && typeof data.totalPages === 'number' && data.totalPages > 0)
             ? data.totalPages
             : Math.max(1, Math.ceil(baseCount / this.rowsPerPage))
+          const minRow = decorated.reduce((acc, rec) => {
+            if (rec && typeof rec.sourceRowNumber === 'number' && rec.sourceRowNumber > 0) {
+              return Math.min(acc, rec.sourceRowNumber)
+            }
+            if (rec && rec.sourceRowNumber != null) {
+              const num = Number(rec.sourceRowNumber)
+              if (Number.isFinite(num) && num > 0) {
+                return Math.min(acc, num)
+              }
+            }
+            return acc
+          }, Number.POSITIVE_INFINITY)
           const pageInfo = {
             key: `${(drawingNumber || 'drawing')}-${pageIndex}`,
             drawingNumber,
             pageNumber: pageIndex + 1,
             totalPages,
             records: decorated,
-            blankCount: Math.max(0, this.rowsPerPage - decorated.length)
+            blankCount: Math.max(0, this.rowsPerPage - decorated.length),
+            sourceRowNumber: Number.isFinite(minRow) && minRow !== Number.POSITIVE_INFINITY ? minRow : (drawing && drawing.startRow) || null
           }
           await this.loadBarcodes(decorated, pageInfo.key)
           pages.push(pageInfo)

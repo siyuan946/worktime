@@ -35,6 +35,9 @@ public class WorkRecord {
     // 计划数
     private Integer planQty;
 
+    // 原始Excel行号
+    private Integer sourceRowNumber;
+
     // 工序名称
     private String processName;
 
@@ -119,6 +122,9 @@ public class WorkRecord {
 
     public Integer getPlanQty() { return planQty; }
     public void setPlanQty(Integer planQty) { this.planQty = planQty; }
+
+    public Integer getSourceRowNumber() { return sourceRowNumber; }
+    public void setSourceRowNumber(Integer sourceRowNumber) { this.sourceRowNumber = sourceRowNumber; }
 
     public String getProcessName() { return processName; }
     public void setProcessName(String processName) { this.processName = processName; }

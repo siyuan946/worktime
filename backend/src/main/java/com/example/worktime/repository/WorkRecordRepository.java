@@ -28,7 +28,7 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
 
     Page<WorkRecord> findByFileIdAndDrawingNumber(Long fileId, String drawingNumber, Pageable pageable);
 
-    @Query("select r.drawingNumber as drawing, count(r) as cnt from WorkRecord r where r.file.id = :fileId group by r.drawingNumber order by r.drawingNumber")
+    @Query("select r.drawingNumber as drawing, count(r) as cnt, min(r.sourceRowNumber) as minRow from WorkRecord r where r.file.id = :fileId group by r.drawingNumber order by r.drawingNumber")
     java.util.List<Object[]> findDrawingBuckets(@Param("fileId") Long fileId);
 
     Page<WorkRecord> findByNaturalMonthAndFilledTrue(String naturalMonth, Pageable pageable);
