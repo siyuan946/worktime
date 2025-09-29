@@ -54,7 +54,7 @@ body {
 .print-meta { font-size: .9rem; color: #6c757d; }
 
 .blank-row { display: table-row; background-color: #fdfdfd; }
-.blank-row td { height: 26px; }
+.blank-row td { min-height: 26px; }
 
 /* ===================== PRINT ===================== */
 @media print {
@@ -63,6 +63,11 @@ body {
   .no-print { display: none !important; }
   .print-text { display: inline !important; }
   .print-only { width: 50px; display: table-cell !important; }
+
+  .navbar,
+  .section-card {
+    display: none !important;
+  }
 
   #preview-table,
   #print-area {
@@ -93,13 +98,21 @@ body {
   #print-area .hours-col input { width: var(--hours-col-width) !important; }
 
   #preview-table th,
-  #preview-table td,
-  #print-area th,
-  #print-area td {
+  #preview-table td {
     white-space: nowrap;
     height: 26px;
     line-height: 26px;
     vertical-align: middle;
+  }
+
+  #print-area th,
+  #print-area td {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+    height: auto;
+    vertical-align: middle;
+    padding: 4px 6px;
   }
 
   #preview-table thead,
@@ -111,8 +124,10 @@ body {
   #print-area .barcode-cell { width: var(--barcode-col-width); }
   #preview-table .barcode-cell img,
   #print-area .barcode-cell img { width: var(--barcode-col-width); height: 80px; }
+  #print-area .barcode-cell div { word-break: break-all; }
 
   .blank-row { display: table-row !important; }
+  #print-area .blank-row td { min-height: 26px; }
 
   .print-page { break-after: page; page-break-after: always; }
   .print-page:last-child { break-after: auto; page-break-after: auto; }
