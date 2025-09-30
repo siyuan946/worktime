@@ -70,7 +70,7 @@ body {
 .print-meta { font-size: .9rem; color: #6c757d; }
 
 .blank-row { display: table-row; background-color: #fdfdfd; }
-.blank-row td { min-height: 26px; }
+.blank-row td { min-height: 24px; }
 
 /* ===================== PRINT ===================== */
 @media print {
@@ -123,12 +123,20 @@ body {
   #preview-table tr,
   #print-area tr { page-break-inside: avoid; break-inside: avoid; }
 
+  #print-area .blank-row td {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    line-height: 1.1;
+    min-height: 20px;
+  }
+
+  .print-page table { margin-bottom: 0 !important; }
+
   #preview-table .barcode-cell img,
   #print-area .barcode-cell img { height: 80px; max-width: 280px; width: auto; }
   #print-area .barcode-cell div { word-break: break-all; }
 
   .blank-row { display: table-row !important; }
-  #print-area .blank-row td { min-height: 26px; }
 
   .print-page { break-after: page; page-break-after: always; }
   .print-page:last-child { break-after: auto; page-break-after: auto; }

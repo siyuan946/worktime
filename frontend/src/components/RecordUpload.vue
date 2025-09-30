@@ -864,6 +864,10 @@ export default {
           const totalPages = (data && typeof data.totalPages === 'number' && data.totalPages > 0)
             ? data.totalPages
             : Math.max(1, Math.ceil(baseCount / this.rowsPerPage))
+          const isLastPage = (data && data.last === true)
+            || pageIndex >= totalPages - 1
+            || decorated.length < this.rowsPerPage
+          const blankCount = isLastPage ? Math.max(0, this.rowsPerPage - decorated.length) : 0
           const minRow = decorated.reduce((acc, rec) => {
             if (rec && typeof rec.sourceRowNumber === 'number' && rec.sourceRowNumber > 0) {
               return Math.min(acc, rec.sourceRowNumber)
@@ -882,7 +886,7 @@ export default {
             pageNumber: pageIndex + 1,
             totalPages,
             records: decorated,
-            blankCount: Math.max(0, this.rowsPerPage - decorated.length),
+            blankCount,
             sourceRowNumber: Number.isFinite(minRow) && minRow !== Number.POSITIVE_INFINITY ? minRow : (drawing && drawing.startRow) || null
           }
           await this.loadBarcodes(decorated, pageInfo.key)
