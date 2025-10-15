@@ -192,14 +192,17 @@ public final class XlsxToCsvConverter {
 
     private static String normalizeWhitespace(String value) {
         String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC);
-        return normalized.replace("\r\n", "\n");
+        normalized = normalized.replace("\r\n", "\n");
+        normalized = normalized.replace('\r', '\n');
+        return normalized;
     }
 
     private static String escapeForCsv(String value) {
         if (value.isEmpty()) {
             return value;
         }
-        boolean needsQuotes = value.contains(",") || value.contains("\n") || value.contains("\"");
+        boolean needsQuotes = value.contains(",") || value.contains("\n")
+                || value.contains("\r") || value.contains("\"");
         String escaped = value.replace("\"", "\"\"");
         if (needsQuotes) {
             return "\"" + escaped + "\"";

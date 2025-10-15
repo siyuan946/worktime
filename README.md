@@ -16,13 +16,15 @@ can be processed with version control friendly tooling.
 To regenerate the CSV output run:
 
 ```bash
-mvn -q exec:java \
-  -Dexec.mainClass="com.example.worktime.XlsxToCsvConverter" \
-  -Dexec.args="'新建 Microsoft Excel 工作表.xlsx' data/worktime.csv"
+mvn -q package
+mvn -q -Dexec.mainClass="com.example.worktime.XlsxToCsvConverter" \
+  -Dexec.args="'新建 Microsoft Excel 工作表.xlsx' data/worktime.csv" exec:java
 ```
 
 Pass an optional third argument with the sheet name if you need to export a
-specific worksheet instead of the first one.
+specific worksheet instead of the first one. The separate `package` step makes
+sure the converter class files are available to the exec plugin, preventing a
+`ClassNotFoundException` when the tool is launched from a fresh checkout.
 
 The exporter is built with Java 8, Apache POI, and runs entirely within the
 standard Maven toolchain. It performs basic type coercion, including conversion
