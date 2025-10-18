@@ -39,95 +39,104 @@
       </div>
 
       <!-- 保持不变：force-new-page 确保新图号必换页 -->
-      <template v-for="(page, pageIndex) in pages" :key="pageIndex">
+      <template v-for="item in visiblePages" :key="item.index">
         <div
-          v-if="shouldRenderPage(pageIndex)"
           class="preview-page"
-          :class="{ 'active-page': pageIndex === currentPage, 'force-new-page': page.isFirstOfDrawing && pageIndex !== 0 }"
+          :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
         >
-        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
-          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
-          <span class="text-muted">第 {{ pageIndex + 1 }} 页 / 共 {{ pages.length }} 页</span>
-        </div>
+          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+            <h3 class="h6 mb-0">图号：{{ item.page.drawingNumber || '（空）' }}</h3>
+            <span class="text-muted">第 {{ item.index + 1 }} 页 / 共 {{ pages.length }} 页</span>
+          </div>
 
-        <table class="table table-bordered table-sm table-striped mb-0">
-          <thead>
-            <tr>
-              <th class="notification-col">通知单号</th>
-              <th class="no-print">产品名称</th>
-              <th class="drawing-col">图号</th>
-              <th class="print-only plan-col">计划数</th>
-              <th class="no-print">名称</th>
-              <th class="plan-col no-print">计划数</th>
-              <th class="hours-col">单件工时</th>
-              <th class="no-print">工序代码</th>
-              <th class="process-col">工序</th>
-              <th class="print-only worker-code-col">人员代码</th>
-              <th class="print-only qualified-col">合格件数</th>
-              <th class="print-only time-col">起始时间</th>
-              <th class="print-only time-col">结束时间</th>
-              <th class="print-only inspector-col">检验员</th>
-              <th class="barcode-cell">条形码</th>
-              <th class="no-print"></th>
-            </tr>
-          </thead>
+          <table class="table table-bordered table-sm table-striped mb-0">
+            <thead>
+              <tr>
+                <th class="notification-col">通知单号</th>
+                <th class="no-print">产品名称</th>
+                <th class="drawing-col">图号</th>
+                <th class="print-only plan-col">计划数</th>
+                <th class="no-print">名称</th>
+                <th class="plan-col no-print">计划数</th>
+                <th class="hours-col">单件工时</th>
+                <th class="no-print">工序代码</th>
+                <th class="process-col">工序</th>
+                <th class="print-only worker-code-col">人员代码</th>
+                <th class="print-only qualified-col">合格件数</th>
+                <th class="print-only time-col">起始时间</th>
+                <th class="print-only time-col">结束时间</th>
+                <th class="print-only inspector-col">检验员</th>
+                <th class="barcode-cell">条形码</th>
+                <th class="no-print"></th>
+              </tr>
+            </thead>
 
-          <tbody>
-            <tr v-for="entry in page.entries" :key="entry.index" :class="{'table-danger': entry.record.codeMissing || entry.record.hoursMissing}">
-              <td class="notification-col">{{ entry.record.notificationNumber }}</td>
-              <td class="no-print">{{ entry.record.productName }}</td>
-              <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
-              <td class="print-only plan-col">{{ entry.record.planQty }}</td>
-              <td class="no-print">{{ entry.record.partName }}</td>
-              <td class="plan-col no-print">
-                <input type="number" class="form-control form-control-sm" v-model.number="entry.record.planQty" />
-                <span class="print-text">{{ entry.record.planQty }}</span>
-              </td>
-              <td class="hours-col">
-                <input type="number" class="form-control form-control-sm no-print" style="width:80px" v-model.number="entry.record.hours" @blur="checkHours(entry.record)" />
-                <span class="print-text">{{ entry.record.hours }}</span>
-              </td>
-              <td class="no-print">{{ entry.record.processCode }}</td>
-              <td class="process-col">
-                <input class="form-control form-control-sm no-print" v-model="entry.record.processName" @blur="updateProcess(entry.record)" />
-                <span class="print-text">{{ entry.record.processName }}</span>
-              </td>
-              <td class="print-only worker-code-col"></td>
-              <td class="print-only qualified-col"></td>
-              <td class="print-only time-col"></td>
-              <td class="print-only time-col"></td>
-              <td class="print-only inspector-col"></td>
-              <td class="barcode-cell">
-                <div>{{ entry.record.barcode }}</div>
-                <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
-              </td>
-              <td class="no-print">
-                <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
-                <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
-              </td>
-            </tr>
+            <tbody>
+              <tr v-for="entry in item.page.entries" :key="entry.index" :class="{'table-danger': entry.record.codeMissing || entry.record.hoursMissing}">
+                <td class="notification-col">{{ entry.record.notificationNumber }}</td>
+                <td class="no-print">{{ entry.record.productName }}</td>
+                <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
+                <td class="print-only plan-col">{{ entry.record.planQty }}</td>
+                <td class="no-print">{{ entry.record.partName }}</td>
+                <td class="plan-col no-print">
+                  <input type="number" class="form-control form-control-sm" v-model.number="entry.record.planQty" />
+                  <span class="print-text">{{ entry.record.planQty }}</span>
+                </td>
+                <td class="hours-col">
+                  <input
+                    type="number"
+                    class="form-control form-control-sm no-print"
+                    style="width:80px"
+                    v-model.number="entry.record.hours"
+                    @blur="checkHours(entry.record)"
+                  />
+                  <span class="print-text">{{ entry.record.hours }}</span>
+                </td>
+                <td class="no-print">{{ entry.record.processCode }}</td>
+                <td class="process-col">
+                  <input
+                    class="form-control form-control-sm no-print"
+                    v-model="entry.record.processName"
+                    @blur="updateProcess(entry.record)"
+                  />
+                  <span class="print-text">{{ entry.record.processName }}</span>
+                </td>
+                <td class="print-only worker-code-col"></td>
+                <td class="print-only qualified-col"></td>
+                <td class="print-only time-col"></td>
+                <td class="print-only time-col"></td>
+                <td class="print-only inspector-col"></td>
+                <td class="barcode-cell">
+                  <div>{{ entry.record.barcode }}</div>
+                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
+                </td>
+                <td class="no-print">
+                  <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
+                  <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
+                </td>
+              </tr>
 
-            <!-- 仍然渲染补白行，但屏幕隐藏、打印显示（见 style.css） -->
-            <tr v-for="n in page.blankCount" :key="'blank-'+pageIndex+'-'+n" class="blank-row">
-              <td class="notification-col">&nbsp;</td>
-              <td class="no-print">&nbsp;</td>
-              <td class="drawing-col">&nbsp;</td>
-              <td class="print-only plan-col">&nbsp;</td>
-              <td class="no-print">&nbsp;</td>
-              <td class="plan-col no-print">&nbsp;</td>
-              <td class="hours-col">&nbsp;</td>
-              <td class="no-print">&nbsp;</td>
-              <td class="process-col">&nbsp;</td>
-              <td class="print-only worker-code-col">&nbsp;</td>
-              <td class="print-only qualified-col">&nbsp;</td>
-              <td class="print-only time-col">&nbsp;</td>
-              <td class="print-only time-col">&nbsp;</td>
-              <td class="print-only inspector-col">&nbsp;</td>
-              <td class="barcode-cell"><div>&nbsp;</div></td>
-              <td class="no-print"></td>
-            </tr>
-          </tbody>
-        </table>
+              <!-- 仍然渲染补白行，但屏幕隐藏、打印显示（见 style.css） -->
+              <tr v-for="n in item.page.blankCount" :key="'blank-'+item.index+'-'+n" class="blank-row">
+                <td class="notification-col">&nbsp;</td>
+                <td class="no-print">&nbsp;</td>
+                <td class="drawing-col">&nbsp;</td>
+                <td class="print-only plan-col">&nbsp;</td>
+                <td class="no-print">&nbsp;</td>
+                <td class="plan-col no-print">&nbsp;</td>
+                <td class="hours-col">&nbsp;</td>
+                <td class="no-print">&nbsp;</td>
+                <td class="process-col">&nbsp;</td>
+                <td class="print-only worker-code-col">&nbsp;</td>
+                <td class="print-only qualified-col">&nbsp;</td>
+                <td class="print-only time-col">&nbsp;</td>
+                <td class="print-only time-col">&nbsp;</td>
+                <td class="print-only inspector-col">&nbsp;</td>
+                <td class="barcode-cell"><div>&nbsp;</div></td>
+                <td class="no-print"></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </template>
     </div>
@@ -213,7 +222,27 @@ export default {
       })
       return pages
     },
-    currentPageInfo() { return this.pages[this.currentPage] || null }
+    currentPageInfo() { return this.pages[this.currentPage] || null },
+    visiblePages() {
+      if (!this.pages.length) return []
+      if (this.renderAllPages) {
+        return this.pages.map((page, index) => ({ page, index }))
+      }
+      const indices = new Set()
+      indices.add(this.currentPage)
+      if (this.renderBuffer > 0) {
+        for (let offset = 1; offset <= this.renderBuffer; offset += 1) {
+          const prev = this.currentPage - offset
+          const next = this.currentPage + offset
+          if (prev >= 0) indices.add(prev)
+          if (next < this.pages.length) indices.add(next)
+        }
+      }
+      return Array.from(indices)
+        .filter(index => index >= 0 && index < this.pages.length)
+        .sort((a, b) => a - b)
+        .map(index => ({ page: this.pages[index], index }))
+    }
   },
   watch: {
     currentPage(val) {
@@ -631,13 +660,6 @@ export default {
       if (!this.pages.length) { this.currentPage = 0; return }
       if (this.currentPage >= this.pages.length) this.currentPage = this.pages.length - 1
       if (this.currentPage < 0) this.currentPage = 0
-    },
-    shouldRenderPage(index) {
-      if (this.renderAllPages) return true
-      if (this.renderBuffer > 0) {
-        return Math.abs(index - this.currentPage) <= this.renderBuffer
-      }
-      return index === this.currentPage
     },
     preloadAdjacentBarcodes() {
       if (!this.pages.length) return

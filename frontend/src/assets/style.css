@@ -90,9 +90,15 @@ body {
   .print-text { display: inline !important; }
   .print-only { display: table-cell !important; }
 
-  .navbar,
-  .section-card {
+  .navbar {
     display: none !important;
+  }
+
+  .section-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   #preview-table,
