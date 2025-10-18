@@ -154,12 +154,18 @@ export default {
       showProgress: false,
       parseProgress: 0,
       renderAllPages: false,
-      renderBuffer: 1
+      renderBuffer: 0
     }
   },
   created() {
     this.fetchFiles()
     this.ensureProcessCache()
+  },
+  mounted() {
+    window.addEventListener('afterprint', this.handleAfterPrint)
+  },
+  beforeDestroy() {
+    window.removeEventListener('afterprint', this.handleAfterPrint)
   },
   computed: {
     currentFileName() {
@@ -210,7 +216,12 @@ export default {
     currentPageInfo() { return this.pages[this.currentPage] || null }
   },
   watch: {
-    currentPage(val) { this.$nextTick(() => this.loadBarcodesForPage(val)) }
+    currentPage(val) {
+      this.$nextTick(() => {
+        this.loadBarcodesForPage(val)
+        this.preloadAdjacentBarcodes()
+      })
+    }
   },
   methods: {
     handleRequestError(error, fallback) {
@@ -265,7 +276,11 @@ export default {
         this.fileId = this.selectedFileId
         this.file = null
         this.currentPage = 0
-        this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
+        this.$nextTick(() => {
+          this.ensurePageInRange()
+          this.loadBarcodesForPage(this.currentPage)
+          this.preloadAdjacentBarcodes()
+        })
       } catch (e) { console.error(e); alert('加载失败') }
       this.loading = false
     },
@@ -330,7 +345,11 @@ export default {
         if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
         await this.fetchFiles()
         this.currentPage = 0
-        this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
+        this.$nextTick(() => {
+          this.ensurePageInRange()
+          this.loadBarcodesForPage(this.currentPage)
+          this.preloadAdjacentBarcodes()
+        })
       } catch (e) {
         this.handleRequestError(e, '解析失败')
         this.showProgress = false
@@ -387,6 +406,9 @@ export default {
         this.renderAllPages = false
         document.title = title
       }
+    },
+    handleAfterPrint() {
+      this.renderAllPages = false
     },
     sanitize(text) {
       if (!text) return ''
@@ -612,7 +634,19 @@ export default {
     },
     shouldRenderPage(index) {
       if (this.renderAllPages) return true
-      return Math.abs(index - this.currentPage) <= this.renderBuffer
+      if (this.renderBuffer > 0) {
+        return Math.abs(index - this.currentPage) <= this.renderBuffer
+      }
+      return index === this.currentPage
+    },
+    preloadAdjacentBarcodes() {
+      if (!this.pages.length) return
+      const neighbors = []
+      if (this.currentPage > 0) neighbors.push(this.currentPage - 1)
+      if (this.currentPage < this.pages.length - 1) neighbors.push(this.currentPage + 1)
+      neighbors.forEach(pageIndex => {
+        this.loadBarcodesForPage(pageIndex)
+      })
     }
   }
 }
