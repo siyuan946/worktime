@@ -34,4 +34,7 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
     Page<WorkRecord> findByNaturalMonthAndFilledTrue(String naturalMonth, Pageable pageable);
 
     java.util.List<WorkRecord> findByNaturalMonthAndFilledTrue(String naturalMonth);
+
+    @Query("select distinct r.barcode from WorkRecord r where r.barcode in :barcodes")
+    java.util.List<String> findExistingBarcodes(@Param("barcodes") java.util.Collection<String> barcodes);
 }

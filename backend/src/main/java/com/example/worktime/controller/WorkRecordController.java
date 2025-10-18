@@ -140,12 +140,15 @@ public class WorkRecordController {
         } catch (DateTimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的月份");
         }
-        List<WorkRecord> filled = repository.findByFilledTrue();
-        List<WorkRecord> filtered = new ArrayList<>();
-        for (WorkRecord record : filled) {
-            YearMonth recordMonth = determineNaturalMonth(record);
-            if (ym.equals(recordMonth)) {
-                filtered.add(record);
+        String monthKey = ym.toString();
+        List<WorkRecord> filtered = new ArrayList<>(repository.findByNaturalMonthAndFilledTrue(monthKey));
+        if (filtered.isEmpty()) {
+            List<WorkRecord> filled = repository.findByFilledTrue();
+            for (WorkRecord record : filled) {
+                YearMonth recordMonth = determineNaturalMonth(record);
+                if (ym.equals(recordMonth)) {
+                    filtered.add(record);
+                }
             }
         }
         String fileName = String.format("records_%s.xlsx", ym);
@@ -446,17 +449,30 @@ public class WorkRecordController {
                                  @RequestHeader("X-User") String user) {
         UploadedFile file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
+        java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
         for (WorkRecord r : records) {
             r.setFile(file);
             r.setFilled(false);
+            String barcode = sanitizeBarcode(r.getBarcode());
+            r.setBarcode(barcode);
             prepare(r);
             YearMonth ym = determineNaturalMonth(r);
             r.setNaturalMonth(ym != null ? ym.toString() : null);
-            r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                candidates.add(barcode);
+            }
+        }
+        java.util.Set<String> existing = fetchExistingBarcodes(candidates);
+        for (WorkRecord r : records) {
+            String barcode = r.getBarcode();
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                r.setSupplemental(existing.contains(barcode));
+            } else {
+                r.setSupplemental(Boolean.FALSE);
+            }
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
-        System.out.println("Saved records: " + saved.size());
         logService.log(user, "新增记录" , "fileId=" + fileId + " count=" + saved.size());
         return saved;
     }
@@ -467,12 +483,6 @@ public class WorkRecordController {
                                      @RequestParam(value = "password", required = false) String password,
                                      @RequestParam(value = "store", required = false, defaultValue = "true") boolean store,
                                      @RequestHeader("X-User") String user) throws IOException {
-        UploadedFile uf = new UploadedFile();
-        uf.setFileName(file.getOriginalFilename());
-        uf.setData(file.getBytes());
-        uf.setUploadTime(java.time.LocalDateTime.now());
-        uf = fileRepository.saveAndFlush(uf);
-
         List<WorkRecord> parsed = parseExcel(file, password);
         int codeMissing = 0;
         int hoursMissing = 0;
@@ -480,6 +490,14 @@ public class WorkRecordController {
             if (Boolean.TRUE.equals(wr.getCodeMissing())) codeMissing++;
             if (Boolean.TRUE.equals(wr.getHoursMissing())) hoursMissing++;
         }
+
+        UploadedFile uf = new UploadedFile();
+        uf.setFileName(file.getOriginalFilename());
+        uf.setUploadTime(java.time.LocalDateTime.now());
+        if (store) {
+            uf.setData(file.getBytes());
+        }
+        uf = fileRepository.saveAndFlush(uf);
 
         if (store && !parsed.isEmpty()) {
             final int batchSize = 500;
@@ -491,9 +509,12 @@ public class WorkRecordController {
                     prepare(wr, false);
                     YearMonth ym = determineNaturalMonth(wr);
                     wr.setNaturalMonth(ym != null ? ym.toString() : null);
+                }
+                java.util.Set<String> existing = fetchExistingBarcodesFromChunk(chunk);
+                for (WorkRecord wr : chunk) {
                     String barcode = wr.getBarcode();
                     if (barcode != null && !barcode.trim().isEmpty()) {
-                        wr.setSupplemental(!repository.findByBarcode(barcode).isEmpty());
+                        wr.setSupplemental(existing.contains(barcode));
                     } else {
                         wr.setSupplemental(Boolean.FALSE);
                     }
@@ -514,9 +535,59 @@ public class WorkRecordController {
         if (!store) {
             result.put("records", parsed);
         }
-        System.out.println("Parsed records: " + parsed.size() + " for file " + uf.getId());
         logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
+    }
+
+    private java.util.Set<String> fetchExistingBarcodesFromChunk(java.util.Collection<WorkRecord> records) {
+        java.util.Set<String> codes = new java.util.LinkedHashSet<>();
+        for (WorkRecord wr : records) {
+            if (wr == null) {
+                continue;
+            }
+            String barcode = wr.getBarcode();
+            if (barcode == null) {
+                continue;
+            }
+            String trimmed = barcode.trim();
+            if (!trimmed.isEmpty()) {
+                codes.add(trimmed);
+            }
+        }
+        return fetchExistingBarcodes(codes);
+    }
+
+    private java.util.Set<String> fetchExistingBarcodes(java.util.Collection<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) {
+            return java.util.Collections.emptySet();
+        }
+        java.util.Set<String> unique = new java.util.LinkedHashSet<>();
+        for (String code : barcodes) {
+            if (code == null) {
+                continue;
+            }
+            String trimmed = code.trim();
+            if (!trimmed.isEmpty()) {
+                unique.add(trimmed);
+            }
+        }
+        if (unique.isEmpty()) {
+            return java.util.Collections.emptySet();
+        }
+        final int batchSize = 500;
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        java.util.List<String> batch = new java.util.ArrayList<>(batchSize);
+        for (String code : unique) {
+            batch.add(code);
+            if (batch.size() == batchSize) {
+                existing.addAll(repository.findExistingBarcodes(batch));
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            existing.addAll(repository.findExistingBarcodes(batch));
+        }
+        return existing;
     }
 
     private List<WorkRecord> parseExcel(MultipartFile file, String password) throws IOException {
