@@ -1,7 +1,7 @@
 <template>
   <section class="section-card">
     <h2 class="h5">Excel上传</h2>
-    <div class="input-group mb-2">
+    <div class="input-group mb-2 no-print">
       <input class="form-control" type="file" @change="onFileChange">
       <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
       <select class="form-select" style="max-width:180px" v-model="selectedFileId">
@@ -16,7 +16,7 @@
       <div class="spinner-border ms-2" v-if="loading"></div>
     </div>
 
-    <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
+    <div class="progress mb-2 no-print" v-if="showProgress" style="height: 0.75rem;">
       <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
         {{ parseProgress }}%
       </div>
@@ -62,11 +62,11 @@
               <th class="hours-col">单件工时</th>
               <th class="no-print">工序代码</th>
               <th class="process-col">工序</th>
-              <th class="print-only">人员代码</th>
-              <th class="print-only">合格件数</th>
-              <th class="print-only">起始时间</th>
-              <th class="print-only">结束时间</th>
-              <th class="print-only">检验员</th>
+              <th class="print-only worker-code-col">人员代码</th>
+              <th class="print-only qualified-col">合格件数</th>
+              <th class="print-only time-col">起始时间</th>
+              <th class="print-only time-col">结束时间</th>
+              <th class="print-only inspector-col">检验员</th>
               <th class="barcode-cell">条形码</th>
               <th class="no-print"></th>
             </tr>
@@ -92,11 +92,11 @@
                 <input class="form-control form-control-sm no-print" v-model="entry.record.processName" @blur="updateProcess(entry.record)" />
                 <span class="print-text">{{ entry.record.processName }}</span>
               </td>
-              <td class="print-only"></td>
-              <td class="print-only"></td>
-              <td class="print-only"></td>
-              <td class="print-only"></td>
-              <td class="print-only"></td>
+              <td class="print-only worker-code-col"></td>
+              <td class="print-only qualified-col"></td>
+              <td class="print-only time-col"></td>
+              <td class="print-only time-col"></td>
+              <td class="print-only inspector-col"></td>
               <td class="barcode-cell">
                 <div>{{ entry.record.barcode }}</div>
                 <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
@@ -118,11 +118,11 @@
               <td class="hours-col">&nbsp;</td>
               <td class="no-print">&nbsp;</td>
               <td class="process-col">&nbsp;</td>
-              <td class="print-only">&nbsp;</td>
-              <td class="print-only">&nbsp;</td>
-              <td class="print-only">&nbsp;</td>
-              <td class="print-only">&nbsp;</td>
-              <td class="print-only">&nbsp;</td>
+              <td class="print-only worker-code-col">&nbsp;</td>
+              <td class="print-only qualified-col">&nbsp;</td>
+              <td class="print-only time-col">&nbsp;</td>
+              <td class="print-only time-col">&nbsp;</td>
+              <td class="print-only inspector-col">&nbsp;</td>
               <td class="barcode-cell"><div>&nbsp;</div></td>
               <td class="no-print"></td>
             </tr>

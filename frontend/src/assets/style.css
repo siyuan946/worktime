@@ -14,6 +14,16 @@ body {
 
 .table th, .table td { vertical-align: middle; }
 
+.notification-col { min-width: 110px; max-width: 140px; }
+.drawing-col { min-width: 130px; max-width: 170px; }
+.plan-col { width: 80px; }
+.hours-col { width: 90px; }
+.process-col { min-width: 120px; max-width: 160px; }
+.worker-code-col { min-width: 120px; }
+.qualified-col { min-width: 90px; }
+.time-col { min-width: 130px; }
+.inspector-col { min-width: 120px; }
+
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
 .barcode-cell { min-width: 240px; min-height: 90px; }
 .barcode-cell img { display: block; height: 80px; width: auto; max-width: 280px; }
