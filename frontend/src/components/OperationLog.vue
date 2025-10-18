@@ -35,7 +35,7 @@ export default {
     async fetchLogs() {
       const user = localStorage.getItem('username')
       const headers = user ? { 'X-User': user } : {}
-      const res = await axios.get('http://localhost:8080/api/logs', { headers })
+      const res = await axios.get('/api/logs', { headers })
       this.logs = this.groupLogs(res.data)
     },
     groupLogs(raw) {
