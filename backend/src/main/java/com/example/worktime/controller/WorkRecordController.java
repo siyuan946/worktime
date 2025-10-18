@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -702,8 +703,24 @@ public class WorkRecordController {
     }
 
     private String sanitizeBarcode(String text) {
-        if (text == null) return null;
-        return text.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\\s+", "");
+        if (text == null) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
+        StringBuilder builder = new StringBuilder();
+        normalized.codePoints().forEach(cp -> {
+            if (Character.isWhitespace(cp)) {
+                return;
+            }
+            int type = Character.getType(cp);
+            if (type == Character.CONTROL || type == Character.FORMAT
+                    || type == Character.PRIVATE_USE || type == Character.SURROGATE
+                    || type == Character.UNASSIGNED) {
+                return;
+            }
+            builder.appendCodePoint(cp);
+        });
+        return builder.toString();
     }
 
     private String n(String v) { return v == null ? "" : v; }

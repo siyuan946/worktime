@@ -11,6 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @RestController
@@ -81,18 +83,43 @@ public class WorkTimeController {
         return saved;
     }
 
+    private final DataFormatter formatter = new DataFormatter(java.util.Locale.CHINA);
+    private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[] {
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.BASIC_ISO_DATE,
+            DateTimeFormatter.ofPattern("yyyy/M/d", java.util.Locale.CHINA),
+            DateTimeFormatter.ofPattern("yyyy-M-d", java.util.Locale.CHINA),
+            DateTimeFormatter.ofPattern("yyyy.M.d", java.util.Locale.CHINA),
+            DateTimeFormatter.ofPattern("yyyy年M月d日", java.util.Locale.CHINA)
+    };
+
     private String getString(Row row, Integer index) {
         if (index == null) return null;
         Cell cell = row.getCell(index);
         if (cell == null) return null;
-        return cell.toString();
+        String value = formatter.formatCellValue(cell);
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Double getDouble(Row row, Integer index) {
         if (index == null) return null;
         Cell cell = row.getCell(index);
         if (cell == null) return null;
-        return cell.getNumericCellValue();
+        String value = formatter.formatCellValue(cell);
+        if (value == null) return null;
+        String normalized = value.trim();
+        if (normalized.isEmpty()) return null;
+        normalized = normalized
+                .replace("，", ",")
+                .replace("．", ".")
+                .replaceAll("[ ,]", "");
+        try {
+            return new java.math.BigDecimal(normalized).doubleValue();
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private LocalDate getDate(Row row, Integer index) {
@@ -102,7 +129,17 @@ public class WorkTimeController {
         if (DateUtil.isCellDateFormatted(cell)) {
             return cell.getLocalDateTimeCellValue().toLocalDate();
         }
-        return LocalDate.parse(cell.toString());
+        String value = getString(row, index);
+        if (value == null) {
+            return null;
+        }
+        for (DateTimeFormatter fmt : DATE_FORMATTERS) {
+            try {
+                return LocalDate.parse(value, fmt);
+            } catch (DateTimeParseException ignore) {
+            }
+        }
+        return null;
     }
 
     private void validate(WorkTime wt) {

@@ -296,10 +296,12 @@ export default {
       catch (err) { return }
       this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}
       try {
-        const data = new FormData(); data.append('file', this.file)
+        const data = new FormData(); data.append('file', this.file); data.append('store', 'false')
         const res = await axios.post('/api/workrecords/parse', data, { headers })
-        this.fileId = res.data.fileId
-        const records = Array.isArray(res.data.records) ? res.data.records : []
+        const payload = res && res.data ? res.data : {}
+        this.fileId = payload.fileId
+        this.selectedFileId = payload.fileId || ''
+        const records = Array.isArray(payload.records) ? payload.records : []
         const processed = []; const total = records.length
         if (!total) this.parseProgress = 100
         for (let i = 0; i < records.length; i++) {
@@ -381,7 +383,19 @@ export default {
       window.print()
       document.title = title
     },
-    sanitize(text) { return text ? text.replace(/[^\x00-\x7F]/g, '') : '' },
+    sanitize(text) {
+      if (!text) return ''
+      const source = typeof text.normalize === 'function' ? text.normalize('NFKC') : text
+      const invis = /\p{C}/u
+      const whitespace = /\s/u
+      let result = ''
+      for (const ch of Array.from(source)) {
+        if (whitespace.test(ch)) continue
+        if (invis.test(ch)) continue
+        result += ch
+      }
+      return result
+    },
     async ensureProcessCache(force = false) {
       if (this.processCacheLoaded && !force) return
       try {
@@ -399,12 +413,12 @@ export default {
         this.processCache = map; this.processCacheLoaded = true
       } catch (e) { console.error('加载工序缓存失败', e) }
     },
-    async updateProcess(r, cacheReady = false) {
+    async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
       if (!cacheReady) await this.ensureProcessCache()
       const rawName = r.processName || ''; const name = rawName.trim()
-      if (!name) { r.processCode = ''; r.codeMissing = true; await this.updateBarcode(r); return }
+      if (!name) { r.processCode = ''; r.codeMissing = true; await this.updateBarcode(r, fetchBarcodeImage); return }
       let code = this.processCache[name]
-      if (!code) {
+      if (!code && allowFetch) {
         try {
           const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
           if (res.data && res.data.code) {
@@ -414,7 +428,7 @@ export default {
         } catch (e) { /* ignore */ }
       }
       if (code) { r.processCode = code; r.codeMissing = false } else { r.processCode = rawName; r.codeMissing = true }
-      await this.updateBarcode(r)
+      await this.updateBarcode(r, fetchBarcodeImage)
     },
     async checkHours(r) { r.hoursMissing = r.hours == null || r.hours === '' },
     deleteRow(index) {
@@ -464,6 +478,9 @@ export default {
       const missing = []
       for (const entry of page.entries) {
         const code = this.sanitize(entry.record.barcode)
+        if (code !== entry.record.barcode) {
+          this.$set(entry.record, 'barcode', code)
+        }
         if (!code) continue
         if (this.barcodeCache[code]) {
           if (entry.record.barcodeImage !== this.barcodeCache[code]) {
@@ -494,18 +511,38 @@ export default {
     },
     async refreshProcesses() {
       await this.ensureProcessCache()
-      for (const r of this.preview) { // 串行
-        // eslint-disable-next-line no-await-in-loop
-        await this.updateProcess(r, true)
+      const missing = new Set()
+      for (const record of this.preview) {
+        const name = (record.processName || '').trim()
+        if (!name) continue
+        if (!this.processCache[name]) missing.add(name)
       }
+      if (missing.size) {
+        try {
+          const res = await axios.post('/api/processcodes/lookup', Array.from(missing))
+          const data = res && res.data ? res.data : {}
+          Object.keys(data || {}).forEach(key => {
+            if (!key) return
+            const value = data[key]
+            if (value == null) return
+            const code = String(value).trim()
+            if (code) this.$set(this.processCache, key, code)
+          })
+        } catch (error) {
+          console.error('批量加载工序失败', error)
+        }
+      }
+      const tasks = this.preview.map(r => this.updateProcess(r, true, false, false))
+      await Promise.all(tasks)
     },
-    async updateBarcode(r) {
+    async updateBarcode(r, fetchImage = true) {
       if (r.drawingNumber && r.notificationNumber && r.processCode) {
         const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
         const clean = this.sanitize(bar)
         r.barcode = clean
         if (!clean) { r.barcodeImage = ''; return }
         if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
+        if (!fetchImage) { r.barcodeImage = ''; return }
         try {
           const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar } })
           if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }

@@ -3,11 +3,13 @@ package com.example.worktime.controller;
 import com.example.worktime.model.ProcessCode;
 import com.example.worktime.repository.ProcessCodeRepository;
 import com.example.worktime.service.OperationLogService;
+import com.example.worktime.service.ProcessCodeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/processcodes")
@@ -15,10 +17,14 @@ import java.util.List;
 public class ProcessCodeController {
     private final ProcessCodeRepository repository;
     private final OperationLogService logService;
+    private final ProcessCodeService processService;
 
-    public ProcessCodeController(ProcessCodeRepository repository, OperationLogService logService) {
+    public ProcessCodeController(ProcessCodeRepository repository,
+                                 OperationLogService logService,
+                                 ProcessCodeService processService) {
         this.repository = repository;
         this.logService = logService;
+        this.processService = processService;
     }
 
     @GetMapping
@@ -38,6 +44,11 @@ public class ProcessCodeController {
     @GetMapping("/name/{name}")
     public ProcessCode byName(@PathVariable String name) {
         return repository.findByName(name);
+    }
+
+    @PostMapping("/lookup")
+    public Map<String, String> lookup(@RequestBody List<String> names) {
+        return processService.getCodes(names);
     }
 
     @PostMapping

@@ -31,10 +31,6 @@ export default {
     return { loggedIn: false }
   },
   created() {
-    window.addEventListener('beforeunload', () => {
-      localStorage.removeItem('loggedIn')
-      localStorage.removeItem('username')
-    })
     this.loggedIn = localStorage.getItem('loggedIn') === 'true'
   },
   methods: {

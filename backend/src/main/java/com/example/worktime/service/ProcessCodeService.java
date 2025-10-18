@@ -4,6 +4,7 @@ import com.example.worktime.model.ProcessCode;
 import com.example.worktime.repository.ProcessCodeRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -66,5 +67,44 @@ public class ProcessCodeService {
             }
         }
         return null;
+    }
+
+    public Map<String, String> getCodes(Collection<String> names) {
+        if (names == null || names.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> result = new HashMap<>();
+        List<String> pending = new java.util.ArrayList<>();
+        for (String raw : names) {
+            if (raw == null) {
+                continue;
+            }
+            String name = raw.trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            String cached = cache.get(name);
+            if (cached != null) {
+                result.put(name, cached);
+            } else {
+                pending.add(name);
+            }
+        }
+        if (!pending.isEmpty()) {
+            List<ProcessCode> found = repository.findByNameIn(pending);
+            for (ProcessCode pc : found) {
+                if (pc == null || pc.getName() == null || pc.getCode() == null) {
+                    continue;
+                }
+                String name = pc.getName().trim();
+                String code = pc.getCode().trim();
+                if (name.isEmpty() || code.isEmpty()) {
+                    continue;
+                }
+                cache.put(name, code);
+                result.put(name, code);
+            }
+        }
+        return result;
     }
 }
