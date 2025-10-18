@@ -31,24 +31,27 @@
       </tbody>
     </table>
     <!-- 新增人员模态框 -->
-    <div class="modal fade" tabindex="-1" ref="addModal">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">新增人员</h5>
-            <button type="button" class="btn-close" @click="closeModal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.code" placeholder="工号" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.name" placeholder="姓名" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.workshop" placeholder="车间" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.team" placeholder="班组" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" placeholder="入厂日期" /></div>
-            <div><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" placeholder="离厂日期" /></div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeModal">取消</button>
-            <button class="btn btn-primary" @click="createWorker" :disabled="!canAdd">保存</button>
+    <div v-if="showModal">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" @click.self="closeModal">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">新增人员</h5>
+              <button type="button" class="btn-close" @click="closeModal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.code" placeholder="工号" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.name" placeholder="姓名" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.workshop" placeholder="车间" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.team" placeholder="班组" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.entryDate" type="date" placeholder="入厂日期" /></div>
+              <div><input class="form-control form-control-sm" v-model="newWorker.leaveDate" type="date" placeholder="离厂日期" /></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeModal">取消</button>
+              <button class="btn btn-primary" @click="createWorker" :disabled="!canAdd">保存</button>
+            </div>
           </div>
         </div>
       </div>
@@ -64,7 +67,7 @@ export default {
       workers: [],
       search: '',
       newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' },
-      modal: null
+      showModal: false
     }
   },
   computed: {
@@ -80,16 +83,24 @@ export default {
   created() {
     this.fetchWorkers('')
   },
-  mounted() {
-    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
+  beforeDestroy() {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('modal-open')
+    }
   },
   methods: {
     openModal() {
       this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
-      this.modal.show()
+      this.showModal = true
+      if (typeof document !== 'undefined') {
+        document.body.classList.add('modal-open')
+      }
     },
     closeModal() {
-      this.modal.hide()
+      this.showModal = false
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('modal-open')
+      }
     },
     async fetchWorkers(term) {
       const url = term
@@ -114,3 +125,12 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.modal-backdrop {
+  z-index: 1050;
+}
+.modal {
+  z-index: 1055;
+}
+</style>

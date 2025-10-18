@@ -29,22 +29,25 @@
       </tbody>
     </table>
     <!-- 新增工序代码模态框 -->
-    <div class="modal fade" tabindex="-1" ref="addModal">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">新增工序代码</h5>
-            <button type="button" class="btn-close" @click="closeModal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.name" placeholder="工序名称" /></div>
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.category" placeholder="大类" /></div>
-            <div><input class="form-control form-control-sm" v-model="newProcess.content" placeholder="内容" /></div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeModal">取消</button>
-            <button class="btn btn-primary" @click="createProcess" :disabled="!canAdd">保存</button>
+    <div v-if="showModal">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" @click.self="closeModal">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">新增工序代码</h5>
+              <button type="button" class="btn-close" @click="closeModal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.name" placeholder="工序名称" /></div>
+              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.category" placeholder="大类" /></div>
+              <div><input class="form-control form-control-sm" v-model="newProcess.content" placeholder="内容" /></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeModal">取消</button>
+              <button class="btn btn-primary" @click="createProcess" :disabled="!canAdd">保存</button>
+            </div>
           </div>
         </div>
       </div>
@@ -60,7 +63,7 @@ export default {
       processCodes: [],
       search: '',
       newProcess: { code: '', name: '', category: '', content: '' },
-      modal: null
+      showModal: false
     }
   },
   computed: {
@@ -79,16 +82,24 @@ export default {
   created() {
     this.fetchProcesses('')
   },
-  mounted() {
-    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
+  beforeDestroy() {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('modal-open')
+    }
   },
   methods: {
     openModal() {
       this.newProcess = { code: '', name: '', category: '', content: '' }
-      this.modal.show()
+      this.showModal = true
+      if (typeof document !== 'undefined') {
+        document.body.classList.add('modal-open')
+      }
     },
     closeModal() {
-      this.modal.hide()
+      this.showModal = false
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('modal-open')
+      }
     },
     async fetchProcesses(term) {
       const url = term
@@ -113,3 +124,12 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.modal-backdrop {
+  z-index: 1050;
+}
+.modal {
+  z-index: 1055;
+}
+</style>
