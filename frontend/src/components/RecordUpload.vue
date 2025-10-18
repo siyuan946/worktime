@@ -39,12 +39,12 @@
       </div>
 
       <!-- 保持不变：force-new-page 确保新图号必换页 -->
-      <div
-        v-for="(page, pageIndex) in pages"
-        :key="pageIndex"
-        class="preview-page"
-        :class="{ 'active-page': pageIndex === currentPage, 'force-new-page': page.isFirstOfDrawing && pageIndex !== 0 }"
-      >
+      <template v-for="(page, pageIndex) in pages" :key="pageIndex">
+        <div
+          v-if="shouldRenderPage(pageIndex)"
+          class="preview-page"
+          :class="{ 'active-page': pageIndex === currentPage, 'force-new-page': page.isFirstOfDrawing && pageIndex !== 0 }"
+        >
         <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
           <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
           <span class="text-muted">第 {{ pageIndex + 1 }} 页 / 共 {{ pages.length }} 页</span>
@@ -128,7 +128,8 @@
             </tr>
           </tbody>
         </table>
-      </div>
+        </div>
+      </template>
     </div>
   </section>
 </template>
@@ -151,7 +152,9 @@ export default {
       processCacheLoaded: false,
       barcodeCache: {},
       showProgress: false,
-      parseProgress: 0
+      parseProgress: 0,
+      renderAllPages: false,
+      renderBuffer: 1
     }
   },
   created() {
@@ -372,16 +375,18 @@ export default {
       if (!this.preview.length) return
       this.loading = true
       try {
-        for (let i = 0; i < this.pages.length; i++) {
-          // eslint-disable-next-line no-await-in-loop
-          await this.loadBarcodesForPage(i)
-        }
+        await this.prefetchAllBarcodes()
       } finally { this.loading = false }
       const title = document.title
       if (this.currentFileName) document.title = this.currentFileName
-      await this.$nextTick()
-      window.print()
-      document.title = title
+      this.renderAllPages = true
+      try {
+        await this.$nextTick()
+        window.print()
+      } finally {
+        this.renderAllPages = false
+        document.title = title
+      }
     },
     sanitize(text) {
       if (!text) return ''
@@ -482,24 +487,20 @@ export default {
           this.$set(entry.record, 'barcode', code)
         }
         if (!code) continue
-        if (this.barcodeCache[code]) {
-          if (entry.record.barcodeImage !== this.barcodeCache[code]) {
+        if (!this.barcodeCache[code] && !entry.record.barcodeImage) missing.push(code)
+      }
+      if (!missing.length) {
+        for (const entry of page.entries) {
+          const code = this.sanitize(entry.record.barcode)
+          if (code && this.barcodeCache[code] && entry.record.barcodeImage !== this.barcodeCache[code]) {
             this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
           }
-        } else if (!entry.record.barcodeImage) {
-          missing.push(code)
         }
+        return
       }
-      if (!missing.length) return
-      const unique = Array.from(new Set(missing))
       this._barcodeLoading.add(pageIndex)
       try {
-        const res = await axios.post('/api/workrecords/generateBarcodes', unique)
-        const data = res && res.data ? res.data : {}
-        Object.keys(data || {}).forEach(key => {
-          if (!key) return
-          this.$set(this.barcodeCache, key, data[key])
-        })
+        await this.fetchBarcodes(missing)
         for (const entry of page.entries) {
           const code = this.sanitize(entry.record.barcode)
           if (code && this.barcodeCache[code]) {
@@ -508,6 +509,51 @@ export default {
         }
       } catch (e) { console.error('加载条码失败', e) }
       finally { this._barcodeLoading.delete(pageIndex) }
+    },
+    async fetchBarcodes(codes) {
+      if (!Array.isArray(codes) || !codes.length) return
+      const unique = []
+      const seen = new Set()
+      for (const raw of codes) {
+        const code = this.sanitize(raw)
+        if (!code) continue
+        if (this.barcodeCache[code]) continue
+        if (seen.has(code)) continue
+        seen.add(code)
+        unique.push(code)
+      }
+      if (!unique.length) return
+      const chunkSize = 250
+      for (let offset = 0; offset < unique.length; offset += chunkSize) {
+        const chunk = unique.slice(offset, offset + chunkSize)
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const res = await axios.post('/api/workrecords/generateBarcodes', chunk)
+          const data = res && res.data ? res.data : {}
+          Object.keys(data || {}).forEach(key => {
+            if (!key) return
+            this.$set(this.barcodeCache, key, data[key])
+          })
+        } catch (error) {
+          console.error('批量生成条码失败', error)
+          break
+        }
+      }
+    },
+    async prefetchAllBarcodes() {
+      const codes = []
+      for (const record of this.preview) {
+        const code = this.sanitize(record.barcode)
+        if (!code) continue
+        codes.push(code)
+      }
+      await this.fetchBarcodes(codes)
+      for (const record of this.preview) {
+        const code = this.sanitize(record.barcode)
+        if (code && this.barcodeCache[code] && record.barcodeImage !== this.barcodeCache[code]) {
+          this.$set(record, 'barcodeImage', this.barcodeCache[code])
+        }
+      }
     },
     async refreshProcesses() {
       await this.ensureProcessCache()
@@ -563,6 +609,10 @@ export default {
       if (!this.pages.length) { this.currentPage = 0; return }
       if (this.currentPage >= this.pages.length) this.currentPage = this.pages.length - 1
       if (this.currentPage < 0) this.currentPage = 0
+    },
+    shouldRenderPage(index) {
+      if (this.renderAllPages) return true
+      return Math.abs(index - this.currentPage) <= this.renderBuffer
     }
   }
 }
