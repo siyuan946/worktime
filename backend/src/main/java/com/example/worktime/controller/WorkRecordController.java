@@ -100,7 +100,7 @@ public class WorkRecordController {
                                          @RequestParam String drawing,
                                          @RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "200") int size) {
-        int pageSize = Math.max(50, Math.min(size, 500));
+        int pageSize = Math.max(1, Math.min(size, 500));
         Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
         Page<WorkRecord> result = repository.findByFileIdAndDrawingNumber(fileId, drawing, pageable);
         result.forEach(r -> r.setBarcodeImage(null));
