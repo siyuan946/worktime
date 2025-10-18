@@ -29,25 +29,22 @@
       </tbody>
     </table>
     <!-- 新增工序代码模态框 -->
-    <div v-if="showModal">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" @click.self="closeModal">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">新增工序代码</h5>
-              <button type="button" class="btn-close" @click="closeModal"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" /></div>
-              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.name" placeholder="工序名称" /></div>
-              <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.category" placeholder="大类" /></div>
-              <div><input class="form-control form-control-sm" v-model="newProcess.content" placeholder="内容" /></div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="closeModal">取消</button>
-              <button class="btn btn-primary" @click="createProcess" :disabled="!canAdd">保存</button>
-            </div>
+    <div class="modal fade" tabindex="-1" ref="addModal">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">新增工序代码</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.name" placeholder="工序名称" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.category" placeholder="大类" /></div>
+            <div><input class="form-control form-control-sm" v-model="newProcess.content" placeholder="内容" /></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">取消</button>
+            <button class="btn btn-primary" @click="createProcess" :disabled="!canAdd">保存</button>
           </div>
         </div>
       </div>
@@ -63,7 +60,7 @@ export default {
       processCodes: [],
       search: '',
       newProcess: { code: '', name: '', category: '', content: '' },
-      showModal: false
+      modal: null
     }
   },
   computed: {
@@ -82,54 +79,37 @@ export default {
   created() {
     this.fetchProcesses('')
   },
-  beforeDestroy() {
-    if (typeof document !== 'undefined') {
-      document.body.classList.remove('modal-open')
-    }
+  mounted() {
+    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
   },
   methods: {
     openModal() {
       this.newProcess = { code: '', name: '', category: '', content: '' }
-      this.showModal = true
-      if (typeof document !== 'undefined') {
-        document.body.classList.add('modal-open')
-      }
+      this.modal.show()
     },
     closeModal() {
-      this.showModal = false
-      if (typeof document !== 'undefined') {
-        document.body.classList.remove('modal-open')
-      }
+      this.modal.hide()
     },
     async fetchProcesses(term) {
       const url = term
-        ? `http://localhost:8080/api/processcodes/search?term=${encodeURIComponent(term)}`
-        : 'http://localhost:8080/api/processcodes'
+        ? `/api/processcodes/search?term=${encodeURIComponent(term)}`
+        : '/api/processcodes'
       const res = await axios.get(url)
       this.processCodes = res.data
     },
     async createProcess() {
-      await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
+      await axios.post('/api/processcodes', this.newProcess)
       this.closeModal()
       this.fetchProcesses(this.search)
     },
     async updateProcess(p) {
-      await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
+      await axios.put(`/api/processcodes/${p.id}`, p)
       this.fetchProcesses(this.search)
     },
     async deleteProcess(id) {
-      await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
+      await axios.delete(`/api/processcodes/${id}`)
       this.fetchProcesses(this.search)
     }
   }
 }
 </script>
-
-<style scoped>
-.modal-backdrop {
-  z-index: 1050;
-}
-.modal {
-  z-index: 1055;
-}
-</style>
