@@ -97,9 +97,9 @@ public class WorkRecordController {
 
     @GetMapping("/file/{fileId}/page")
     public Page<WorkRecord> pageByDrawing(@PathVariable Long fileId,
-                                         @RequestParam String drawing,
-                                         @RequestParam(defaultValue = "0") int page,
-                                         @RequestParam(defaultValue = "200") int size) {
+                                          @RequestParam String drawing,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "200") int size) {
         int pageSize = Math.max(1, Math.min(size, 500));
         Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
         Page<WorkRecord> result = repository.findByFileIdAndDrawingNumber(fileId, drawing, pageable);
@@ -286,7 +286,7 @@ public class WorkRecordController {
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String safeName = (fileName == null || fileName.isEmpty()) ? "records.xlsx" : fileName;
-        String encoded = java.net.URLEncoder.encode(safeName, StandardCharsets.UTF_8).replace("+", "%20");
+        String encoded = java.net.URLEncoder.encode(safeName, String.valueOf(StandardCharsets.UTF_8)).replace("+", "%20");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + encoded + "\"; filename*=UTF-8''" + encoded);
         wb.write(response.getOutputStream());
         wb.close();
