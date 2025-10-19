@@ -203,14 +203,14 @@ export default {
   },
   methods: {
     async fetchFiles() {
-      const res = await axios.get('http://localhost:8080/api/files')
+      const res = await axios.get('/api/files')
       this.files = res.data
     },
     async loadFile() {
       if (!this.selectedFileId) return
       try {
         const res = await axios.get(
-          `http://localhost:8080/api/workrecords/file/${this.selectedFileId}/filled`
+          `/api/workrecords/file/${this.selectedFileId}/filled`
         )
         if (!Array.isArray(res.data) || !res.data.length) {
           alert('该文件暂无填写记录')
@@ -229,7 +229,7 @@ export default {
       if (!this.exportMonth) return
       const [year, month] = this.exportMonth.split('-')
       const res = await axios.get(
-        `http://localhost:8080/api/workrecords/natural-month/${year}/${month}/export`,
+        `/api/workrecords/natural-month/${year}/${month}/export`,
         { responseType: 'blob' }
       )
       const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -243,7 +243,7 @@ export default {
       if (!this.exportDrawingReady) return
       const drawing = this.exportDrawing.trim()
       const res = await axios.get(
-        `http://localhost:8080/api/workrecords/drawing/${encodeURIComponent(drawing)}/export`,
+        `/api/workrecords/drawing/${encodeURIComponent(drawing)}/export`,
         { responseType: 'blob' }
       )
       const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -261,7 +261,7 @@ export default {
         this.viewOnly = false
         this.planQtyInput = null
       }
-      const url = `http://localhost:8080/api/workrecords/barcode/${encodeURIComponent(code)}`
+      const url = `/api/workrecords/barcode/${encodeURIComponent(code)}`
       try {
         const res = await axios.get(url)
         this.viewOnly = false
@@ -287,7 +287,7 @@ export default {
       }
       const payload = this.buildPayload(rec)
       try {
-        const res = await axios.put(`http://localhost:8080/api/workrecords/${rec.id}`, payload)
+        const res = await axios.put(`/api/workrecords/${rec.id}`, payload)
         await this.processRecords([res.data], { replace: false })
       } catch (e) {
         console.error(e)
@@ -323,7 +323,7 @@ export default {
       }
       this.savingAll = true
       try {
-        const res = await axios.put('http://localhost:8080/api/workrecords/bulk', payloads)
+        const res = await axios.put('/api/workrecords/bulk', payloads)
         await this.processRecords(res.data, { replace: false })
       } catch (e) {
         console.error(e)
@@ -335,13 +335,13 @@ export default {
     async addRecord() {
       if (!this.records.length) return
       const id = this.records[0].id
-      const res = await axios.post(`http://localhost:8080/api/workrecords/duplicate/${id}`)
+      const res = await axios.post(`/api/workrecords/duplicate/${id}`)
       await this.processRecords([res.data], { replace: false })
     },
     async deleteRecord(rec) {
       if (!confirm('确定删除这条记录?')) return
       try {
-        await axios.delete(`http://localhost:8080/api/workrecords/${rec.id}`)
+        await axios.delete(`/api/workrecords/${rec.id}`)
         const idx = this.records.indexOf(rec)
         if (idx !== -1) this.records.splice(idx, 1)
         if (!this.records.length) this.planQtyInput = null
@@ -468,7 +468,7 @@ export default {
       for (const c of codes) {
         if (!c) continue
         try {
-          const res = await axios.get(`http://localhost:8080/api/workers/code/${encodeURIComponent(c)}`)
+          const res = await axios.get(`/api/workers/code/${encodeURIComponent(c)}`)
           const w = res.data
           if (w) {
             if (w.name) {

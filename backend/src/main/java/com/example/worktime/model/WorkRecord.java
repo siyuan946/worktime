@@ -35,6 +35,9 @@ public class WorkRecord {
     // 计划数
     private Integer planQty;
 
+    // 原始Excel行号
+    private Integer sourceRowNumber;
+
     // 工序名称
     private String processName;
 
@@ -87,6 +90,9 @@ public class WorkRecord {
     // 是否已填写合格数
     private Boolean filled;
 
+    // 冗余：所属自然月（YYYY-MM）
+    private String naturalMonth;
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
@@ -116,6 +122,9 @@ public class WorkRecord {
 
     public Integer getPlanQty() { return planQty; }
     public void setPlanQty(Integer planQty) { this.planQty = planQty; }
+
+    public Integer getSourceRowNumber() { return sourceRowNumber; }
+    public void setSourceRowNumber(Integer sourceRowNumber) { this.sourceRowNumber = sourceRowNumber; }
 
     public String getProcessName() { return processName; }
     public void setProcessName(String processName) { this.processName = processName; }
@@ -180,5 +189,8 @@ public class WorkRecord {
 
     public Boolean getFilled() { return filled; }
     public void setFilled(Boolean filled) { this.filled = filled; }
+
+    public String getNaturalMonth() { return naturalMonth; }
+    public void setNaturalMonth(String naturalMonth) { this.naturalMonth = naturalMonth; }
 }
 

@@ -210,14 +210,44 @@ export default {
     currentPage(val) { this.$nextTick(() => this.loadBarcodesForPage(val)) }
   },
   methods: {
+    handleRequestError(error, fallback) {
+      if (error instanceof Error && error.message === 'missing-user') return
+      console.error(error)
+      const response = error && error.response
+      let message = null
+      if (response && response.data != null) {
+        const data = response.data
+        if (typeof data === 'string') {
+          message = data
+        } else if (typeof data === 'object') {
+          message = data.message || data.error || data.detail || null
+          if (!message && Array.isArray(data.errors) && data.errors.length) {
+            const first = data.errors[0]
+            message = typeof first === 'string' ? first : (first && first.message) || null
+          }
+        }
+      }
+      if (!message && error && typeof error.message === 'string') {
+        message = error.message
+      }
+      alert(message || fallback || '操作失败')
+    },
+    requireUserHeaders() {
+      const user = (localStorage.getItem('username') || '').trim()
+      if (!user) {
+        alert('请先登录后再进行此操作')
+        throw new Error('missing-user')
+      }
+      return { 'X-User': user }
+    },
     onFileChange(e) { this.file = e.target.files[0] },
-    async fetchFiles() { const res = await axios.get('/api/api/files'); this.files = res.data },
+    async fetchFiles() { const res = await axios.get('/api/files'); this.files = res.data },
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
       this.barcodeCache = {}
       try {
-        const res = await axios.get(`/api/api/workrecords/file/${this.selectedFileId}`)
+        const res = await axios.get(`/api/workrecords/file/${this.selectedFileId}`)
         if (!Array.isArray(res.data) || !res.data.length) {
           alert('未找到该文件的记录'); this.preview = []
         } else {
@@ -239,24 +269,35 @@ export default {
     async remove() {
       if (!this.selectedFileId) return
       if (!confirm('删除该文件及其所有记录，确定删除?')) return
+      let headers
+      try { headers = this.requireUserHeaders() }
+      catch (err) { return }
       this.loading = true
-      await axios.delete(`/api/api/files/${this.selectedFileId}`)
+      try {
+        await axios.delete(`/api/files/${this.selectedFileId}`, { headers })
+        this.selectedFileId = ''
+        this.preview = []
+        this.currentPage = 0
+        await this.fetchFiles()
+        alert('已删除')
+      } catch (e) {
+        console.error(e)
+        alert('删除失败')
+      }
       this.loading = false
-      this.selectedFileId = ''
-      this.preview = []
-      this.currentPage = 0
-      await this.fetchFiles()
-      alert('已删除')
     },
     async parse() {
       if (this.file) {
         const dup = this.files.find(f => f.fileName === this.file.name)
         if (dup) { const cont = confirm('发现同名文件，若内容相同请勿重复上传。继续上传?'); if (!cont) return }
       }
+      let headers
+      try { headers = this.requireUserHeaders() }
+      catch (err) { return }
       this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}
       try {
         const data = new FormData(); data.append('file', this.file)
-        const res = await axios.post('/api/api/workrecords/parse', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+        const res = await axios.post('/api/workrecords/parse', data, { headers })
         this.fileId = res.data.fileId
         const records = Array.isArray(res.data.records) ? res.data.records : []
         const processed = []; const total = records.length
@@ -285,21 +326,45 @@ export default {
         await this.fetchFiles()
         this.currentPage = 0
         this.$nextTick(() => { this.ensurePageInRange(); this.loadBarcodesForPage(this.currentPage) })
-      } catch (e) { console.error(e); alert('解析失败'); this.showProgress = false }
+      } catch (e) {
+        this.handleRequestError(e, '解析失败')
+        this.showProgress = false
+      }
       this.loading = false
       if (this.showProgress) { this.parseProgress = 100; setTimeout(() => { this.showProgress = false }, 600) }
     },
     async save() {
       if(!confirm('请再次核查数据后确认提交')) return
+      let headers
+      try { headers = this.requireUserHeaders() }
+      catch (err) { return }
       this.loading = true
       await this.refreshProcesses()
       const valid = this.preview.filter(r => r.processCode && r.barcode)
-      const res = await axios.post(`/api/api/workrecords?fileId=${this.fileId}`, valid)
-      if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
-      const hasSupp = res.data.some(r => r.supplemental)
-      this.preview = []; this.file = null; this.loading = false
-      alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
-      await this.fetchFiles(); this.$emit('saved')
+      const chunkSize = 1000
+      const url = `/api/workrecords?fileId=${this.fileId}`
+      const responses = []
+      try {
+        for (let offset = 0; offset < valid.length; offset += chunkSize) {
+          const chunk = valid.slice(offset, offset + chunkSize)
+          // eslint-disable-next-line no-await-in-loop
+          const res = await axios.post(url, chunk, { headers })
+          if (Array.isArray(res.data)) responses.push(...res.data)
+        }
+        if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
+        const hasSupp = responses.some(r => r && r.supplemental)
+        this.preview = []
+        this.file = null
+        alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
+        await this.fetchFiles()
+        this.$emit('saved')
+      } catch (e) {
+        console.error(e)
+        alert('保存失败')
+        return
+      } finally {
+        this.loading = false
+      }
     },
     async print() {
       if (!this.preview.length) return
@@ -320,7 +385,7 @@ export default {
     async ensureProcessCache(force = false) {
       if (this.processCacheLoaded && !force) return
       try {
-        const res = await axios.get('/api/api/processcodes')
+        const res = await axios.get('/api/processcodes')
         const map = {}
         if (Array.isArray(res.data)) {
           for (const item of res.data) {
@@ -341,7 +406,7 @@ export default {
       let code = this.processCache[name]
       if (!code) {
         try {
-          const res = await axios.get(`/api/api/processcodes/name/${encodeURIComponent(name)}`)
+          const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
           if (res.data && res.data.code) {
             code = String(res.data.code).trim()
             if (code) this.$set(this.processCache, name, code)
@@ -412,7 +477,7 @@ export default {
       const unique = Array.from(new Set(missing))
       this._barcodeLoading.add(pageIndex)
       try {
-        const res = await axios.post('/api/api/workrecords/generateBarcodes', unique)
+        const res = await axios.post('/api/workrecords/generateBarcodes', unique)
         const data = res && res.data ? res.data : {}
         Object.keys(data || {}).forEach(key => {
           if (!key) return
@@ -442,7 +507,7 @@ export default {
         if (!clean) { r.barcodeImage = ''; return }
         if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
         try {
-          const res = await axios.get('/api/api/workrecords/generateBarcode', { params: { text: bar } })
+          const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar } })
           if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }
           else { r.barcodeImage = '' }
         } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }

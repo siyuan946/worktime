@@ -7,6 +7,9 @@ import com.example.worktime.repository.UploadedFileRepository;
 import com.example.worktime.service.OperationLogService;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.worktime.model.Worker;
 import com.google.zxing.BarcodeFormat;
@@ -25,11 +28,14 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -44,6 +50,8 @@ public class WorkRecordController {
     private final WorkerService workerService;
     private final UploadedFileRepository fileRepository;
     private final OperationLogService logService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService,
                                 WorkerService workerService, UploadedFileRepository fileRepository,
@@ -69,6 +77,34 @@ public class WorkRecordController {
     @GetMapping("/file/{fileId}")
     public List<WorkRecord> byFile(@PathVariable Long fileId) {
         return repository.findByFileId(fileId);
+    }
+
+    @GetMapping("/file/{fileId}/drawings")
+    public List<Map<String, Object>> drawingBuckets(@PathVariable Long fileId) {
+        List<Object[]> raw = repository.findDrawingBuckets(fileId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : raw) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("drawing", row[0]);
+            map.put("count", row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L);
+            if (row.length > 2 && row[2] instanceof Number) {
+                map.put("startRow", ((Number) row[2]).longValue());
+            }
+            result.add(map);
+        }
+        return result;
+    }
+
+    @GetMapping("/file/{fileId}/page")
+    public Page<WorkRecord> pageByDrawing(@PathVariable Long fileId,
+                                          @RequestParam String drawing,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "200") int size) {
+        int pageSize = Math.max(1, Math.min(size, 500));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
+        Page<WorkRecord> result = repository.findByFileIdAndDrawingNumber(fileId, drawing, pageable);
+        result.forEach(r -> r.setBarcodeImage(null));
+        return result;
     }
 
     @GetMapping("/file/{fileId}/filled")
@@ -249,8 +285,9 @@ public class WorkRecordController {
             }
         }
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        String fname = fileName == null || fileName.isEmpty() ? "records.xlsx" : java.net.URLEncoder.encode(fileName, "UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename=" + fname);
+        String safeName = (fileName == null || fileName.isEmpty()) ? "records.xlsx" : fileName;
+        String encoded = java.net.URLEncoder.encode(safeName, String.valueOf(StandardCharsets.UTF_8)).replace("+", "%20");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + encoded + "\"; filename*=UTF-8''" + encoded);
         wb.write(response.getOutputStream());
         wb.close();
     }
@@ -335,6 +372,8 @@ public class WorkRecordController {
             if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
             if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
             prepare(record);
+            YearMonth ym = determineNaturalMonth(record);
+            record.setNaturalMonth(ym != null ? ym.toString() : null);
             if (record.getQualifiedQty() != null) record.setFilled(true);
             result.add(repository.save(record));
         }
@@ -356,6 +395,8 @@ public class WorkRecordController {
         if (record.getBarcode() == null) record.setBarcode(existing.getBarcode());
         if (record.getBarcodeImage() == null) record.setBarcodeImage(existing.getBarcodeImage());
         prepare(record);
+        YearMonth ym = determineNaturalMonth(record);
+        record.setNaturalMonth(ym != null ? ym.toString() : null);
         if (record.getQualifiedQty() != null) record.setFilled(true);
         WorkRecord updated = repository.save(record);
         logService.log(user, "更新记录 " + id, null);
@@ -383,6 +424,8 @@ public class WorkRecordController {
         copy.setSupplemental(true);
         copy.setFilled(false);
         prepare(copy);
+        YearMonth ym = determineNaturalMonth(copy);
+        copy.setNaturalMonth(ym != null ? ym.toString() : null);
         WorkRecord saved = repository.save(copy);
         logService.log(user, "复制记录 " + id, "newId=" + saved.getId());
         return saved;
@@ -404,9 +447,11 @@ public class WorkRecordController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
         for (WorkRecord r : records) {
             r.setFile(file);
-            r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
             r.setFilled(false);
             prepare(r);
+            YearMonth ym = determineNaturalMonth(r);
+            r.setNaturalMonth(ym != null ? ym.toString() : null);
+            r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
@@ -419,6 +464,7 @@ public class WorkRecordController {
     @Transactional
     public Map<String, Object> parse(@RequestParam("file") MultipartFile file,
                                      @RequestParam(value = "password", required = false) String password,
+                                     @RequestParam(value = "store", required = false, defaultValue = "true") boolean store,
                                      @RequestHeader("X-User") String user) throws IOException {
         UploadedFile uf = new UploadedFile();
         uf.setFileName(file.getOriginalFilename());
@@ -426,13 +472,49 @@ public class WorkRecordController {
         uf.setUploadTime(java.time.LocalDateTime.now());
         uf = fileRepository.saveAndFlush(uf);
 
-        List<WorkRecord> records = parseExcel(file, password);
+        List<WorkRecord> parsed = parseExcel(file, password);
+        int codeMissing = 0;
+        int hoursMissing = 0;
+        for (WorkRecord wr : parsed) {
+            if (Boolean.TRUE.equals(wr.getCodeMissing())) codeMissing++;
+            if (Boolean.TRUE.equals(wr.getHoursMissing())) hoursMissing++;
+        }
+
+        if (store && !parsed.isEmpty()) {
+            final int batchSize = 500;
+            for (int offset = 0; offset < parsed.size(); offset += batchSize) {
+                List<WorkRecord> chunk = parsed.subList(offset, Math.min(offset + batchSize, parsed.size()));
+                for (WorkRecord wr : chunk) {
+                    wr.setFile(uf);
+                    wr.setFilled(false);
+                    prepare(wr, false);
+                    YearMonth ym = determineNaturalMonth(wr);
+                    wr.setNaturalMonth(ym != null ? ym.toString() : null);
+                    String barcode = wr.getBarcode();
+                    if (barcode != null && !barcode.trim().isEmpty()) {
+                        wr.setSupplemental(!repository.findByBarcode(barcode).isEmpty());
+                    } else {
+                        wr.setSupplemental(Boolean.FALSE);
+                    }
+                }
+                repository.saveAll(chunk);
+                repository.flush();
+                if (entityManager != null) {
+                    entityManager.clear();
+                }
+            }
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("fileId", uf.getId());
-        result.put("records", records);
-        System.out.println("Parsed records: " + records.size() + " for file " + uf.getId());
-        logService.log(user, "上传文件 " + uf.getFileName(), "records=" + records.size());
+        result.put("total", parsed.size());
+        result.put("codeMissing", codeMissing);
+        result.put("hoursMissing", hoursMissing);
+        if (!store) {
+            result.put("records", parsed);
+        }
+        System.out.println("Parsed records: " + parsed.size() + " for file " + uf.getId());
+        logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
     }
 
@@ -465,6 +547,7 @@ public class WorkRecordController {
                     wr.setDrawingNumber(drawing);
                     wr.setPartName(prodName);
                     wr.setPlanQty(qty);
+                    wr.setSourceRowNumber(i + 1);
                     wr.setProcessName(process);
 
                     String code = null;
@@ -536,17 +619,17 @@ public class WorkRecordController {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "未找到名称为“计划表”的工作表");
     }
 
+    private final DataFormatter formatter = new DataFormatter();
+
     private String getString(Row row, Integer idx) {
         if (idx == null) return null;
         Cell c = row.getCell(idx);
         if (c == null) return null;
-        if (c.getCellType() == CellType.NUMERIC) {
-            return String.valueOf((long)c.getNumericCellValue());
-        }
-        return c.toString();
+        String value = formatter.formatCellValue(c);
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
-
-    private final DataFormatter formatter = new DataFormatter();
 
     private Double getDouble(Row row, Integer idx) {
         if (idx == null) return null;
@@ -575,9 +658,12 @@ public class WorkRecordController {
     }
 
     private void prepare(WorkRecord record) {
-        validate(record);
+        prepare(record, true);
+    }
+
+    private void prepare(WorkRecord record, boolean strict) {
         if (record.getWorkerCodes() != null) {
-            String[] codes = record.getWorkerCodes().split("[,\u3001\s]+");
+            String[] codes = record.getWorkerCodes().split("[,\u3001\\p{Space}]+");
             List<String> names = new ArrayList<>();
             for (String c : codes) {
                 if (c.trim().isEmpty()) continue;
@@ -588,6 +674,9 @@ public class WorkRecordController {
         }
         if (record.getQualifiedQty() != null && record.getHours() != null) {
             record.setHourSubtotal(record.getQualifiedQty() * record.getHours());
+        }
+        if (strict) {
+            validate(record);
         }
     }
 
@@ -607,14 +696,14 @@ public class WorkRecordController {
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "png", out);
             return out.toByteArray();
-        } catch (WriterException | IOException | IllegalArgumentException e) {
+        } catch (Exception e) {
             return null;
         }
     }
 
     private String sanitizeBarcode(String text) {
         if (text == null) return null;
-        return text.replaceAll("[^\\x00-\\x7F]", "");
+        return text.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\\s+", "");
     }
 
     private String n(String v) { return v == null ? "" : v; }

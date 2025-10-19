@@ -92,22 +92,22 @@ export default {
     },
     async fetchProcesses(term) {
       const url = term
-        ? `http://localhost:8080/api/processcodes/search?term=${encodeURIComponent(term)}`
-        : 'http://localhost:8080/api/processcodes'
+        ? `/api/processcodes/search?term=${encodeURIComponent(term)}`
+        : '/api/processcodes'
       const res = await axios.get(url)
       this.processCodes = res.data
     },
     async createProcess() {
-      await axios.post('http://localhost:8080/api/processcodes', this.newProcess)
+      await axios.post('/api/processcodes', this.newProcess)
       this.closeModal()
       this.fetchProcesses(this.search)
     },
     async updateProcess(p) {
-      await axios.put(`http://localhost:8080/api/processcodes/${p.id}`, p)
+      await axios.put(`/api/processcodes/${p.id}`, p)
       this.fetchProcesses(this.search)
     },
     async deleteProcess(id) {
-      await axios.delete(`http://localhost:8080/api/processcodes/${id}`)
+      await axios.delete(`/api/processcodes/${id}`)
       this.fetchProcesses(this.search)
     }
   }
