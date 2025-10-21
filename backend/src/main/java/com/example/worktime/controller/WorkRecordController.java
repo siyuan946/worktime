@@ -172,7 +172,7 @@ public class WorkRecordController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图号不能为空");
         }
         String normalized = drawing.trim();
-        List<WorkRecord> list = repository.findByDrawingNumber(normalized);
+        List<WorkRecord> list = repository.findByDrawingNumberAndFilledTrue(normalized);
         String sanitized = normalized.replaceAll("[\\\\/:*?\"<>|]", "_");
         if (sanitized.isEmpty()) {
             sanitized = "records";
@@ -243,8 +243,8 @@ public class WorkRecordController {
             java.util.List<String> codes = splitWorkers(r.getWorkerCodes());
             java.util.List<String> names = splitNames(r.getWorkerNames());
             java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
-            int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
-            int numWorkers = max;
+            int assignmentCount = Math.max(Math.max(codes.size(), names.size()), qtys.size());
+            int max = Math.max(1, assignmentCount);
 
             String timeCell = "";
             if (r.getStartTime() != null) {
@@ -267,7 +267,12 @@ public class WorkRecordController {
                 row.createCell(c++).setCellValue(timeCell);
                 row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
-                row.createCell(c++).setCellValue(numWorkers);
+                Cell workerCountCell = row.createCell(c++);
+                if (assignmentCount > 0) {
+                    workerCountCell.setCellValue(assignmentCount > 1 ? 1 : assignmentCount);
+                } else {
+                    workerCountCell.setCellValue("");
+                }
                 row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
                 row.createCell(c++).setCellValue(n(r.getProcessCode()));
                 Double q = i < qtys.size() ? qtys.get(i) : null;

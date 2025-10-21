@@ -16,6 +16,8 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
 
     java.util.List<WorkRecord> findByDrawingNumber(String drawingNumber);
 
+    java.util.List<WorkRecord> findByDrawingNumberAndFilledTrue(String drawingNumber);
+
     @Query("select r from WorkRecord r where r.file.uploadTime >= :start and r.file.uploadTime < :end and r.filled = true")
     java.util.List<WorkRecord> findByUploadDate(@Param("start") java.time.LocalDateTime start,
                                                 @Param("end") java.time.LocalDateTime end);
