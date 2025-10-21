@@ -14,18 +14,18 @@ body {
 
 .table th, .table td { vertical-align: middle; }
 
-.notification-col { min-width: 110px; max-width: 140px; }
-.drawing-col { min-width: 130px; max-width: 170px; }
-.plan-col { width: 80px; }
-.hours-col { width: 90px; }
-.process-col { min-width: 120px; max-width: 160px; }
-.worker-code-col { min-width: 120px; }
-.qualified-col { min-width: 90px; }
-.time-col { min-width: 130px; }
-.inspector-col { min-width: 120px; }
+.notification-col { min-width: 90px; max-width: 120px; }
+.drawing-col { min-width: 120px; max-width: 150px; }
+.plan-col { width: 70px; max-width: 80px; }
+.hours-col { width: 80px; max-width: 90px; }
+.process-col { min-width: 100px; max-width: 140px; }
+.worker-code-col { min-width: 140px; }
+.qualified-col { min-width: 110px; }
+.time-col { min-width: 120px; }
+.inspector-col { min-width: 130px; }
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
-.barcode-cell { min-width: 240px; min-height: 90px; }
+.barcode-cell { min-width: 200px; min-height: 90px; }
 .barcode-cell img { display: block; height: 80px; width: auto; max-width: 280px; }
 
 /* allow table cells to wrap long text without widening the table */
@@ -120,16 +120,23 @@ body {
 
   #preview-table table,
   #print-area table {
-    table-layout: auto;
+    table-layout: fixed;
     font-size: 10px;
     width: 100%;
   }
 
-  #preview-table th,
-  #preview-table td {
+  #preview-table th {
     white-space: nowrap;
     height: 26px;
     line-height: 26px;
+    vertical-align: middle;
+  }
+
+  #preview-table td {
+    white-space: normal;
+    word-break: break-word;
+    height: 26px;
+    line-height: 1.35;
     vertical-align: middle;
   }
 
@@ -142,6 +149,45 @@ body {
     vertical-align: middle;
     padding: 4px 6px;
   }
+
+  .container,
+  .container-fluid {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #preview-table {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  #preview-table .preview-page {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  #preview-table table {
+    font-size: 11pt;
+  }
+
+  #preview-table thead th {
+    font-size: 13pt;
+    font-weight: 700;
+  }
+
+  #preview-table .notification-col { width: 100px; }
+  #preview-table .drawing-col { width: 140px; }
+  #preview-table .plan-col { width: 70px; }
+  #preview-table .hours-col { width: 80px; }
+  #preview-table .process-col { width: 110px; }
+  #preview-table .worker-code-col { width: 150px; }
+  #preview-table .qualified-col { width: 120px; }
+  #preview-table .time-col { width: 120px; }
+  #preview-table .inspector-col { width: 130px; }
+  #preview-table .barcode-cell { min-width: 180px; }
 
   #preview-table thead,
   #print-area thead { display: table-header-group; }
