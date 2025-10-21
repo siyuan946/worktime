@@ -31,6 +31,15 @@ body {
 /* allow table cells to wrap long text without widening the table */
 .wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
 
+.missing-cell {
+  background-color: #fff3cd !important;
+}
+
+.issue-tag {
+  font-size: .75rem;
+  color: #dc3545;
+}
+
 /* wider inputs for worker allocations */
 .alloc-input { width: 90px; }
 

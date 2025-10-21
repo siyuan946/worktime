@@ -66,18 +66,24 @@ public class WorkRecordController {
 
     @GetMapping
     public List<WorkRecord> all() {
-        return repository.findAll();
+        List<WorkRecord> list = repository.findAll();
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/barcode/{barcode}")
     public List<WorkRecord> byBarcode(@PathVariable String barcode) {
         String clean = sanitizeBarcode(barcode);
-        return repository.findByBarcode(clean);
+        List<WorkRecord> list = repository.findByBarcode(clean);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}")
     public List<WorkRecord> byFile(@PathVariable Long fileId) {
-        return repository.findByFileId(fileId);
+        List<WorkRecord> list = repository.findByFileId(fileId);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}/drawings")
@@ -105,12 +111,15 @@ public class WorkRecordController {
         Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
         Page<WorkRecord> result = repository.findByFileIdAndDrawingNumber(fileId, drawing, pageable);
         result.forEach(r -> r.setBarcodeImage(null));
+        result.forEach(this::flagIssues);
         return result;
     }
 
     @GetMapping("/file/{fileId}/filled")
     public List<WorkRecord> byFileFilled(@PathVariable Long fileId) {
-        return repository.findByFileIdAndFilledTrue(fileId);
+        List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}/export")
@@ -484,6 +493,7 @@ public class WorkRecordController {
                                      @RequestParam(value = "store", required = false, defaultValue = "true") boolean store,
                                      @RequestHeader("X-User") String user) throws IOException {
         List<WorkRecord> parsed = parseExcel(file, password);
+        flagIssues(parsed);
         int codeMissing = 0;
         int hoursMissing = 0;
         for (WorkRecord wr : parsed) {
@@ -555,6 +565,54 @@ public class WorkRecordController {
             }
         }
         return fetchExistingBarcodes(codes);
+    }
+
+    private void flagIssues(java.util.Collection<WorkRecord> records) {
+        if (records == null) {
+            return;
+        }
+        for (WorkRecord wr : records) {
+            flagIssues(wr);
+        }
+    }
+
+    private void flagIssues(WorkRecord wr) {
+        if (wr == null) {
+            return;
+        }
+        boolean notificationPresent = hasText(wr.getNotificationNumber());
+        wr.setNotificationMissing(!notificationPresent);
+
+        boolean productPresent = hasText(wr.getProductName());
+        wr.setProductMissing(!productPresent);
+
+        boolean partPresent = hasText(wr.getPartName());
+        wr.setPartMissing(!partPresent);
+
+        boolean drawingPresent = hasText(wr.getDrawingNumber());
+        wr.setDrawingMissing(!drawingPresent);
+
+        boolean planPresent = wr.getPlanQty() != null;
+        wr.setPlanMissing(!planPresent);
+
+        boolean processPresent = hasText(wr.getProcessName());
+        wr.setProcessMissing(!processPresent);
+
+        boolean hoursMissing = wr.getHours() == null;
+        wr.setHoursMissing(hoursMissing);
+
+        boolean codePresent = hasText(wr.getProcessCode());
+        boolean codeMissing = Boolean.TRUE.equals(wr.getCodeMissing()) || !codePresent;
+        wr.setCodeMissing(codeMissing);
+
+        String sanitizedBarcode = wr.getBarcode() != null ? sanitizeBarcode(wr.getBarcode()) : null;
+        boolean barcodePresent = hasText(sanitizedBarcode);
+        wr.setBarcode(sanitizedBarcode);
+        wr.setBarcodeMissing(!barcodePresent);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private java.util.Set<String> fetchExistingBarcodes(java.util.Collection<String> barcodes) {

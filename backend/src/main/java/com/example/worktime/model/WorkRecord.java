@@ -60,6 +60,27 @@ public class WorkRecord {
     @Transient
     private Boolean codeMissing;
 
+    @Transient
+    private Boolean notificationMissing;
+
+    @Transient
+    private Boolean productMissing;
+
+    @Transient
+    private Boolean drawingMissing;
+
+    @Transient
+    private Boolean planMissing;
+
+    @Transient
+    private Boolean processMissing;
+
+    @Transient
+    private Boolean barcodeMissing;
+
+    @Transient
+    private Boolean partMissing;
+
     // 单件工时
     private Double hours;
 
@@ -146,6 +167,27 @@ public class WorkRecord {
 
     public Boolean getCodeMissing() { return codeMissing; }
     public void setCodeMissing(Boolean codeMissing) { this.codeMissing = codeMissing; }
+
+    public Boolean getNotificationMissing() { return notificationMissing; }
+    public void setNotificationMissing(Boolean notificationMissing) { this.notificationMissing = notificationMissing; }
+
+    public Boolean getProductMissing() { return productMissing; }
+    public void setProductMissing(Boolean productMissing) { this.productMissing = productMissing; }
+
+    public Boolean getDrawingMissing() { return drawingMissing; }
+    public void setDrawingMissing(Boolean drawingMissing) { this.drawingMissing = drawingMissing; }
+
+    public Boolean getPlanMissing() { return planMissing; }
+    public void setPlanMissing(Boolean planMissing) { this.planMissing = planMissing; }
+
+    public Boolean getProcessMissing() { return processMissing; }
+    public void setProcessMissing(Boolean processMissing) { this.processMissing = processMissing; }
+
+    public Boolean getBarcodeMissing() { return barcodeMissing; }
+    public void setBarcodeMissing(Boolean barcodeMissing) { this.barcodeMissing = barcodeMissing; }
+
+    public Boolean getPartMissing() { return partMissing; }
+    public void setPartMissing(Boolean partMissing) { this.partMissing = partMissing; }
 
     public Double getHours() { return hours; }
     public void setHours(Double hours) { this.hours = hours; }

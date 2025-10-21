@@ -72,32 +72,48 @@
             </thead>
 
             <tbody>
-              <tr v-for="entry in item.page.entries" :key="entry.index" :class="{'table-danger': entry.record.codeMissing || entry.record.hoursMissing}">
-                <td class="notification-col">{{ entry.record.notificationNumber }}</td>
-                <td class="no-print">{{ entry.record.productName }}</td>
-                <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
+              <tr
+                v-for="entry in item.page.entries"
+                :key="entry.index"
+                :class="{ 'table-danger': entry.record.hasIssue }"
+                :title="entry.record.issueSummary || ''"
+              >
+                <td :class="['notification-col', { 'missing-cell': entry.record.notificationMissing }]"><span>{{ entry.record.notificationNumber }}</span></td>
+                <td :class="['no-print', { 'missing-cell': entry.record.productMissing }]">{{ entry.record.productName }}</td>
+                <td :class="['drawing-col', { 'missing-cell': entry.record.drawingMissing }]">{{ entry.record.drawingNumber }}</td>
                 <td class="print-only plan-col">{{ entry.record.planQty }}</td>
-                <td class="no-print">{{ entry.record.partName }}</td>
-                <td class="plan-col no-print">
-                  <input type="number" class="form-control form-control-sm" v-model.number="entry.record.planQty" />
+                <td :class="['no-print', { 'missing-cell': entry.record.partMissing }]">{{ entry.record.partName }}</td>
+                <td :class="['plan-col', 'no-print', { 'missing-cell': entry.record.planMissing }]">
+                  <input
+                    type="number"
+                    class="form-control form-control-sm"
+                    :class="{ 'is-invalid': entry.record.planMissing }"
+                    v-model.number="entry.record.planQty"
+                    @input="handlePlanInput(entry.record)"
+                    @blur="handlePlanInput(entry.record)"
+                  />
                   <span class="print-text">{{ entry.record.planQty }}</span>
                 </td>
-                <td class="hours-col">
+                <td :class="['hours-col', { 'missing-cell': entry.record.hoursMissing }]">
                   <input
                     type="number"
                     class="form-control form-control-sm no-print"
                     style="width:80px"
                     v-model.number="entry.record.hours"
+                    :class="{ 'is-invalid': entry.record.hoursMissing }"
+                    @input="checkHours(entry.record)"
                     @blur="checkHours(entry.record)"
                   />
                   <span class="print-text">{{ entry.record.hours }}</span>
                 </td>
-                <td class="no-print">{{ entry.record.processCode }}</td>
-                <td class="process-col">
+                <td :class="['no-print', { 'missing-cell': entry.record.codeMissing }]">{{ entry.record.processCode }}</td>
+                <td :class="['process-col', { 'missing-cell': entry.record.processMissing || entry.record.codeMissing }]">
                   <input
                     class="form-control form-control-sm no-print"
                     v-model="entry.record.processName"
                     @blur="updateProcess(entry.record)"
+                    @input="handleProcessInput(entry.record)"
+                    :class="{ 'is-invalid': entry.record.processMissing || entry.record.codeMissing }"
                   />
                   <span class="print-text">{{ entry.record.processName }}</span>
                 </td>
@@ -106,11 +122,12 @@
                 <td class="print-only time-col"></td>
                 <td class="print-only time-col"></td>
                 <td class="print-only inspector-col"></td>
-                <td class="barcode-cell">
+                <td :class="['barcode-cell', { 'missing-cell': entry.record.barcodeMissing }]">
                   <div>{{ entry.record.barcode }}</div>
                   <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
                 </td>
                 <td class="no-print">
+                  <div v-if="entry.record.issueSummary" class="issue-tag mb-1">⚠️ {{ entry.record.issueSummary }}</div>
                   <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
                   <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
                 </td>
@@ -253,6 +270,85 @@ export default {
     }
   },
   methods: {
+    hasText(value) {
+      if (value === null || value === undefined) return false
+      return String(value).trim().length > 0
+    },
+    decorateRecord(raw) {
+      const record = { ...raw }
+      record.notificationNumber = record.notificationNumber != null ? String(record.notificationNumber).trim() : ''
+      record.productName = record.productName != null ? String(record.productName).trim() : ''
+      record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
+      record.partName = record.partName != null ? String(record.partName).trim() : ''
+      if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
+        const num = Number(record.planQty)
+        record.planQty = Number.isNaN(num) ? null : num
+      } else {
+        record.planQty = null
+      }
+      if (record.hours !== null && record.hours !== undefined && record.hours !== '') {
+        const num = Number(record.hours)
+        record.hours = Number.isNaN(num) ? null : num
+      } else {
+        record.hours = null
+      }
+      record.barcode = this.sanitize(record.barcode)
+      record.barcodeImage = record.barcodeImage || ''
+      record.workerCodes = record.workerCodes || ''
+      record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
+      record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
+      record.codeMissing = record.codeMissing === true
+      record.hoursMissing = record.hoursMissing === true
+      record.notificationMissing = record.notificationMissing === true
+      record.productMissing = record.productMissing === true
+      record.partMissing = record.partMissing === true
+      record.drawingMissing = record.drawingMissing === true
+      record.planMissing = record.planMissing === true
+      record.processMissing = record.processMissing === true
+      record.barcodeMissing = record.barcodeMissing === true
+      record.issueSummary = ''
+      record.hasIssue = false
+      this.updateIssueFlags(record)
+      return record
+    },
+    updateIssueFlags(record) {
+      if (!record) return
+      const issues = []
+      record.notificationMissing = !this.hasText(record.notificationNumber)
+      if (record.notificationMissing) issues.push('通知单号')
+
+      record.productMissing = !this.hasText(record.productName)
+      if (record.productMissing) issues.push('产品名称')
+
+      record.partMissing = !this.hasText(record.partName)
+      if (record.partMissing) issues.push('名称')
+
+      record.drawingMissing = !this.hasText(record.drawingNumber)
+      if (record.drawingMissing) issues.push('图号')
+
+      record.planMissing = record.planQty === null || record.planQty === undefined || Number.isNaN(record.planQty)
+      if (record.planMissing) issues.push('计划数')
+
+      record.processMissing = !this.hasText(record.processName)
+      if (record.processMissing) issues.push('工序')
+
+      record.hoursMissing = record.hours === null || record.hours === undefined || record.hours === '' || Number.isNaN(record.hours)
+      if (record.hoursMissing) issues.push('单件工时')
+
+      const hasProcessCode = this.hasText(record.processCode)
+      record.codeMissing = record.codeMissing === true || !hasProcessCode
+      if (record.codeMissing) issues.push('工序代码')
+
+      const sanitizedBarcode = this.hasText(record.barcode) ? this.sanitize(String(record.barcode)) : ''
+      if (sanitizedBarcode !== record.barcode) {
+        record.barcode = sanitizedBarcode
+      }
+      record.barcodeMissing = !this.hasText(sanitizedBarcode)
+      if (record.barcodeMissing) issues.push('条形码')
+
+      record.hasIssue = issues.length > 0
+      record.issueSummary = record.hasIssue ? `缺少：${issues.join('、')}` : ''
+    },
     handleRequestError(error, fallback) {
       if (error instanceof Error && error.message === 'missing-user') return
       console.error(error)
@@ -294,12 +390,11 @@ export default {
         if (!Array.isArray(res.data) || !res.data.length) {
           alert('未找到该文件的记录'); this.preview = []
         } else {
-          this.preview = res.data.map(r => ({
+          this.preview = res.data.map(r => this.decorateRecord({
             ...r,
-            barcode: this.sanitize(r.barcode),
             barcodeImage: '',
-            codeMissing: !r.processCode,
-            hoursMissing: r.hours == null
+            codeMissing: r.codeMissing,
+            hoursMissing: r.hoursMissing
           }))
         }
         this.fileId = this.selectedFileId
@@ -353,25 +448,24 @@ export default {
         if (!total) this.parseProgress = 100
         for (let i = 0; i < records.length; i++) {
           const r = records[i] || {}
-          processed.push({
+          processed.push(this.decorateRecord({
             ...r,
             workerCodes: '',
             qualifiedQty: null,
             hourSubtotal: null,
-            barcode: this.sanitize(r.barcode),
             barcodeImage: '',
             codeMissing: !!r.codeMissing,
             hoursMissing: r.hours == null
-          })
+          }))
           if (total) {
             const percent = Math.min(100, Math.round(((i + 1) / total) * 100))
             if (percent > this.parseProgress) this.parseProgress = percent
           }
           if ((i + 1) % 50 === 0) { await new Promise(resolve => setTimeout(resolve, 0)) }
         }
-        const warn = processed.filter(r => r.codeMissing || r.hoursMissing)
+        const warn = processed.filter(r => r.hasIssue)
         this.preview = processed
-        if (warn.length) alert(`发现${warn.length}条记录缺少单件工时或工序码，请检查`)
+        if (warn.length) alert(`发现${warn.length}条记录缺少必填信息，请检查`)
         await this.fetchFiles()
         this.currentPage = 0
         this.$nextTick(() => {
@@ -469,6 +563,18 @@ export default {
         this.processCache = map; this.processCacheLoaded = true
       } catch (e) { console.error('加载工序缓存失败', e) }
     },
+    handleProcessInput(record) {
+      if (!record) return
+      record.processCode = ''
+      record.codeMissing = true
+      record.barcode = ''
+      record.barcodeImage = ''
+      this.updateIssueFlags(record)
+    },
+    handlePlanInput(record) {
+      if (!record) return
+      this.updateIssueFlags(record)
+    },
     async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
       if (!cacheReady) await this.ensureProcessCache()
       const rawName = r.processName || ''; const name = rawName.trim()
@@ -485,8 +591,12 @@ export default {
       }
       if (code) { r.processCode = code; r.codeMissing = false } else { r.processCode = rawName; r.codeMissing = true }
       await this.updateBarcode(r, fetchBarcodeImage)
+      this.updateIssueFlags(r)
     },
-    async checkHours(r) { r.hoursMissing = r.hours == null || r.hours === '' },
+    checkHours(r) {
+      r.hoursMissing = r.hours == null || r.hours === ''
+      this.updateIssueFlags(r)
+    },
     deleteRow(index) {
       if (!confirm('确定删除该行? 删除后不可恢复')) return
       this.preview.splice(index, 1)
@@ -513,7 +623,8 @@ export default {
         codeMissing: true,
         hoursMissing: true
       }
-      this.preview.splice(index + 1, 0, blank)
+      const decorated = this.decorateRecord(blank)
+      this.preview.splice(index + 1, 0, decorated)
       this.$nextTick(() => this.ensurePageInRange())
     },
     deleteZero() {
@@ -524,6 +635,7 @@ export default {
         const code = r.processCode != null ? String(r.processCode).trim() : ''
         return code !== '0'
       })
+      this.preview.forEach(r => this.updateIssueFlags(r))
       const removed = before - this.preview.length
       alert(`已删除${removed}行`)
     },
@@ -536,6 +648,7 @@ export default {
         const code = this.sanitize(entry.record.barcode)
         if (code !== entry.record.barcode) {
           this.$set(entry.record, 'barcode', code)
+          this.updateIssueFlags(entry.record)
         }
         if (!code) continue
         if (!this.barcodeCache[code] && !entry.record.barcodeImage) missing.push(code)
@@ -604,6 +717,7 @@ export default {
         if (code && this.barcodeCache[code] && record.barcodeImage !== this.barcodeCache[code]) {
           this.$set(record, 'barcodeImage', this.barcodeCache[code])
         }
+        this.updateIssueFlags(record)
       }
     },
     async refreshProcesses() {
@@ -646,6 +760,7 @@ export default {
           else { r.barcodeImage = '' }
         } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }
       } else { r.barcode = ''; r.barcodeImage = '' }
+      this.updateIssueFlags(r)
     },
     prevPage() { if (this.currentPage > 0) this.currentPage -= 1 },
     nextPage() { if (this.currentPage < this.pages.length - 1) this.currentPage += 1 },
