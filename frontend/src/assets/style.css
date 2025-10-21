@@ -128,8 +128,9 @@ body {
   }
 
   #preview-table th {
-    white-space: nowrap;
-    line-height: 1.4;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.45;
     vertical-align: middle;
   }
 
@@ -176,13 +177,13 @@ body {
   }
 
   #preview-table thead th {
-    font-size: 13pt;
-    font-weight: 700;
+    font-size: 11.5pt;
+    font-weight: 600;
   }
 
   #preview-table thead th,
   #print-area thead th {
-    line-height: 1.6 !important;
+    line-height: 1.5 !important;
     padding-top: 6px !important;
     padding-bottom: 6px !important;
   }

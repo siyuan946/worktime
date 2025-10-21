@@ -1,6 +1,6 @@
 <template>
   <section class="section-card">
-    <h2 class="h5">Excel上传</h2>
+    <h2 class="h5 no-print">Excel上传</h2>
     <div class="input-group mb-2 no-print">
       <input class="form-control" type="file" @change="onFileChange">
       <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
@@ -258,6 +258,8 @@ export default {
       record.productName = record.productName != null ? String(record.productName).trim() : ''
       record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
       record.partName = record.partName != null ? String(record.partName).trim() : ''
+      record.processName = record.processName != null ? String(record.processName).trim() : ''
+      record.processCode = record.processCode != null ? String(record.processCode).trim() : ''
       if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
         const num = Number(record.planQty)
         record.planQty = Number.isNaN(num) ? null : num
@@ -270,12 +272,15 @@ export default {
       } else {
         record.hours = null
       }
-      record.barcode = this.sanitize(record.barcode)
+      const rawBarcode = record.barcode != null ? String(record.barcode).trim() : ''
+      record.barcode = this.sanitize(rawBarcode)
       record.barcodeImage = record.barcodeImage || ''
       record.workerCodes = record.workerCodes || ''
       record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
       record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
-      record.codeMissing = record.codeMissing === true
+      const sourceCodeMissing = record.codeMissing === true
+      record.codeMissing = sourceCodeMissing
+      record.serverCodeMissing = sourceCodeMissing
       record.hoursMissing = record.hoursMissing === true
       record.notificationMissing = record.notificationMissing === true
       record.productMissing = record.productMissing === true
@@ -314,7 +319,11 @@ export default {
       if (record.hoursMissing) issues.push('单件工时')
 
       const hasProcessCode = this.hasText(record.processCode)
-      record.codeMissing = record.codeMissing === true || !hasProcessCode
+      const codeMissingFlag = record.serverCodeMissing === true || !hasProcessCode
+      if (!codeMissingFlag) {
+        record.serverCodeMissing = false
+      }
+      record.codeMissing = codeMissingFlag
       if (record.codeMissing) issues.push('工序代码')
 
       const sanitizedBarcode = this.hasText(record.barcode) ? this.sanitize(String(record.barcode)) : ''
@@ -517,8 +526,9 @@ export default {
       this.renderAllPages = false
     },
     sanitize(text) {
-      if (!text) return ''
-      const source = typeof text.normalize === 'function' ? text.normalize('NFKC') : text
+      if (text === null || text === undefined) return ''
+      const sourceText = String(text)
+      const source = typeof sourceText.normalize === 'function' ? sourceText.normalize('NFKC') : sourceText
       const invis = /\p{C}/u
       const whitespace = /\s/u
       let result = ''
@@ -550,6 +560,7 @@ export default {
       if (!record) return
       record.processCode = ''
       record.codeMissing = true
+      record.serverCodeMissing = false
       record.barcode = ''
       record.barcodeImage = ''
       this.updateIssueFlags(record)
@@ -560,8 +571,17 @@ export default {
     },
     async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
       if (!cacheReady) await this.ensureProcessCache()
-      const rawName = r.processName || ''; const name = rawName.trim()
-      if (!name) { r.processCode = ''; r.codeMissing = true; await this.updateBarcode(r, fetchBarcodeImage); return }
+      const rawName = r.processName || ''
+      const name = rawName.trim()
+      const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
+      if (!name) {
+        r.processCode = ''
+        r.serverCodeMissing = false
+        r.codeMissing = true
+        await this.updateBarcode(r, fetchBarcodeImage)
+        this.updateIssueFlags(r)
+        return
+      }
       let code = this.processCache[name]
       if (!code && allowFetch) {
         try {
@@ -572,7 +592,16 @@ export default {
           }
         } catch (e) { /* ignore */ }
       }
-      if (code) { r.processCode = code; r.codeMissing = false } else { r.processCode = rawName; r.codeMissing = true }
+      if (code) {
+        r.processCode = code
+        r.serverCodeMissing = false
+      } else if (existingCode && r.serverCodeMissing !== true) {
+        r.processCode = existingCode
+      } else {
+        r.processCode = ''
+        r.serverCodeMissing = true
+      }
+      r.codeMissing = !this.hasText(r.processCode) || r.serverCodeMissing === true
       await this.updateBarcode(r, fetchBarcodeImage)
       this.updateIssueFlags(r)
     },
