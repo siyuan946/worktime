@@ -486,6 +486,14 @@ export default {
           }
         }
       }
+      if (!message && response && response.status === 409) {
+        const url = response.config && response.config.url ? String(response.config.url) : ''
+        if (url.includes('/api/processcodes')) {
+          message = '工序代码已存在，请使用其他代号'
+        } else {
+          message = '请求与服务器当前状态冲突，请检查数据后重试'
+        }
+      }
       if (!message && error && typeof error.message === 'string') {
         message = error.message
       }
