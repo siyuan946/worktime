@@ -521,12 +521,17 @@ export default {
       } finally { this.loading = false }
       const title = document.title
       if (this.currentFileName) document.title = this.currentFileName
+      const originalBuffer = this.renderBuffer
       this.renderAllPages = true
+      this.renderBuffer = Math.max(originalBuffer, 2)
       try {
         await this.$nextTick()
+        await this.$nextTick()
+        await new Promise(resolve => requestAnimationFrame(() => resolve()))
         window.print()
       } finally {
         this.renderAllPages = false
+        this.renderBuffer = originalBuffer
         document.title = title
       }
     },

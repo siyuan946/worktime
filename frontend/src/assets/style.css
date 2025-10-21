@@ -18,15 +18,15 @@ body {
 .drawing-col { min-width: 120px; max-width: 150px; }
 .plan-col { width: 70px; max-width: 80px; }
 .hours-col { width: 80px; max-width: 90px; }
-.process-col { min-width: 100px; max-width: 140px; }
-.worker-code-col { min-width: 140px; }
-.qualified-col { min-width: 110px; }
-.time-col { min-width: 120px; }
-.inspector-col { min-width: 130px; }
+.process-col { min-width: 90px; max-width: 120px; }
+.worker-code-col { min-width: 160px; }
+.qualified-col { min-width: 140px; }
+.time-col { min-width: 140px; }
+.inspector-col { min-width: 150px; }
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
-.barcode-cell { min-width: 200px; min-height: 90px; }
-.barcode-cell img { display: block; height: 80px; width: auto; max-width: 280px; }
+.barcode-cell { min-width: 220px; min-height: 90px; }
+.barcode-cell img { display: block; height: 80px; width: auto; max-width: 320px; }
 
 /* allow table cells to wrap long text without widening the table */
 .wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
@@ -167,6 +167,8 @@ body {
   #preview-table .preview-page {
     margin-left: 0 !important;
     margin-right: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   #preview-table table {
@@ -182,12 +184,22 @@ body {
   #preview-table .drawing-col { width: 140px; }
   #preview-table .plan-col { width: 70px; }
   #preview-table .hours-col { width: 80px; }
-  #preview-table .process-col { width: 110px; }
-  #preview-table .worker-code-col { width: 150px; }
-  #preview-table .qualified-col { width: 120px; }
-  #preview-table .time-col { width: 120px; }
-  #preview-table .inspector-col { width: 130px; }
-  #preview-table .barcode-cell { min-width: 180px; }
+  #preview-table .process-col { width: 95px; }
+  #preview-table .worker-code-col { width: 170px; }
+  #preview-table .qualified-col { width: 150px; }
+  #preview-table .time-col { width: 150px; }
+  #preview-table .inspector-col { width: 160px; }
+  #preview-table .barcode-cell { min-width: 210px; }
+
+  #preview-table .preview-page:not(:last-child) {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  #preview-table .preview-page.force-new-page {
+    page-break-before: always;
+    break-before: page;
+  }
 
   #preview-table thead,
   #print-area thead { display: table-header-group; }
@@ -204,7 +216,7 @@ body {
   .print-page table { margin-bottom: 0 !important; }
 
   #preview-table .barcode-cell img,
-  #print-area .barcode-cell img { height: 80px; max-width: 280px; width: auto; }
+  #print-area .barcode-cell img { height: 80px; max-width: 320px; width: auto; }
   #print-area .barcode-cell div { word-break: break-all; }
 
   .blank-row { display: table-row !important; }
