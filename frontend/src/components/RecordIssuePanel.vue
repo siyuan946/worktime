@@ -17,7 +17,7 @@
         :class="['issue-panel__item', { 'issue-panel__item--active': activeGroup && activeGroup.key === group.key }]"
       >
         <div class="issue-panel__row">
-          <span class="issue-panel__drawing">{{ group.drawingNumber || '（空图号）' }}</span>
+          <span class="issue-panel__drawing" :title="group.drawingNumber || '（空图号）'">{{ group.drawingNumber || '（空图号）' }}</span>
           <span class="badge bg-danger-subtle text-danger">缺少{{ group.type }}</span>
         </div>
         <div class="issue-panel__row issue-panel__row--footer">

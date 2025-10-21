@@ -90,10 +90,9 @@ body {
 .issue-panel__drawing {
   font-weight: 500;
   font-size: .95rem;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .issue-panel__count {
@@ -118,6 +117,26 @@ body {
 .worker-code-col { min-width: 160px; }
 .qualified-col { min-width: 140px; }
 .time-col { min-width: 140px; }
+
+.bulk-issue-modal .modal-dialog {
+  max-width: 720px;
+}
+
+.bulk-issue-modal .modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.bulk-issue-modal__table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  z-index: 1;
+}
+
+.bulk-issue-modal__table input.form-control-sm {
+  min-width: 120px;
+}
 .inspector-col { min-width: 150px; }
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */

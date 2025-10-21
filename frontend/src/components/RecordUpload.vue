@@ -122,7 +122,17 @@
                     />
                     <span class="print-text">{{ entry.record.hours }}</span>
                   </td>
-                  <td :class="['no-print', { 'missing-cell': entry.record.codeMissing }]">{{ entry.record.processCode }}</td>
+                  <td :class="['no-print', { 'missing-cell': entry.record.codeMissing }]">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model="entry.record.processCode"
+                      placeholder="填写工序代码"
+                      @input="handleProcessCodeTyping(entry.record)"
+                      @blur="handleProcessCodeBlur(entry.record)"
+                    />
+                    <span class="print-text">{{ entry.record.processCode }}</span>
+                  </td>
                   <td :class="['process-col', { 'missing-cell': entry.record.processMissing || entry.record.codeMissing }]">
                     <input
                       class="form-control form-control-sm no-print"
@@ -155,14 +165,23 @@
         </template>
       </div>
     </div>
+    <BulkIssueModal
+      :visible="bulkModal.visible"
+      :type="bulkModal.type"
+      :group="bulkModal.group"
+      :records="bulkModal.records"
+      @close="closeBulkModal"
+      @apply="applyBulkUpdates"
+    />
   </section>
 </template>
 
 <script>
 import axios from 'axios'
 import RecordIssuePanel from './RecordIssuePanel.vue'
+import BulkIssueModal from './BulkIssueModal.vue'
 export default {
-  components: { RecordIssuePanel },
+  components: { RecordIssuePanel, BulkIssueModal },
   data() {
     return {
       file: null,
@@ -182,7 +201,13 @@ export default {
       renderAllPages: false,
       renderBuffer: 0,
       issueFilter: null,
-      issueCompletionNotified: false
+      issueCompletionNotified: false,
+      bulkModal: {
+        visible: false,
+        type: '',
+        group: null,
+        records: []
+      }
     }
   },
   created() {
@@ -674,6 +699,35 @@ export default {
       record.barcodeImage = ''
       this.updateIssueFlags(record)
     },
+    handleProcessCodeTyping(record) {
+      if (!record) return
+      const value = record.processCode != null ? String(record.processCode) : ''
+      const hasValue = this.hasText(value)
+      record.serverCodeMissing = !hasValue
+      record.codeMissing = !hasValue
+      if (!hasValue) {
+        record.barcode = ''
+        record.barcodeImage = ''
+      }
+      this.updateIssueFlags(record)
+    },
+    async handleProcessCodeBlur(record) {
+      if (!record) return
+      const value = record.processCode != null ? String(record.processCode).trim() : ''
+      record.processCode = value
+      if (!value) {
+        record.serverCodeMissing = true
+        record.codeMissing = true
+        record.barcode = ''
+        record.barcodeImage = ''
+        this.updateIssueFlags(record)
+        return
+      }
+      record.serverCodeMissing = false
+      record.codeMissing = false
+      await this.updateBarcode(record)
+      this.updateIssueFlags(record)
+    },
     handlePlanInput(record) {
       if (!record) return
       this.updateIssueFlags(record)
@@ -701,16 +755,19 @@ export default {
           }
         } catch (e) { /* ignore */ }
       }
+      const manualCode = this.hasText(existingCode) ? existingCode : ''
       if (code) {
         r.processCode = code
         r.serverCodeMissing = false
-      } else if (existingCode && r.serverCodeMissing !== true) {
-        r.processCode = existingCode
+      } else if (manualCode) {
+        r.processCode = manualCode
+        r.serverCodeMissing = false
+        if (!this.processCache[name]) this.$set(this.processCache, name, manualCode)
       } else {
         r.processCode = ''
         r.serverCodeMissing = true
       }
-      r.codeMissing = !this.hasText(r.processCode) || r.serverCodeMissing === true
+      r.codeMissing = !this.hasText(r.processCode)
       await this.updateBarcode(r, fetchBarcodeImage)
       this.updateIssueFlags(r)
     },
@@ -1056,6 +1113,10 @@ export default {
     },
     handleBulkFill(group) {
       if (!group) return
+      if (group.type === '单件工时' || group.type === '工序代码') {
+        this.openBulkModal(group)
+        return
+      }
       const config = this.getBulkConfig(group.type)
       if (!config) {
         alert('该缺陷暂不支持批量填写')
@@ -1075,6 +1136,95 @@ export default {
         }
       })
       Promise.all(tasks).finally(() => {
+        this.ensureCurrentPageContainsFilter()
+      })
+    },
+    openBulkModal(group) {
+      if (!group) return
+      const records = group.indexes
+        .map(idx => {
+          const record = this.preview[idx]
+          if (!record) return null
+          return {
+            index: idx,
+            notificationNumber: record.notificationNumber,
+            drawingNumber: record.drawingNumber,
+            processName: record.processName,
+            processCode: record.processCode,
+            hours: record.hours,
+            planQty: record.planQty
+          }
+        })
+        .filter(Boolean)
+      this.bulkModal = {
+        visible: true,
+        type: group.type,
+        group,
+        records
+      }
+    },
+    closeBulkModal() {
+      this.bulkModal = {
+        visible: false,
+        type: '',
+        group: null,
+        records: []
+      }
+    },
+    applyBulkUpdates(payload) {
+      if (!payload || !payload.type || !Array.isArray(payload.updates)) {
+        this.closeBulkModal()
+        return
+      }
+      const { type, updates } = payload
+      const tasks = []
+      updates.forEach(item => {
+        if (!item || typeof item.index !== 'number') return
+        const record = this.preview[item.index]
+        if (!record) return
+        switch (type) {
+          case '单件工时': {
+            const value = item.hours
+            record.hours = value === '' || value === null || Number.isNaN(Number(value)) ? null : Number(value)
+            this.checkHours(record)
+            break
+          }
+          case '工序代码': {
+            const code = item.processCode != null ? String(item.processCode).trim() : ''
+            record.processCode = code
+            record.serverCodeMissing = !this.hasText(code)
+            record.codeMissing = !this.hasText(code)
+            if (!this.hasText(code)) {
+              record.barcode = ''
+              record.barcodeImage = ''
+              this.updateIssueFlags(record)
+            } else {
+              const name = record.processName != null ? String(record.processName).trim() : ''
+              if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
+              const task = this.updateBarcode(record)
+              if (task && typeof task.then === 'function') tasks.push(task)
+            }
+            break
+          }
+          case '工序': {
+            const name = item.processName != null ? String(item.processName).trim() : ''
+            record.processName = name
+            const task = this.updateProcess(record)
+            if (task && typeof task.then === 'function') tasks.push(task)
+            break
+          }
+          case '计划数': {
+            const plan = item.planQty
+            record.planQty = plan === '' || plan === null || Number.isNaN(Number(plan)) ? null : Number(plan)
+            this.handlePlanInput(record)
+            break
+          }
+          default:
+            break
+        }
+      })
+      Promise.all(tasks).finally(() => {
+        this.closeBulkModal()
         this.ensureCurrentPageContainsFilter()
       })
     }
