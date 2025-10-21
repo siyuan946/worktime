@@ -107,4 +107,34 @@ public class ProcessCodeService {
         }
         return result;
     }
+
+    public ProcessCode rememberMapping(String name, String code) {
+        if (name == null || code == null) {
+            return null;
+        }
+        String trimmedName = name.trim();
+        String trimmedCode = code.trim();
+        if (trimmedName.isEmpty() || trimmedCode.isEmpty()) {
+            return null;
+        }
+        ProcessCode existing = repository.findByName(trimmedName);
+        ProcessCode target;
+        boolean created = false;
+        if (existing != null) {
+            existing.setCode(trimmedCode);
+            target = existing;
+        } else {
+            ProcessCode fresh = new ProcessCode();
+            fresh.setName(trimmedName);
+            fresh.setCode(trimmedCode);
+            target = fresh;
+            created = true;
+        }
+        ProcessCode saved = repository.save(target);
+        cache.put(trimmedName, trimmedCode);
+        if (!created && saved.getName() != null && !saved.getName().trim().isEmpty()) {
+            cache.put(saved.getName().trim(), trimmedCode);
+        }
+        return saved;
+    }
 }

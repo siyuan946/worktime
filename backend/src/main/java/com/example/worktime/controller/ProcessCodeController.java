@@ -51,6 +51,26 @@ public class ProcessCodeController {
         return processService.getCodes(names);
     }
 
+    @PostMapping("/remember")
+    public ProcessCode remember(@RequestBody Map<String, String> payload, @RequestHeader("X-User") String user) {
+        String name = payload != null ? payload.get("name") : null;
+        String code = payload != null ? payload.get("code") : null;
+        if (name == null || name.trim().isEmpty() || code == null || code.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称和工序代号均不能为空");
+        }
+        ProcessCode existing = repository.findByName(name.trim());
+        ProcessCode saved = processService.rememberMapping(name, code);
+        if (saved == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称和工序代号均不能为空");
+        }
+        if (existing == null) {
+            logService.log(user, "新增工序 " + saved.getName(), "id=" + saved.getId());
+        } else {
+            logService.log(user, "更新工序 " + existing.getId(), null);
+        }
+        return saved;
+    }
+
     @PostMapping
     public ProcessCode create(@RequestBody ProcessCode pc, @RequestHeader("X-User") String user) {
         validate(pc);

@@ -76,11 +76,15 @@ body {
   box-shadow: 0 0.25rem 0.5rem rgba(13,110,253,0.15);
 }
 
-.issue-panel__row {
+.issue-panel__row { 
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: .5rem;
+}
+
+.issue-panel__row--header {
+  align-items: flex-start;
 }
 
 .issue-panel__row--footer {
@@ -98,6 +102,24 @@ body {
 .issue-panel__count {
   font-size: .85rem;
   color: #6c757d;
+}
+
+.issue-panel__type-list {
+  margin-top: .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.issue-panel__type-row {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.issue-panel__type-button {
+  min-width: 0;
 }
 
 .issue-filter-alert {

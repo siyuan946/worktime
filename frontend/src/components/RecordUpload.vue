@@ -207,7 +207,8 @@ export default {
         type: '',
         group: null,
         records: []
-      }
+      },
+      rememberedPairs: Object.create(null)
     }
   },
   created() {
@@ -360,12 +361,12 @@ export default {
         if (match) {
           this.issueFilter.indexes = match.indexes.slice()
           if (!match.count) {
-            this.advanceToNextIssueGroup(newGroups)
+            this.handleIssueGroupCleared(newGroups)
           } else {
             this.$nextTick(() => this.ensureCurrentPageContainsFilter())
           }
         } else {
-          this.advanceToNextIssueGroup(newGroups)
+          this.handleIssueGroupCleared(newGroups)
         }
       },
       deep: true
@@ -673,6 +674,26 @@ export default {
       }
       return result
     },
+    async rememberProcessCode(record) {
+      if (!record) return
+      const name = record.processName != null ? String(record.processName).trim() : ''
+      const code = record.processCode != null ? String(record.processCode).trim() : ''
+      if (!name || !code) return
+      const key = `${name}|||${code}`
+      if (this.rememberedPairs[key]) return
+      let headers
+      try { headers = this.requireUserHeaders() }
+      catch (err) { return }
+      try {
+        await axios.post('/api/processcodes/remember', { name, code }, { headers })
+        this.$set(this.rememberedPairs, key, true)
+        if (!this.processCache[name]) {
+          this.$set(this.processCache, name, code)
+        }
+      } catch (error) {
+        console.error('记住工序代码失败', error)
+      }
+    },
     async ensureProcessCache(force = false) {
       if (this.processCacheLoaded && !force) return
       try {
@@ -726,7 +747,7 @@ export default {
       record.serverCodeMissing = false
       record.codeMissing = false
       await this.updateBarcode(record)
-      this.updateIssueFlags(record)
+      await this.rememberProcessCode(record)
     },
     handlePlanInput(record) {
       if (!record) return
@@ -737,6 +758,7 @@ export default {
       const rawName = r.processName || ''
       const name = rawName.trim()
       const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
+      let shouldRemember = false
       if (!name) {
         r.processCode = ''
         r.serverCodeMissing = false
@@ -763,6 +785,7 @@ export default {
         r.processCode = manualCode
         r.serverCodeMissing = false
         if (!this.processCache[name]) this.$set(this.processCache, name, manualCode)
+        shouldRemember = true
       } else {
         r.processCode = ''
         r.serverCodeMissing = true
@@ -770,6 +793,9 @@ export default {
       r.codeMissing = !this.hasText(r.processCode)
       await this.updateBarcode(r, fetchBarcodeImage)
       this.updateIssueFlags(r)
+      if (shouldRemember && !r.codeMissing) {
+        await this.rememberProcessCode(r)
+      }
     },
     checkHours(r) {
       r.hoursMissing = r.hours == null || r.hours === ''
@@ -993,27 +1019,30 @@ export default {
       this.issueCompletionNotified = false
       this.currentPage = 0
     },
-    advanceToNextIssueGroup(groups) {
-      const remaining = groups.filter(group => group.count > 0)
-      if (!remaining.length) {
-        const hadFilter = !!this.issueFilter
-        this.issueFilter = null
-        if (hadFilter && !this.issueCompletionNotified) {
+    handleIssueGroupCleared(groups) {
+      const remaining = Array.isArray(groups) ? groups.filter(group => group.count > 0) : []
+      const previousPage = this.currentPage
+      const hadFilter = !!this.issueFilter
+      this.issueFilter = null
+      this.$nextTick(() => {
+        if (!this.pages.length) {
+          this.currentPage = 0
+          return
+        }
+        let target = previousPage
+        if (target >= this.pages.length) target = this.pages.length - 1
+        if (target < 0) target = 0
+        this.currentPage = target
+      })
+      if (!hadFilter) return
+      if (!this.issueCompletionNotified) {
+        if (!remaining.length) {
           alert('所有缺陷已处理完毕！')
-          this.issueCompletionNotified = true
+        } else {
+          alert('当前缺陷已处理完毕，请检查页面后再选择其它缺陷。')
         }
-        return
+        this.issueCompletionNotified = true
       }
-      this.issueCompletionNotified = false
-      const currentKey = this.issueFilter ? this.issueFilter.key : null
-      let next = remaining[0]
-      if (currentKey) {
-        const idx = remaining.findIndex(group => group.key === currentKey)
-        if (idx >= 0) {
-          next = remaining[(idx + 1) % remaining.length]
-        }
-      }
-      this.selectIssueGroup(next)
     },
     ensureCurrentPageContainsFilter() {
       if (!this.issueFilter) return
@@ -1202,7 +1231,12 @@ export default {
               const name = record.processName != null ? String(record.processName).trim() : ''
               if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
               const task = this.updateBarcode(record)
-              if (task && typeof task.then === 'function') tasks.push(task)
+              if (task && typeof task.then === 'function') {
+                tasks.push(task.then(() => this.rememberProcessCode(record)))
+              } else {
+                const remember = this.rememberProcessCode(record)
+                if (remember && typeof remember.then === 'function') tasks.push(remember)
+              }
             }
             break
           }
