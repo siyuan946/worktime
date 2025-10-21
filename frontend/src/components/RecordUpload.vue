@@ -22,128 +22,147 @@
       </div>
     </div>
 
-    <div v-if="preview.length" id="preview-table">
-      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
-        <h2 class="h5 mb-0">预览</h2>
-        <div class="d-flex flex-wrap align-items-center gap-2">
-          <div>当前图号：{{ currentPageInfo?.drawingNumber || '—' }}（第 {{ currentPage + 1 }} / {{ pages.length }} 页）</div>
-          <div class="input-group input-group-sm" style="width: 220px;">
-            <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
-            <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-secondary" @click="prevPage" :disabled="currentPage === 0">上一页</button>
-            <button class="btn btn-outline-secondary" @click="nextPage" :disabled="currentPage >= pages.length - 1">下一页</button>
+    <div v-if="preview.length" id="preview-table" class="upload-preview-layout">
+      <RecordIssuePanel
+        class="no-print issue-panel-container"
+        :groups="issueGroups"
+        :active-group="issueFilter"
+        @select="selectIssueGroup"
+        @clear="clearIssueFilter"
+        @bulk="handleBulkFill"
+      />
+      <div class="preview-main">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
+          <h2 class="h5 mb-0">预览</h2>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <div>当前图号：{{ currentPageInfo?.drawingNumber || '—' }}（第 {{ currentPage + 1 }} / {{ pages.length }} 页）</div>
+            <div class="input-group input-group-sm" style="width: 220px;">
+              <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
+              <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" @click="prevPage" :disabled="currentPage === 0">上一页</button>
+              <button class="btn btn-outline-secondary" @click="nextPage" :disabled="currentPage >= pages.length - 1">下一页</button>
+            </div>
           </div>
         </div>
+
+        <div v-if="issueFilter" class="alert alert-warning py-2 px-3 mb-3 no-print issue-filter-alert">
+          <div>
+            正在处理图号「{{ issueFilter.drawingNumber || '（空图号）' }}」缺少「{{ issueFilter.type }}」的 {{ issueFilter.indexes.length }} 条记录。
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearIssueFilter">退出筛选</button>
+        </div>
+
+        <!-- 保持不变：force-new-page 确保新图号必换页 -->
+        <template v-for="item in visiblePages" :key="item.index">
+          <div
+            class="preview-page"
+            :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
+          >
+            <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+              <h3 class="h6 mb-0">图号：{{ item.page.drawingNumber || '（空）' }}</h3>
+              <span class="text-muted">第 {{ item.index + 1 }} 页 / 共 {{ pages.length }} 页</span>
+            </div>
+
+            <table class="table table-bordered table-sm table-striped mb-0">
+              <thead>
+                <tr>
+                  <th class="notification-col">通知单号</th>
+                  <th class="no-print">产品名称</th>
+                  <th class="drawing-col">图号</th>
+                  <th class="print-only plan-col">计划数</th>
+                  <th class="no-print">名称</th>
+                  <th class="plan-col no-print">计划数</th>
+                  <th class="hours-col">单件工时</th>
+                  <th class="no-print">工序代码</th>
+                  <th class="process-col">工序</th>
+                  <th class="print-only worker-code-col">人员代码</th>
+                  <th class="print-only qualified-col">合格件数</th>
+                  <th class="print-only time-col">起始时间</th>
+                  <th class="print-only time-col">结束时间</th>
+                  <th class="print-only inspector-col">检验员</th>
+                  <th class="barcode-cell">条形码</th>
+                  <th class="no-print"></th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr
+                  v-for="entry in item.page.entries"
+                  :key="entry.index"
+                  :class="{ 'table-danger': entry.record.hasIssue }"
+                  :title="entry.record.issueSummary || ''"
+                >
+                  <td :class="['notification-col', { 'missing-cell': entry.record.notificationMissing }]"><span>{{ entry.record.notificationNumber }}</span></td>
+                  <td :class="['no-print', { 'missing-cell': entry.record.productMissing }]">{{ entry.record.productName }}</td>
+                  <td :class="['drawing-col', { 'missing-cell': entry.record.drawingMissing }]">{{ entry.record.drawingNumber }}</td>
+                  <td class="print-only plan-col">{{ entry.record.planQty }}</td>
+                  <td :class="['no-print', { 'missing-cell': entry.record.partMissing }]">{{ entry.record.partName }}</td>
+                  <td :class="['plan-col', 'no-print', { 'missing-cell': entry.record.planMissing }]">
+                    <input
+                      type="number"
+                      class="form-control form-control-sm"
+                      :class="{ 'is-invalid': entry.record.planMissing }"
+                      v-model.number="entry.record.planQty"
+                      @input="handlePlanInput(entry.record)"
+                      @blur="handlePlanInput(entry.record)"
+                    />
+                    <span class="print-text">{{ entry.record.planQty }}</span>
+                  </td>
+                  <td :class="['hours-col', { 'missing-cell': entry.record.hoursMissing }]">
+                    <input
+                      type="number"
+                      class="form-control form-control-sm no-print"
+                      style="width:80px"
+                      v-model.number="entry.record.hours"
+                      :class="{ 'is-invalid': entry.record.hoursMissing }"
+                      @input="checkHours(entry.record)"
+                      @blur="checkHours(entry.record)"
+                    />
+                    <span class="print-text">{{ entry.record.hours }}</span>
+                  </td>
+                  <td :class="['no-print', { 'missing-cell': entry.record.codeMissing }]">{{ entry.record.processCode }}</td>
+                  <td :class="['process-col', { 'missing-cell': entry.record.processMissing || entry.record.codeMissing }]">
+                    <input
+                      class="form-control form-control-sm no-print"
+                      v-model="entry.record.processName"
+                      @blur="updateProcess(entry.record)"
+                      @input="handleProcessInput(entry.record)"
+                      :class="{ 'is-invalid': entry.record.processMissing || entry.record.codeMissing }"
+                    />
+                    <span class="print-text">{{ entry.record.processName }}</span>
+                  </td>
+                  <td class="print-only worker-code-col"></td>
+                  <td class="print-only qualified-col"></td>
+                  <td class="print-only time-col"></td>
+                  <td class="print-only time-col"></td>
+                  <td class="print-only inspector-col"></td>
+                  <td :class="['barcode-cell', { 'missing-cell': entry.record.barcodeMissing }]">
+                    <div>{{ entry.record.barcode }}</div>
+                    <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
+                  </td>
+                  <td class="no-print">
+                    <div v-if="entry.record.issueSummary" class="issue-tag mb-1">⚠️ {{ entry.record.issueSummary }}</div>
+                    <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
+                    <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+        </template>
       </div>
-
-      <!-- 保持不变：force-new-page 确保新图号必换页 -->
-      <template v-for="item in visiblePages" :key="item.index">
-        <div
-          class="preview-page"
-          :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
-        >
-          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
-            <h3 class="h6 mb-0">图号：{{ item.page.drawingNumber || '（空）' }}</h3>
-            <span class="text-muted">第 {{ item.index + 1 }} 页 / 共 {{ pages.length }} 页</span>
-          </div>
-
-          <table class="table table-bordered table-sm table-striped mb-0">
-            <thead>
-              <tr>
-                <th class="notification-col">通知单号</th>
-                <th class="no-print">产品名称</th>
-                <th class="drawing-col">图号</th>
-                <th class="print-only plan-col">计划数</th>
-                <th class="no-print">名称</th>
-                <th class="plan-col no-print">计划数</th>
-                <th class="hours-col">单件工时</th>
-                <th class="no-print">工序代码</th>
-                <th class="process-col">工序</th>
-                <th class="print-only worker-code-col">人员代码</th>
-                <th class="print-only qualified-col">合格件数</th>
-                <th class="print-only time-col">起始时间</th>
-                <th class="print-only time-col">结束时间</th>
-                <th class="print-only inspector-col">检验员</th>
-                <th class="barcode-cell">条形码</th>
-                <th class="no-print"></th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr
-                v-for="entry in item.page.entries"
-                :key="entry.index"
-                :class="{ 'table-danger': entry.record.hasIssue }"
-                :title="entry.record.issueSummary || ''"
-              >
-                <td :class="['notification-col', { 'missing-cell': entry.record.notificationMissing }]"><span>{{ entry.record.notificationNumber }}</span></td>
-                <td :class="['no-print', { 'missing-cell': entry.record.productMissing }]">{{ entry.record.productName }}</td>
-                <td :class="['drawing-col', { 'missing-cell': entry.record.drawingMissing }]">{{ entry.record.drawingNumber }}</td>
-                <td class="print-only plan-col">{{ entry.record.planQty }}</td>
-                <td :class="['no-print', { 'missing-cell': entry.record.partMissing }]">{{ entry.record.partName }}</td>
-                <td :class="['plan-col', 'no-print', { 'missing-cell': entry.record.planMissing }]">
-                  <input
-                    type="number"
-                    class="form-control form-control-sm"
-                    :class="{ 'is-invalid': entry.record.planMissing }"
-                    v-model.number="entry.record.planQty"
-                    @input="handlePlanInput(entry.record)"
-                    @blur="handlePlanInput(entry.record)"
-                  />
-                  <span class="print-text">{{ entry.record.planQty }}</span>
-                </td>
-                <td :class="['hours-col', { 'missing-cell': entry.record.hoursMissing }]">
-                  <input
-                    type="number"
-                    class="form-control form-control-sm no-print"
-                    style="width:80px"
-                    v-model.number="entry.record.hours"
-                    :class="{ 'is-invalid': entry.record.hoursMissing }"
-                    @input="checkHours(entry.record)"
-                    @blur="checkHours(entry.record)"
-                  />
-                  <span class="print-text">{{ entry.record.hours }}</span>
-                </td>
-                <td :class="['no-print', { 'missing-cell': entry.record.codeMissing }]">{{ entry.record.processCode }}</td>
-                <td :class="['process-col', { 'missing-cell': entry.record.processMissing || entry.record.codeMissing }]">
-                  <input
-                    class="form-control form-control-sm no-print"
-                    v-model="entry.record.processName"
-                    @blur="updateProcess(entry.record)"
-                    @input="handleProcessInput(entry.record)"
-                    :class="{ 'is-invalid': entry.record.processMissing || entry.record.codeMissing }"
-                  />
-                  <span class="print-text">{{ entry.record.processName }}</span>
-                </td>
-                <td class="print-only worker-code-col"></td>
-                <td class="print-only qualified-col"></td>
-                <td class="print-only time-col"></td>
-                <td class="print-only time-col"></td>
-                <td class="print-only inspector-col"></td>
-                <td :class="['barcode-cell', { 'missing-cell': entry.record.barcodeMissing }]">
-                  <div>{{ entry.record.barcode }}</div>
-                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,'+entry.record.barcodeImage" />
-                </td>
-                <td class="no-print">
-                  <div v-if="entry.record.issueSummary" class="issue-tag mb-1">⚠️ {{ entry.record.issueSummary }}</div>
-                  <button class="btn btn-sm btn-outline-primary me-1" @click="addRow(entry.index)">新增</button>
-                  <button class="btn btn-sm btn-outline-danger" @click="deleteRow(entry.index)">删除</button>
-                </td>
-              </tr>
-
-            </tbody>
-          </table>
-        </div>
-      </template>
     </div>
   </section>
 </template>
 
 <script>
 import axios from 'axios'
+import RecordIssuePanel from './RecordIssuePanel.vue'
 export default {
+  components: { RecordIssuePanel },
   data() {
     return {
       file: null,
@@ -161,7 +180,9 @@ export default {
       showProgress: false,
       parseProgress: 0,
       renderAllPages: false,
-      renderBuffer: 0
+      renderBuffer: 0,
+      issueFilter: null,
+      issueCompletionNotified: false
     }
   },
   created() {
@@ -181,9 +202,8 @@ export default {
       const f = this.files.find(x => x.id === id)
       return f ? f.fileName : ''
     },
-    pages() {
+    allPages() {
       if (!this.preview.length) return []
-      // 按图号分段
       const grouped = []
       let current = null
       this.preview.forEach((record, index) => {
@@ -194,7 +214,6 @@ export default {
         }
         current.entries.push({ record, index })
       })
-      // 按 rowsPerPage 分页，标记每个图号的第一页
       const pages = []
       const size = this.rowsPerPage
       grouped.forEach(group => {
@@ -217,6 +236,26 @@ export default {
       })
       return pages
     },
+    pages() {
+      const base = this.allPages
+      if (!this.issueFilter) return base
+      const filterSet = new Set(this.issueFilter.indexes)
+      const filtered = []
+      let lastDrawing = null
+      base.forEach(page => {
+        const entries = page.entries.filter(entry => filterSet.has(entry.index))
+        if (!entries.length) return
+        const drawing = page.drawingNumber
+        const isFirst = drawing !== lastDrawing
+        filtered.push({
+          drawingNumber: drawing,
+          entries,
+          isFirstOfDrawing: isFirst
+        })
+        lastDrawing = drawing
+      })
+      return filtered
+    },
     currentPageInfo() { return this.pages[this.currentPage] || null },
     visiblePages() {
       if (!this.pages.length) return []
@@ -237,14 +276,74 @@ export default {
         .filter(index => index >= 0 && index < this.pages.length)
         .sort((a, b) => a - b)
         .map(index => ({ page: this.pages[index], index }))
+    },
+    issueGroups() {
+      if (!this.preview.length) return []
+      const groups = new Map()
+      this.preview.forEach((record, index) => {
+        if (!record || !Array.isArray(record.issueTypes) || !record.issueTypes.length) return
+        const drawing = record.drawingNumber || ''
+        record.issueTypes.forEach(type => {
+          const key = `${drawing}|||${type}`
+          if (!groups.has(key)) {
+            groups.set(key, {
+              key,
+              drawingNumber: drawing,
+              type,
+              count: 0,
+              indexes: []
+            })
+          }
+          const group = groups.get(key)
+          group.count += 1
+          group.indexes.push(index)
+        })
+      })
+      return Array.from(groups.values()).sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count
+        const aDrawing = a.drawingNumber || ''
+        const bDrawing = b.drawingNumber || ''
+        if (aDrawing !== bDrawing) return aDrawing.localeCompare(bDrawing, 'zh-Hans')
+        return a.type.localeCompare(b.type, 'zh-Hans')
+      })
     }
   },
   watch: {
+    pages(newPages) {
+      if (!newPages.length) {
+        this.currentPage = 0
+        return
+      }
+      if (this.currentPage >= newPages.length) {
+        this.currentPage = newPages.length - 1
+      }
+    },
     currentPage(val) {
       this.$nextTick(() => {
         this.loadBarcodesForPage(val)
         this.preloadAdjacentBarcodes()
       })
+    },
+    issueGroups: {
+      handler(newGroups) {
+        if (!this.issueFilter) {
+          if (newGroups.length) this.issueCompletionNotified = false
+          return
+        }
+        const currentKey = this.issueFilter.key
+        const match = newGroups.find(group => group.key === currentKey)
+        if (match) {
+          this.issueFilter.indexes = match.indexes.slice()
+          if (!match.count) {
+            this.advanceToNextIssueGroup(newGroups)
+          } else {
+            this.$nextTick(() => this.ensureCurrentPageContainsFilter())
+          }
+        } else {
+          this.advanceToNextIssueGroup(newGroups)
+        }
+      },
+      deep: true
     }
   },
   methods: {
@@ -291,6 +390,7 @@ export default {
       record.barcodeMissing = record.barcodeMissing === true
       record.issueSummary = ''
       record.hasIssue = false
+      record.issueTypes = []
       this.updateIssueFlags(record)
       return record
     },
@@ -335,6 +435,10 @@ export default {
 
       record.hasIssue = issues.length > 0
       record.issueSummary = record.hasIssue ? `缺少：${issues.join('、')}` : ''
+      record.issueTypes = issues.slice()
+      if (record.hasIssue) {
+        this.issueCompletionNotified = false
+      }
     },
     handleRequestError(error, fallback) {
       if (error instanceof Error && error.message === 'missing-user') return
@@ -387,6 +491,8 @@ export default {
         this.fileId = this.selectedFileId
         this.file = null
         this.currentPage = 0
+        this.issueFilter = null
+        this.issueCompletionNotified = false
         this.$nextTick(() => {
           this.ensurePageInRange()
           this.loadBarcodesForPage(this.currentPage)
@@ -407,6 +513,7 @@ export default {
         this.selectedFileId = ''
         this.preview = []
         this.currentPage = 0
+        this.issueFilter = null
         await this.fetchFiles()
         alert('已删除')
       } catch (e) {
@@ -423,7 +530,7 @@ export default {
       let headers
       try { headers = this.requireUserHeaders() }
       catch (err) { return }
-      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}
+      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}; this.issueFilter = null; this.issueCompletionNotified = false
       try {
         const data = new FormData(); data.append('file', this.file); data.append('store', 'false')
         const res = await axios.post('/api/workrecords/parse', data, { headers })
@@ -489,6 +596,8 @@ export default {
         const hasSupp = responses.some(r => r && r.supplemental)
         this.preview = []
         this.file = null
+        this.issueFilter = null
+        this.issueCompletionNotified = false
         alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
         await this.fetchFiles()
         this.$emit('saved')
@@ -795,6 +904,178 @@ export default {
       if (this.currentPage < this.pages.length - 1) neighbors.push(this.currentPage + 1)
       neighbors.forEach(pageIndex => {
         this.loadBarcodesForPage(pageIndex)
+      })
+    },
+    selectIssueGroup(group) {
+      if (!group) {
+        this.clearIssueFilter()
+        return
+      }
+      this.issueFilter = {
+        key: group.key,
+        drawingNumber: group.drawingNumber,
+        type: group.type,
+        indexes: group.indexes.slice()
+      }
+      this.issueCompletionNotified = false
+      this.$nextTick(() => {
+        const filteredPages = this.pages
+        const targetIndex = this.issueFilter && this.issueFilter.indexes.length ? this.issueFilter.indexes[0] : null
+        let pageIndex = filteredPages.findIndex(page => page.entries.some(entry => entry.index === targetIndex))
+        if (pageIndex < 0) pageIndex = 0
+        if (filteredPages.length) {
+          if (pageIndex >= filteredPages.length) pageIndex = filteredPages.length - 1
+          this.currentPage = Math.max(0, pageIndex)
+        } else {
+          this.currentPage = 0
+        }
+      })
+    },
+    clearIssueFilter() {
+      this.issueFilter = null
+      this.issueCompletionNotified = false
+      this.currentPage = 0
+    },
+    advanceToNextIssueGroup(groups) {
+      const remaining = groups.filter(group => group.count > 0)
+      if (!remaining.length) {
+        const hadFilter = !!this.issueFilter
+        this.issueFilter = null
+        if (hadFilter && !this.issueCompletionNotified) {
+          alert('所有缺陷已处理完毕！')
+          this.issueCompletionNotified = true
+        }
+        return
+      }
+      this.issueCompletionNotified = false
+      const currentKey = this.issueFilter ? this.issueFilter.key : null
+      let next = remaining[0]
+      if (currentKey) {
+        const idx = remaining.findIndex(group => group.key === currentKey)
+        if (idx >= 0) {
+          next = remaining[(idx + 1) % remaining.length]
+        }
+      }
+      this.selectIssueGroup(next)
+    },
+    ensureCurrentPageContainsFilter() {
+      if (!this.issueFilter) return
+      const filteredPages = this.pages
+      if (!filteredPages.length) {
+        this.currentPage = 0
+        return
+      }
+      if (this.currentPage >= filteredPages.length) {
+        this.currentPage = filteredPages.length - 1
+      }
+      const activeIndexes = new Set(this.issueFilter.indexes)
+      const current = filteredPages[this.currentPage]
+      if (current && current.entries.some(entry => activeIndexes.has(entry.index))) {
+        return
+      }
+      const fallback = filteredPages.findIndex(page => page.entries.some(entry => activeIndexes.has(entry.index)))
+      if (fallback >= 0) {
+        this.currentPage = fallback
+      } else {
+        this.currentPage = 0
+      }
+    },
+    getBulkConfig(type) {
+      switch (type) {
+        case '工序代码':
+          return {
+            prompt: '请输入工序代码（将应用到当前筛选的所有记录）',
+            prepare(input) {
+              const value = String(input || '').trim()
+              if (!value) {
+                alert('请输入有效的工序代码')
+                return undefined
+              }
+              return value
+            },
+            apply(record, value) {
+              record.processCode = value
+              record.serverCodeMissing = false
+              record.codeMissing = false
+              return this.updateBarcode(record)
+            }
+          }
+        case '工序':
+          return {
+            prompt: '请输入工序名称（将应用到当前筛选的所有记录）',
+            prepare(input) {
+              const value = String(input || '').trim()
+              if (!value) {
+                alert('请输入有效的工序名称')
+                return undefined
+              }
+              return value
+            },
+            apply(record, value) {
+              record.processName = value
+              return this.updateProcess(record)
+            }
+          }
+        case '单件工时':
+          return {
+            prompt: '请输入单件工时（数字，将应用到当前筛选的所有记录）',
+            prepare(input) {
+              const value = Number(input)
+              if (Number.isNaN(value)) {
+                alert('请输入有效的数字')
+                return undefined
+              }
+              return value
+            },
+            apply(record, value) {
+              record.hours = value
+              record.hoursMissing = false
+              this.updateIssueFlags(record)
+            }
+          }
+        case '计划数':
+          return {
+            prompt: '请输入计划数（数字，将应用到当前筛选的所有记录）',
+            prepare(input) {
+              const value = Number(input)
+              if (Number.isNaN(value)) {
+                alert('请输入有效的数字')
+                return undefined
+              }
+              return value
+            },
+            apply(record, value) {
+              record.planQty = value
+              record.planMissing = false
+              this.updateIssueFlags(record)
+            }
+          }
+        default:
+          return null
+      }
+    },
+    handleBulkFill(group) {
+      if (!group) return
+      const config = this.getBulkConfig(group.type)
+      if (!config) {
+        alert('该缺陷暂不支持批量填写')
+        return
+      }
+      const input = prompt(config.prompt, '')
+      if (input === null) return
+      const prepared = config.prepare ? config.prepare.call(this, input) : input
+      if (prepared === undefined) return
+      const tasks = []
+      group.indexes.slice().forEach(idx => {
+        const record = this.preview[idx]
+        if (!record) return
+        const result = config.apply.call(this, record, prepared, idx)
+        if (result && typeof result.then === 'function') {
+          tasks.push(result)
+        }
+      })
+      Promise.all(tasks).finally(() => {
+        this.ensureCurrentPageContainsFilter()
       })
     }
   }

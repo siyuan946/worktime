@@ -12,6 +12,102 @@ body {
   box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
+.upload-preview-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.preview-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.issue-panel {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: .5rem;
+  padding: 1rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05);
+  min-width: 230px;
+  max-width: 260px;
+}
+
+.issue-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.issue-panel__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.issue-panel__empty {
+  padding: .25rem 0;
+}
+
+.issue-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+}
+
+.issue-panel__item {
+  border: 1px solid #f1f3f5;
+  border-radius: .5rem;
+  padding: .75rem;
+  background-color: #fdfdfd;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.issue-panel__item--active {
+  border-color: #0d6efd;
+  box-shadow: 0 0.25rem 0.5rem rgba(13,110,253,0.15);
+}
+
+.issue-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.issue-panel__row--footer {
+  margin-top: .5rem;
+}
+
+.issue-panel__drawing {
+  font-weight: 500;
+  font-size: .95rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-panel__count {
+  font-size: .85rem;
+  color: #6c757d;
+}
+
+.issue-filter-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
 .table th, .table td { vertical-align: middle; }
 
 .notification-col { min-width: 90px; max-width: 120px; }
@@ -53,6 +149,23 @@ body {
 
 /* highlight editable fields so they stand out against table background */
 .edit-highlight { background-color: #fffbe6; border-color: #f0ad4e; }
+
+
+@media (max-width: 991.98px) {
+  .upload-preview-layout {
+    flex-direction: column;
+  }
+
+  .issue-panel {
+    position: static;
+    width: 100%;
+    max-width: none;
+  }
+
+  .issue-panel__drawing {
+    max-width: none;
+  }
+}
 
 
 .upload-toolbar {
