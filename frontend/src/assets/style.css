@@ -25,11 +25,11 @@ body {
 .inspector-col { min-width: 150px; }
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
-.barcode-cell { min-width: 220px; min-height: 90px; }
+.barcode-cell { min-width: 150px; }
 .barcode-cell img {
   display: block;
   height: auto;
-  max-height: 80px;
+  max-height: 70px;
   width: 100%;
 }
 
@@ -93,9 +93,6 @@ body {
 .print-title { font-weight: 600; font-size: 1.1rem; }
 .print-meta { font-size: .9rem; color: #6c757d; }
 
-.blank-row { display: table-row; background-color: #fdfdfd; }
-.blank-row td { min-height: 24px; }
-
 /* ===================== PRINT ===================== */
 @media print {
   .screen-only { display: none !important; }
@@ -132,15 +129,13 @@ body {
 
   #preview-table th {
     white-space: nowrap;
-    height: 26px;
-    line-height: 26px;
+    line-height: 1.4;
     vertical-align: middle;
   }
 
   #preview-table td {
     white-space: normal;
     word-break: break-word;
-    height: 26px;
     line-height: 1.35;
     vertical-align: middle;
   }
@@ -224,25 +219,16 @@ body {
   #preview-table tr,
   #print-area tr { page-break-inside: avoid; break-inside: avoid; }
 
-  #print-area .blank-row td {
-    padding-top: 2px;
-    padding-bottom: 2px;
-    line-height: 1.1;
-    min-height: 20px;
-  }
-
   .print-page table { margin-bottom: 0 !important; }
 
   #preview-table .barcode-cell img,
   #print-area .barcode-cell img {
     height: auto;
-    max-height: 80px;
+    max-height: 70px;
     max-width: 100%;
     width: 100%;
   }
   #print-area .barcode-cell div { word-break: break-all; }
-
-  .blank-row { display: table-row !important; }
 
   .print-page { break-after: page; page-break-after: always; }
   .print-page:last-child { break-after: auto; page-break-after: auto; }

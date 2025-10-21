@@ -133,25 +133,6 @@
                 </td>
               </tr>
 
-              <!-- 仍然渲染补白行，但屏幕隐藏、打印显示（见 style.css） -->
-              <tr v-for="n in item.page.blankCount" :key="'blank-'+item.index+'-'+n" class="blank-row">
-                <td class="notification-col">&nbsp;</td>
-                <td class="no-print">&nbsp;</td>
-                <td class="drawing-col">&nbsp;</td>
-                <td class="print-only plan-col">&nbsp;</td>
-                <td class="no-print">&nbsp;</td>
-                <td class="plan-col no-print">&nbsp;</td>
-                <td class="hours-col">&nbsp;</td>
-                <td class="no-print">&nbsp;</td>
-                <td class="process-col">&nbsp;</td>
-                <td class="print-only worker-code-col">&nbsp;</td>
-                <td class="print-only qualified-col">&nbsp;</td>
-                <td class="print-only time-col">&nbsp;</td>
-                <td class="print-only time-col">&nbsp;</td>
-                <td class="print-only inspector-col">&nbsp;</td>
-                <td class="barcode-cell"><div>&nbsp;</div></td>
-                <td class="no-print"></td>
-              </tr>
             </tbody>
           </table>
         </div>
@@ -221,18 +202,15 @@ export default {
           pages.push({
             drawingNumber: group.drawingNumber,
             entries: [],
-            blankCount: size,
             isFirstOfDrawing: true
           })
           return
         }
         for (let offset = 0; offset < group.entries.length; offset += size) {
           const slice = group.entries.slice(offset, offset + size)
-          const blanks = size > slice.length ? size - slice.length : 0
           pages.push({
             drawingNumber: group.drawingNumber,
             entries: slice,
-            blankCount: blanks,
             isFirstOfDrawing: offset === 0
           })
         }
