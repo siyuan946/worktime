@@ -58,8 +58,11 @@ public class ProcessCodeController {
         if (name == null || name.trim().isEmpty() || code == null || code.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称和工序代号均不能为空");
         }
-        ProcessCode existing = repository.findByName(name.trim());
-        ProcessCode saved = processService.rememberMapping(name, code);
+        String trimmedName = name.trim();
+        String trimmedCode = code.trim();
+        ProcessCode existing = repository.findByName(trimmedName);
+        ensureUniqueCode(trimmedCode, existing != null ? existing.getId() : null);
+        ProcessCode saved = processService.rememberMapping(trimmedName, trimmedCode);
         if (saved == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称和工序代号均不能为空");
         }
@@ -95,11 +98,27 @@ public class ProcessCodeController {
     }
 
     private void validate(ProcessCode pc) {
-        if (pc.getCode() == null || pc.getCode().trim().isEmpty()) {
+        String code = pc.getCode() != null ? pc.getCode().trim() : null;
+        if (code == null || code.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代号不能为空");
         }
-        if (pc.getName() == null || pc.getName().trim().isEmpty()) {
+        String name = pc.getName() != null ? pc.getName().trim() : null;
+        if (name == null || name.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称不能为空");
+        }
+        pc.setCode(code);
+        pc.setName(name);
+        ensureUniqueCode(code, pc.getId());
+    }
+
+    private void ensureUniqueCode(String code, Long currentId) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代号不能为空");
+        }
+        String trimmed = code.trim();
+        ProcessCode duplicate = repository.findByCode(trimmed);
+        if (duplicate != null && (currentId == null || !duplicate.getId().equals(currentId))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "工序代号已存在，请使用其他代号");
         }
     }
 }

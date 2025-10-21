@@ -417,6 +417,9 @@ export default {
       record.issueSummary = ''
       record.hasIssue = false
       record.issueTypes = []
+      record._lastAcceptedProcessCode = record.processCode
+      record._lastAcceptedBarcode = record.barcode
+      record._lastAcceptedBarcodeImage = record.barcodeImage
       this.updateIssueFlags(record)
       return record
     },
@@ -761,23 +764,63 @@ export default {
       }
     },
     async rememberProcessCode(record) {
-      if (!record) return
+      if (!record) return false
       const name = record.processName != null ? String(record.processName).trim() : ''
       const code = record.processCode != null ? String(record.processCode).trim() : ''
-      if (!name || !code) return
+      if (!name || !code) return false
       const key = `${name}|||${code}`
-      if (this.rememberedPairs[key]) return
+      if (this.rememberedPairs[key]) {
+        record._lastAcceptedProcessCode = code
+        record._lastAcceptedBarcode = record.barcode
+        record._lastAcceptedBarcodeImage = record.barcodeImage
+        if (!this.processCache[name] || this.processCache[name] !== code) {
+          this.$set(this.processCache, name, code)
+        }
+        return true
+      }
       let headers
       try { headers = this.requireUserHeaders() }
-      catch (err) { return }
+      catch (err) { return false }
+      const previousCode = record._lastAcceptedProcessCode != null ? String(record._lastAcceptedProcessCode).trim() : ''
+      const previousBarcode = record._lastAcceptedBarcode || ''
+      const previousImage = record._lastAcceptedBarcodeImage || ''
       try {
         await axios.post('/api/processcodes/remember', { name, code }, { headers })
         this.$set(this.rememberedPairs, key, true)
-        if (!this.processCache[name]) {
+        if (!this.processCache[name] || this.processCache[name] !== code) {
           this.$set(this.processCache, name, code)
         }
+        record._lastAcceptedProcessCode = code
+        record._lastAcceptedBarcode = record.barcode
+        record._lastAcceptedBarcodeImage = record.barcodeImage
+        return true
       } catch (error) {
-        console.error('记住工序代码失败', error)
+        this.handleRequestError(error, '保存工序代码失败')
+        if (this.processCache[name] === code) {
+          if (this.hasText(previousCode)) {
+            this.$set(this.processCache, name, previousCode)
+          } else if (this.$delete) {
+            this.$delete(this.processCache, name)
+          } else {
+            delete this.processCache[name]
+          }
+        }
+        if (previousCode !== code) {
+          record.processCode = previousCode
+        }
+        if (this.hasText(previousCode)) {
+          record.serverCodeMissing = false
+          record.codeMissing = false
+          record.barcode = previousBarcode
+          record.barcodeImage = previousImage
+        } else {
+          record.serverCodeMissing = true
+          record.codeMissing = true
+          record.barcode = ''
+          record.barcodeImage = ''
+        }
+        this.updateIssueFlags(record)
+        return false
       }
     },
     async ensureProcessCache(force = false) {
@@ -831,10 +874,18 @@ export default {
         await this.autoSaveRecord(record)
         return
       }
+      const previousBarcode = record.barcode
+      const previousImage = record.barcodeImage
       record.serverCodeMissing = false
       record.codeMissing = false
       await this.updateBarcode(record)
-      await this.rememberProcessCode(record)
+      const success = await this.rememberProcessCode(record)
+      if (!success) {
+        record.barcode = previousBarcode
+        record.barcodeImage = previousImage
+        return
+      }
+      this.updateIssueFlags(record)
       await this.autoSaveRecord(record)
     },
     handlePlanInput(record) {
@@ -1313,6 +1364,7 @@ export default {
         if (!item || typeof item.index !== 'number') return
         const record = this.preview[item.index]
         if (!record) return
+        let shouldSave = true
         switch (type) {
           case '单件工时': {
             const value = item.hours
@@ -1332,8 +1384,18 @@ export default {
             } else {
               const name = record.processName != null ? String(record.processName).trim() : ''
               if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
+              const previousBarcode = record.barcode
+              const previousImage = record.barcodeImage
               await this.updateBarcode(record)
-              await this.rememberProcessCode(record)
+              const success = await this.rememberProcessCode(record)
+              if (!success) {
+                record.barcode = previousBarcode
+                record.barcodeImage = previousImage
+                shouldSave = false
+              } else {
+                record.serverCodeMissing = false
+                record.codeMissing = false
+              }
             }
             break
           }
@@ -1352,7 +1414,9 @@ export default {
           default:
             break
         }
-        await this.autoSaveRecord(record)
+        if (shouldSave) {
+          await this.autoSaveRecord(record)
+        }
       })())
       try {
         await Promise.all(tasks)

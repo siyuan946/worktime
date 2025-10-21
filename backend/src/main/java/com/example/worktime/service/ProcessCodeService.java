@@ -2,7 +2,9 @@ package com.example.worktime.service;
 
 import com.example.worktime.model.ProcessCode;
 import com.example.worktime.repository.ProcessCodeRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -118,6 +120,10 @@ public class ProcessCodeService {
             return null;
         }
         ProcessCode existing = repository.findByName(trimmedName);
+        ProcessCode duplicate = repository.findByCode(trimmedCode);
+        if (duplicate != null && (existing == null || !duplicate.getId().equals(existing.getId()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "工序代号已存在，请使用其他代号");
+        }
         ProcessCode target;
         boolean created = false;
         if (existing != null) {
