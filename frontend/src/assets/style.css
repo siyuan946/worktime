@@ -26,7 +26,12 @@ body {
 
 /* Ensure barcode cells are tall enough so barcodes aren't clipped */
 .barcode-cell { min-width: 220px; min-height: 90px; }
-.barcode-cell img { display: block; height: 80px; width: auto; max-width: 320px; }
+.barcode-cell img {
+  display: block;
+  height: auto;
+  max-height: 80px;
+  width: 100%;
+}
 
 /* allow table cells to wrap long text without widening the table */
 .wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
@@ -180,16 +185,29 @@ body {
     font-weight: 700;
   }
 
-  #preview-table .notification-col { width: 100px; }
-  #preview-table .drawing-col { width: 140px; }
-  #preview-table .plan-col { width: 70px; }
-  #preview-table .hours-col { width: 80px; }
-  #preview-table .process-col { width: 95px; }
-  #preview-table .worker-code-col { width: 170px; }
-  #preview-table .qualified-col { width: 150px; }
-  #preview-table .time-col { width: 150px; }
-  #preview-table .inspector-col { width: 160px; }
-  #preview-table .barcode-cell { min-width: 210px; }
+  #preview-table .notification-col,
+  #preview-table .drawing-col,
+  #preview-table .plan-col,
+  #preview-table .hours-col,
+  #preview-table .process-col,
+  #preview-table .worker-code-col,
+  #preview-table .qualified-col,
+  #preview-table .time-col,
+  #preview-table .inspector-col,
+  #preview-table .barcode-cell {
+    min-width: 0 !important;
+  }
+
+  #preview-table .notification-col { width: 8% !important; }
+  #preview-table .drawing-col { width: 10% !important; }
+  #preview-table .plan-col { width: 4% !important; }
+  #preview-table .hours-col { width: 6% !important; }
+  #preview-table .process-col { width: 8% !important; }
+  #preview-table .worker-code-col { width: 12% !important; }
+  #preview-table .qualified-col { width: 8% !important; }
+  #preview-table .time-col { width: 9% !important; }
+  #preview-table .inspector-col { width: 9% !important; }
+  #preview-table .barcode-cell { width: 17% !important; }
 
   #preview-table .preview-page:not(:last-child) {
     page-break-after: always;
@@ -216,7 +234,12 @@ body {
   .print-page table { margin-bottom: 0 !important; }
 
   #preview-table .barcode-cell img,
-  #print-area .barcode-cell img { height: 80px; max-width: 320px; width: auto; }
+  #print-area .barcode-cell img {
+    height: auto;
+    max-height: 80px;
+    max-width: 100%;
+    width: 100%;
+  }
   #print-area .barcode-cell div { word-break: break-all; }
 
   .blank-row { display: table-row !important; }
