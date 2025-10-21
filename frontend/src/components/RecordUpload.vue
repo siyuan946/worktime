@@ -106,7 +106,7 @@
                       :class="{ 'is-invalid': entry.record.planMissing }"
                       v-model.number="entry.record.planQty"
                       @input="handlePlanInput(entry.record)"
-                      @blur="handlePlanInput(entry.record)"
+                      @blur="handlePlanBlur(entry.record)"
                     />
                     <span class="print-text">{{ entry.record.planQty }}</span>
                   </td>
@@ -118,7 +118,7 @@
                       v-model.number="entry.record.hours"
                       :class="{ 'is-invalid': entry.record.hoursMissing }"
                       @input="checkHours(entry.record)"
-                      @blur="checkHours(entry.record)"
+                      @blur="handleHoursBlur(entry.record)"
                     />
                     <span class="print-text">{{ entry.record.hours }}</span>
                   </td>
@@ -137,7 +137,7 @@
                     <input
                       class="form-control form-control-sm no-print"
                       v-model="entry.record.processName"
-                      @blur="updateProcess(entry.record)"
+                      @blur="handleProcessBlur(entry.record)"
                       @input="handleProcessInput(entry.record)"
                       :class="{ 'is-invalid': entry.record.processMissing || entry.record.codeMissing }"
                     />
@@ -674,6 +674,92 @@ export default {
       }
       return result
     },
+    buildAutoSavePayload(record) {
+      if (!record) return null
+      const asText = (value) => {
+        if (value === null || value === undefined) return null
+        const str = String(value).trim()
+        return str.length ? str : null
+      }
+      const asInteger = (value) => {
+        if (value === null || value === undefined || value === '') return null
+        const num = Number(value)
+        if (Number.isNaN(num)) return null
+        return Math.trunc(num)
+      }
+      const asNumber = (value) => {
+        if (value === null || value === undefined || value === '') return null
+        const num = Number(value)
+        return Number.isNaN(num) ? null : num
+      }
+      const payload = {
+        id: record.id != null ? record.id : null,
+        notificationNumber: asText(record.notificationNumber),
+        productName: asText(record.productName),
+        drawingNumber: asText(record.drawingNumber),
+        productCode: asText(record.productCode),
+        partName: asText(record.partName),
+        planQty: asInteger(record.planQty),
+        sourceRowNumber: asInteger(record.sourceRowNumber),
+        processName: asText(record.processName),
+        processCode: asText(record.processCode),
+        barcode: asText(this.sanitize(record.barcode)),
+        barcodeImage: record.barcodeImage || null,
+        batchNumber: asText(record.batchNumber),
+        hours: asNumber(record.hours),
+        workerCodes: asText(record.workerCodes),
+        workerNames: asText(record.workerNames),
+        workerQtys: asText(record.workerQtys),
+        qualifiedQty: asNumber(record.qualifiedQty),
+        hourSubtotal: asNumber(record.hourSubtotal),
+        supplemental: record.supplemental,
+        filled: record.filled,
+        startTime: record.startTime || null,
+        endTime: record.endTime || null,
+        inspector: asText(record.inspector),
+        remark1: asText(record.remark1),
+        remark2: asText(record.remark2)
+      }
+      return payload
+    },
+    async autoSaveRecord(record) {
+      if (!record) return
+      if (!this.fileId) return
+      if (record._autoSaving) {
+        record._autoSavePending = true
+        return
+      }
+      let headers
+      try { headers = this.requireUserHeaders() }
+      catch (err) { return }
+      const payload = this.buildAutoSavePayload(record)
+      if (!payload) return
+      record._autoSaving = true
+      try {
+        const res = await axios.post('/api/workrecords/autosave', payload, {
+          headers,
+          params: { fileId: this.fileId }
+        })
+        if (res && res.data) {
+          const updated = this.decorateRecord({
+            ...res.data,
+            barcodeImage: res.data.barcodeImage || payload.barcodeImage
+          })
+          Object.keys(updated).forEach(key => {
+            if (key === '_autoSaving' || key === '_autoSavePending') return
+            this.$set(record, key, updated[key])
+          })
+        }
+      } catch (error) {
+        this.handleRequestError(error, '自动保存失败')
+      } finally {
+        record._autoSaving = false
+        if (record._autoSavePending) {
+          record._autoSavePending = false
+          this.autoSaveRecord(record)
+        }
+      }
+    },
     async rememberProcessCode(record) {
       if (!record) return
       const name = record.processName != null ? String(record.processName).trim() : ''
@@ -742,16 +828,33 @@ export default {
         record.barcode = ''
         record.barcodeImage = ''
         this.updateIssueFlags(record)
+        await this.autoSaveRecord(record)
         return
       }
       record.serverCodeMissing = false
       record.codeMissing = false
       await this.updateBarcode(record)
       await this.rememberProcessCode(record)
+      await this.autoSaveRecord(record)
     },
     handlePlanInput(record) {
       if (!record) return
       this.updateIssueFlags(record)
+    },
+    async handlePlanBlur(record) {
+      if (!record) return
+      this.handlePlanInput(record)
+      await this.autoSaveRecord(record)
+    },
+    async handleHoursBlur(record) {
+      if (!record) return
+      this.checkHours(record)
+      await this.autoSaveRecord(record)
+    },
+    async handleProcessBlur(record) {
+      if (!record) return
+      await this.updateProcess(record)
+      await this.autoSaveRecord(record)
     },
     async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
       if (!cacheReady) await this.ensureProcessCache()
@@ -1155,15 +1258,15 @@ export default {
       if (input === null) return
       const prepared = config.prepare ? config.prepare.call(this, input) : input
       if (prepared === undefined) return
-      const tasks = []
-      group.indexes.slice().forEach(idx => {
+      const tasks = group.indexes.slice().map(idx => (async () => {
         const record = this.preview[idx]
         if (!record) return
         const result = config.apply.call(this, record, prepared, idx)
         if (result && typeof result.then === 'function') {
-          tasks.push(result)
+          await result
         }
-      })
+        await this.autoSaveRecord(record)
+      })())
       Promise.all(tasks).finally(() => {
         this.ensureCurrentPageContainsFilter()
       })
@@ -1200,14 +1303,13 @@ export default {
         records: []
       }
     },
-    applyBulkUpdates(payload) {
+    async applyBulkUpdates(payload) {
       if (!payload || !payload.type || !Array.isArray(payload.updates)) {
         this.closeBulkModal()
         return
       }
       const { type, updates } = payload
-      const tasks = []
-      updates.forEach(item => {
+      const tasks = updates.map(item => (async () => {
         if (!item || typeof item.index !== 'number') return
         const record = this.preview[item.index]
         if (!record) return
@@ -1230,21 +1332,15 @@ export default {
             } else {
               const name = record.processName != null ? String(record.processName).trim() : ''
               if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
-              const task = this.updateBarcode(record)
-              if (task && typeof task.then === 'function') {
-                tasks.push(task.then(() => this.rememberProcessCode(record)))
-              } else {
-                const remember = this.rememberProcessCode(record)
-                if (remember && typeof remember.then === 'function') tasks.push(remember)
-              }
+              await this.updateBarcode(record)
+              await this.rememberProcessCode(record)
             }
             break
           }
           case '工序': {
             const name = item.processName != null ? String(item.processName).trim() : ''
             record.processName = name
-            const task = this.updateProcess(record)
-            if (task && typeof task.then === 'function') tasks.push(task)
+            await this.updateProcess(record)
             break
           }
           case '计划数': {
@@ -1256,11 +1352,14 @@ export default {
           default:
             break
         }
-      })
-      Promise.all(tasks).finally(() => {
+        await this.autoSaveRecord(record)
+      })())
+      try {
+        await Promise.all(tasks)
+      } finally {
         this.closeBulkModal()
         this.ensureCurrentPageContainsFilter()
-      })
+      }
     }
   }
 }

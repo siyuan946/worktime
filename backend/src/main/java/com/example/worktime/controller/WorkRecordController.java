@@ -400,6 +400,74 @@ public class WorkRecordController {
         return result;
     }
 
+    @PostMapping("/autosave")
+    @Transactional
+    public WorkRecord autoSave(@RequestParam("fileId") Long fileId,
+                               @RequestBody WorkRecord record,
+                               @RequestHeader("X-User") String user) {
+        if (fileId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileId 不能为空");
+        }
+        if (record == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "记录不能为空");
+        }
+        UploadedFile file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
+        WorkRecord existing = null;
+        if (record.getId() != null) {
+            existing = repository.findById(record.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found: " + record.getId()));
+            record.setId(existing.getId());
+            record.setFile(existing.getFile());
+            if (record.getBarcode() == null) {
+                record.setBarcode(existing.getBarcode());
+            }
+            if (record.getBarcodeImage() == null) {
+                record.setBarcodeImage(existing.getBarcodeImage());
+            }
+            if (record.getSupplemental() == null) {
+                record.setSupplemental(existing.getSupplemental());
+            }
+            if (record.getFilled() == null) {
+                record.setFilled(existing.getFilled());
+            }
+            if (existing.getFile() != null && existing.getFile().getId() != null
+                    && !existing.getFile().getId().equals(fileId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "记录不属于指定文件");
+            }
+        } else {
+            record.setFile(file);
+            if (record.getFilled() == null) {
+                record.setFilled(Boolean.FALSE);
+            }
+        }
+        String barcode = sanitizeBarcode(record.getBarcode());
+        record.setBarcode(barcode);
+        prepare(record, false);
+        YearMonth ym = determineNaturalMonth(record);
+        record.setNaturalMonth(ym != null ? ym.toString() : null);
+        if (record.getQualifiedQty() != null) {
+            record.setFilled(true);
+        }
+        if (barcode != null && !barcode.trim().isEmpty()) {
+            String trimmed = barcode.trim();
+            String existingBarcode = existing != null ? sanitizeBarcode(existing.getBarcode()) : null;
+            if (record.getId() == null || existingBarcode == null || !existingBarcode.equals(trimmed)) {
+                boolean supplemental = fetchExistingBarcodes(Collections.singleton(trimmed)).contains(trimmed);
+                record.setSupplemental(supplemental);
+            } else if (record.getSupplemental() == null && existing != null) {
+                record.setSupplemental(existing.getSupplemental());
+            }
+        } else {
+            record.setSupplemental(Boolean.FALSE);
+        }
+        WorkRecord saved = repository.save(record);
+        repository.flush();
+        logService.log(user, "自动保存记录", "id=" + saved.getId());
+        flagIssues(saved);
+        return saved;
+    }
+
     @PutMapping("/{id}")
     @Transactional
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record,
