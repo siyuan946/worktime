@@ -180,6 +180,13 @@ body {
     font-weight: 700;
   }
 
+  #preview-table thead th,
+  #print-area thead th {
+    line-height: 1.6 !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
   #preview-table .notification-col,
   #preview-table .drawing-col,
   #preview-table .plan-col,
