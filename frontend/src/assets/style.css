@@ -234,6 +234,7 @@ body {
 
 .print-text { display: none; }
 .print-only { display: none; }
+.print-footer { display: none; }
 
 .screen-only { display: block; }
 .print-area { display: none; }
@@ -254,6 +255,16 @@ body {
   .no-print { display: none !important; }
   .print-text { display: inline !important; }
   .print-only { display: table-cell !important; }
+  .print-footer {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    text-align: right;
+    font-size: 9pt;
+    color: #6c757d;
+  }
 
   .navbar {
     display: none !important;
@@ -324,6 +335,8 @@ body {
     margin-right: 0 !important;
     page-break-inside: avoid;
     break-inside: avoid;
+    position: relative;
+    padding-bottom: 22px;
   }
 
   #preview-table table {

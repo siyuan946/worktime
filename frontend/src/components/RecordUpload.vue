@@ -161,6 +161,9 @@
 
               </tbody>
             </table>
+            <div class="print-footer" aria-hidden="true">
+              图号：{{ item.page.drawingNumber || '（空）' }}
+            </div>
           </div>
         </template>
       </div>
