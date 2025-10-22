@@ -261,9 +261,10 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    text-align: right;
+    text-align: left;
     font-size: 9pt;
     color: #6c757d;
+    padding-left: 8px;
   }
 
   .navbar {
