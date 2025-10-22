@@ -569,7 +569,7 @@ export default {
       catch (err) { return }
       this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}; this.issueFilter = null; this.issueCompletionNotified = false
       try {
-        const data = new FormData(); data.append('file', this.file); data.append('store', 'false')
+        const data = new FormData(); data.append('file', this.file)
         const res = await axios.post('/api/workrecords/parse', data, { headers })
         const payload = res && res.data ? res.data : {}
         this.fileId = payload.fileId
@@ -963,8 +963,21 @@ export default {
       r.hoursMissing = r.hours == null || r.hours === ''
       this.updateIssueFlags(r)
     },
-    deleteRow(index) {
+    async deleteRow(index) {
+      const record = this.preview[index]
+      if (!record) return
       if (!confirm('确定删除该行? 删除后不可恢复')) return
+      if (record.id) {
+        let headers
+        try { headers = this.requireUserHeaders() }
+        catch (err) { return }
+        try {
+          await axios.delete(`/api/workrecords/${record.id}`, { headers })
+        } catch (error) {
+          this.handleRequestError(error, '删除记录失败')
+          return
+        }
+      }
       this.preview.splice(index, 1)
       this.$nextTick(() => this.ensurePageInRange())
     },
@@ -993,17 +1006,49 @@ export default {
       this.preview.splice(index + 1, 0, decorated)
       this.$nextTick(() => this.ensurePageInRange())
     },
-    deleteZero() {
+    async deleteZero() {
       if (!this.preview.length) return
       if (!confirm('确定删除所有工序为0的行?')) return
       const before = this.preview.length
+      const toRemove = this.preview.filter(r => {
+        const code = r.processCode != null ? String(r.processCode).trim() : ''
+        return code === '0'
+      })
+      if (!toRemove.length) {
+        alert('未找到工序为0的记录')
+        return
+      }
+      const idsToDelete = toRemove.map(r => r.id).filter(Boolean)
+      let headers = null
+      if (idsToDelete.length) {
+        try { headers = this.requireUserHeaders() }
+        catch (err) { return }
+      }
+      const failedIds = new Set()
+      let firstError = null
+      for (const id of idsToDelete) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await axios.delete(`/api/workrecords/${id}`, { headers })
+        } catch (error) {
+          if (!firstError) firstError = error
+          failedIds.add(id)
+        }
+      }
       this.preview = this.preview.filter(r => {
         const code = r.processCode != null ? String(r.processCode).trim() : ''
-        return code !== '0'
+        if (code !== '0') return true
+        if (r.id && failedIds.has(r.id)) return true
+        return false
       })
       this.preview.forEach(r => this.updateIssueFlags(r))
       const removed = before - this.preview.length
-      alert(`已删除${removed}行`)
+      if (firstError) {
+        this.handleRequestError(firstError, '部分记录删除失败')
+      }
+      const extra = failedIds.size ? '，部分记录删除失败' : ''
+      alert(`已删除${removed}行${extra}`)
+      this.$nextTick(() => this.ensurePageInRange())
     },
     async loadBarcodesForPage(pageIndex) {
       const page = this.pages[pageIndex]; if (!page) return

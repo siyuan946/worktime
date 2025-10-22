@@ -615,9 +615,7 @@ public class WorkRecordController {
         result.put("total", parsed.size());
         result.put("codeMissing", codeMissing);
         result.put("hoursMissing", hoursMissing);
-        if (!store) {
-            result.put("records", parsed);
-        }
+        result.put("records", parsed);
         logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
     }
