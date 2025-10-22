@@ -16,6 +16,8 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
 
     java.util.List<WorkRecord> findByDrawingNumber(String drawingNumber);
 
+    java.util.List<WorkRecord> findByDrawingNumberAndFilledTrue(String drawingNumber);
+
     @Query("select r from WorkRecord r where r.file.uploadTime >= :start and r.file.uploadTime < :end and r.filled = true")
     java.util.List<WorkRecord> findByUploadDate(@Param("start") java.time.LocalDateTime start,
                                                 @Param("end") java.time.LocalDateTime end);
@@ -34,4 +36,7 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
     Page<WorkRecord> findByNaturalMonthAndFilledTrue(String naturalMonth, Pageable pageable);
 
     java.util.List<WorkRecord> findByNaturalMonthAndFilledTrue(String naturalMonth);
+
+    @Query("select distinct r.barcode from WorkRecord r where r.barcode in :barcodes")
+    java.util.List<String> findExistingBarcodes(@Param("barcodes") java.util.Collection<String> barcodes);
 }

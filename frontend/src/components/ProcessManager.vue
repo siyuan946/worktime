@@ -94,21 +94,69 @@ export default {
       const url = term
         ? `/api/processcodes/search?term=${encodeURIComponent(term)}`
         : '/api/processcodes'
-      const res = await axios.get(url)
-      this.processCodes = res.data
+      try {
+        const res = await axios.get(url)
+        this.processCodes = res.data
+      } catch (error) {
+        this.showError(error, '加载工序代码失败')
+      }
     },
     async createProcess() {
-      await axios.post('/api/processcodes', this.newProcess)
-      this.closeModal()
-      this.fetchProcesses(this.search)
+      try {
+        await axios.post('/api/processcodes', this.newProcess)
+        this.closeModal()
+        this.fetchProcesses(this.search)
+      } catch (error) {
+        this.showError(error, '新增工序代码失败')
+      }
     },
     async updateProcess(p) {
-      await axios.put(`/api/processcodes/${p.id}`, p)
-      this.fetchProcesses(this.search)
+      try {
+        await axios.put(`/api/processcodes/${p.id}`, p)
+        this.fetchProcesses(this.search)
+      } catch (error) {
+        this.showError(error, '更新工序代码失败')
+      }
     },
     async deleteProcess(id) {
-      await axios.delete(`/api/processcodes/${id}`)
-      this.fetchProcesses(this.search)
+      try {
+        await axios.delete(`/api/processcodes/${id}`)
+        this.fetchProcesses(this.search)
+      } catch (error) {
+        this.showError(error, '删除工序代码失败')
+      }
+    },
+    showError(error, fallback) {
+      console.error(error)
+      const response = error && error.response
+      let message = null
+      if (response && response.data != null) {
+        const data = response.data
+        if (typeof data === 'string') {
+          message = data
+        } else if (typeof data === 'object') {
+          message = data.message || data.error || data.detail || null
+          if (!message && Array.isArray(data.errors) && data.errors.length) {
+            const first = data.errors[0]
+            message = typeof first === 'string' ? first : (first && first.message) || null
+          }
+        }
+      }
+      if (!message && response && response.status === 409) {
+        const url = response.config && response.config.url ? String(response.config.url) : ''
+        if (url.includes('/api/processcodes')) {
+          message = '工序代码已存在，请使用其他代号'
+        } else {
+          message = '请求冲突，请检查数据后重试'
+        }
+      }
+      if (!message && response && typeof response.statusText === 'string' && response.statusText) {
+        message = response.statusText
+      }
+      if (!message && error && typeof error.message === 'string') {
+        message = error.message
+      }
+      alert(message || fallback || '操作失败')
     }
   }
 }

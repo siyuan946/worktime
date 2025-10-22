@@ -273,10 +273,6 @@ export default {
       }
     },
     async updateRecord(rec) {
-      const total = this.records.reduce((sum, r) => sum + (r === rec ? (rec.qualifiedQty || 0) : (r.qualifiedQty || 0)), 0)
-      if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过计划数，请确认')
-      }
       const qtyOk = this.validateQtyAllocation(rec)
       const hourOk = this.validateHourAllocation(rec)
       if (!qtyOk || !hourOk) return
@@ -296,8 +292,6 @@ export default {
     },
     async saveAllRecords() {
       if (!this.records.length || this.viewOnly) return
-      const planOk = this.validatePlanQty()
-      if (!planOk) return
       let valid = true
       for (const rec of this.records) {
         const qtyOk = this.validateQtyAllocation(rec)
@@ -421,14 +415,7 @@ export default {
     onHourFieldsInput(rec) {
       this.computeQtysFromHours(rec)
     },
-    validatePlanQty() {
-      const total = this.records.reduce((sum, r) => sum + (r.qualifiedQty || 0), 0)
-      if (this.planQty != null && total > this.planQty) {
-        alert('总合格数已超过计划数，请确认')
-        return false
-      }
-      return true
-    },
+    validatePlanQty() { return true },
     validateQtyAllocation(rec) {
       if (!rec || !Array.isArray(rec.workerQtyVals)) return true
       const sum = rec.workerQtyVals.reduce((a, b) => a + (parseFloat(b) || 0), 0)
@@ -457,7 +444,6 @@ export default {
     },
     updatePlanQty() {
       this.records.forEach(r => { r.planQty = this.planQtyInput })
-      this.validatePlanQty()
     },
     async lookupWorker(rec) {
       const codes = rec.workerCodes ? rec.workerCodes.split(/[,\u3001\s]+/) : []

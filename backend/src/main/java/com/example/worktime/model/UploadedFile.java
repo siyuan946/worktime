@@ -14,6 +14,7 @@ public class UploadedFile {
     private String fileName;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private byte[] data;
 

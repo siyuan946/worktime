@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -65,18 +66,24 @@ public class WorkRecordController {
 
     @GetMapping
     public List<WorkRecord> all() {
-        return repository.findAll();
+        List<WorkRecord> list = repository.findAll();
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/barcode/{barcode}")
     public List<WorkRecord> byBarcode(@PathVariable String barcode) {
         String clean = sanitizeBarcode(barcode);
-        return repository.findByBarcode(clean);
+        List<WorkRecord> list = repository.findByBarcode(clean);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}")
     public List<WorkRecord> byFile(@PathVariable Long fileId) {
-        return repository.findByFileId(fileId);
+        List<WorkRecord> list = repository.findByFileId(fileId);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}/drawings")
@@ -104,12 +111,15 @@ public class WorkRecordController {
         Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
         Page<WorkRecord> result = repository.findByFileIdAndDrawingNumber(fileId, drawing, pageable);
         result.forEach(r -> r.setBarcodeImage(null));
+        result.forEach(this::flagIssues);
         return result;
     }
 
     @GetMapping("/file/{fileId}/filled")
     public List<WorkRecord> byFileFilled(@PathVariable Long fileId) {
-        return repository.findByFileIdAndFilledTrue(fileId);
+        List<WorkRecord> list = repository.findByFileIdAndFilledTrue(fileId);
+        flagIssues(list);
+        return list;
     }
 
     @GetMapping("/file/{fileId}/export")
@@ -139,12 +149,15 @@ public class WorkRecordController {
         } catch (DateTimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效的月份");
         }
-        List<WorkRecord> filled = repository.findByFilledTrue();
-        List<WorkRecord> filtered = new ArrayList<>();
-        for (WorkRecord record : filled) {
-            YearMonth recordMonth = determineNaturalMonth(record);
-            if (ym.equals(recordMonth)) {
-                filtered.add(record);
+        String monthKey = ym.toString();
+        List<WorkRecord> filtered = new ArrayList<>(repository.findByNaturalMonthAndFilledTrue(monthKey));
+        if (filtered.isEmpty()) {
+            List<WorkRecord> filled = repository.findByFilledTrue();
+            for (WorkRecord record : filled) {
+                YearMonth recordMonth = determineNaturalMonth(record);
+                if (ym.equals(recordMonth)) {
+                    filtered.add(record);
+                }
             }
         }
         String fileName = String.format("records_%s.xlsx", ym);
@@ -159,7 +172,7 @@ public class WorkRecordController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图号不能为空");
         }
         String normalized = drawing.trim();
-        List<WorkRecord> list = repository.findByDrawingNumber(normalized);
+        List<WorkRecord> list = repository.findByDrawingNumberAndFilledTrue(normalized);
         String sanitized = normalized.replaceAll("[\\\\/:*?\"<>|]", "_");
         if (sanitized.isEmpty()) {
             sanitized = "records";
@@ -230,8 +243,8 @@ public class WorkRecordController {
             java.util.List<String> codes = splitWorkers(r.getWorkerCodes());
             java.util.List<String> names = splitNames(r.getWorkerNames());
             java.util.List<Double> qtys = parseQtys(r.getWorkerQtys());
-            int max = Math.max(1, Math.max(Math.max(codes.size(), names.size()), qtys.size()));
-            int numWorkers = max;
+            int assignmentCount = Math.max(Math.max(codes.size(), names.size()), qtys.size());
+            int max = Math.max(1, assignmentCount);
 
             String timeCell = "";
             if (r.getStartTime() != null) {
@@ -254,7 +267,12 @@ public class WorkRecordController {
                 row.createCell(c++).setCellValue(timeCell);
                 row.createCell(c++).setCellValue(n(r.getNotificationNumber()));
                 row.createCell(c++).setCellValue(i < codes.size() ? n(codes.get(i)) : "");
-                row.createCell(c++).setCellValue(numWorkers);
+                Cell workerCountCell = row.createCell(c++);
+                if (assignmentCount > 0) {
+                    workerCountCell.setCellValue(assignmentCount > 1 ? 1 : assignmentCount);
+                } else {
+                    workerCountCell.setCellValue("");
+                }
                 row.createCell(c++).setCellValue(n(r.getDrawingNumber()));
                 row.createCell(c++).setCellValue(n(r.getProcessCode()));
                 Double q = i < qtys.size() ? qtys.get(i) : null;
@@ -382,6 +400,74 @@ public class WorkRecordController {
         return result;
     }
 
+    @PostMapping("/autosave")
+    @Transactional
+    public WorkRecord autoSave(@RequestParam("fileId") Long fileId,
+                               @RequestBody WorkRecord record,
+                               @RequestHeader("X-User") String user) {
+        if (fileId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fileId 不能为空");
+        }
+        if (record == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "记录不能为空");
+        }
+        UploadedFile file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
+        WorkRecord existing = null;
+        if (record.getId() != null) {
+            existing = repository.findById(record.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "record not found: " + record.getId()));
+            record.setId(existing.getId());
+            record.setFile(existing.getFile());
+            if (record.getBarcode() == null) {
+                record.setBarcode(existing.getBarcode());
+            }
+            if (record.getBarcodeImage() == null) {
+                record.setBarcodeImage(existing.getBarcodeImage());
+            }
+            if (record.getSupplemental() == null) {
+                record.setSupplemental(existing.getSupplemental());
+            }
+            if (record.getFilled() == null) {
+                record.setFilled(existing.getFilled());
+            }
+            if (existing.getFile() != null && existing.getFile().getId() != null
+                    && !existing.getFile().getId().equals(fileId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "记录不属于指定文件");
+            }
+        } else {
+            record.setFile(file);
+            if (record.getFilled() == null) {
+                record.setFilled(Boolean.FALSE);
+            }
+        }
+        String barcode = sanitizeBarcode(record.getBarcode());
+        record.setBarcode(barcode);
+        prepare(record, false);
+        YearMonth ym = determineNaturalMonth(record);
+        record.setNaturalMonth(ym != null ? ym.toString() : null);
+        if (record.getQualifiedQty() != null) {
+            record.setFilled(true);
+        }
+        if (barcode != null && !barcode.trim().isEmpty()) {
+            String trimmed = barcode.trim();
+            String existingBarcode = existing != null ? sanitizeBarcode(existing.getBarcode()) : null;
+            if (record.getId() == null || existingBarcode == null || !existingBarcode.equals(trimmed)) {
+                boolean supplemental = fetchExistingBarcodes(Collections.singleton(trimmed)).contains(trimmed);
+                record.setSupplemental(supplemental);
+            } else if (record.getSupplemental() == null && existing != null) {
+                record.setSupplemental(existing.getSupplemental());
+            }
+        } else {
+            record.setSupplemental(Boolean.FALSE);
+        }
+        WorkRecord saved = repository.save(record);
+        repository.flush();
+        logService.log(user, "自动保存记录", "id=" + saved.getId());
+        flagIssues(saved);
+        return saved;
+    }
+
     @PutMapping("/{id}")
     @Transactional
     public WorkRecord update(@PathVariable Long id, @RequestBody WorkRecord record,
@@ -445,17 +531,30 @@ public class WorkRecordController {
                                  @RequestHeader("X-User") String user) {
         UploadedFile file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "无效文件"));
+        java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
         for (WorkRecord r : records) {
             r.setFile(file);
             r.setFilled(false);
+            String barcode = sanitizeBarcode(r.getBarcode());
+            r.setBarcode(barcode);
             prepare(r);
             YearMonth ym = determineNaturalMonth(r);
             r.setNaturalMonth(ym != null ? ym.toString() : null);
-            r.setSupplemental(!repository.findByBarcode(r.getBarcode()).isEmpty());
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                candidates.add(barcode);
+            }
+        }
+        java.util.Set<String> existing = fetchExistingBarcodes(candidates);
+        for (WorkRecord r : records) {
+            String barcode = r.getBarcode();
+            if (barcode != null && !barcode.trim().isEmpty()) {
+                r.setSupplemental(existing.contains(barcode));
+            } else {
+                r.setSupplemental(Boolean.FALSE);
+            }
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
-        System.out.println("Saved records: " + saved.size());
         logService.log(user, "新增记录" , "fileId=" + fileId + " count=" + saved.size());
         return saved;
     }
@@ -466,19 +565,22 @@ public class WorkRecordController {
                                      @RequestParam(value = "password", required = false) String password,
                                      @RequestParam(value = "store", required = false, defaultValue = "true") boolean store,
                                      @RequestHeader("X-User") String user) throws IOException {
-        UploadedFile uf = new UploadedFile();
-        uf.setFileName(file.getOriginalFilename());
-        uf.setData(file.getBytes());
-        uf.setUploadTime(java.time.LocalDateTime.now());
-        uf = fileRepository.saveAndFlush(uf);
-
         List<WorkRecord> parsed = parseExcel(file, password);
+        flagIssues(parsed);
         int codeMissing = 0;
         int hoursMissing = 0;
         for (WorkRecord wr : parsed) {
             if (Boolean.TRUE.equals(wr.getCodeMissing())) codeMissing++;
             if (Boolean.TRUE.equals(wr.getHoursMissing())) hoursMissing++;
         }
+
+        UploadedFile uf = new UploadedFile();
+        uf.setFileName(file.getOriginalFilename());
+        uf.setUploadTime(java.time.LocalDateTime.now());
+        if (store) {
+            uf.setData(file.getBytes());
+        }
+        uf = fileRepository.saveAndFlush(uf);
 
         if (store && !parsed.isEmpty()) {
             final int batchSize = 500;
@@ -490,9 +592,12 @@ public class WorkRecordController {
                     prepare(wr, false);
                     YearMonth ym = determineNaturalMonth(wr);
                     wr.setNaturalMonth(ym != null ? ym.toString() : null);
+                }
+                java.util.Set<String> existing = fetchExistingBarcodesFromChunk(chunk);
+                for (WorkRecord wr : chunk) {
                     String barcode = wr.getBarcode();
                     if (barcode != null && !barcode.trim().isEmpty()) {
-                        wr.setSupplemental(!repository.findByBarcode(barcode).isEmpty());
+                        wr.setSupplemental(existing.contains(barcode));
                     } else {
                         wr.setSupplemental(Boolean.FALSE);
                     }
@@ -513,9 +618,107 @@ public class WorkRecordController {
         if (!store) {
             result.put("records", parsed);
         }
-        System.out.println("Parsed records: " + parsed.size() + " for file " + uf.getId());
         logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
+    }
+
+    private java.util.Set<String> fetchExistingBarcodesFromChunk(java.util.Collection<WorkRecord> records) {
+        java.util.Set<String> codes = new java.util.LinkedHashSet<>();
+        for (WorkRecord wr : records) {
+            if (wr == null) {
+                continue;
+            }
+            String barcode = wr.getBarcode();
+            if (barcode == null) {
+                continue;
+            }
+            String trimmed = barcode.trim();
+            if (!trimmed.isEmpty()) {
+                codes.add(trimmed);
+            }
+        }
+        return fetchExistingBarcodes(codes);
+    }
+
+    private void flagIssues(java.util.Collection<WorkRecord> records) {
+        if (records == null) {
+            return;
+        }
+        for (WorkRecord wr : records) {
+            flagIssues(wr);
+        }
+    }
+
+    private void flagIssues(WorkRecord wr) {
+        if (wr == null) {
+            return;
+        }
+        boolean notificationPresent = hasText(wr.getNotificationNumber());
+        wr.setNotificationMissing(!notificationPresent);
+
+        boolean productPresent = hasText(wr.getProductName());
+        wr.setProductMissing(!productPresent);
+
+        boolean partPresent = hasText(wr.getPartName());
+        wr.setPartMissing(!partPresent);
+
+        boolean drawingPresent = hasText(wr.getDrawingNumber());
+        wr.setDrawingMissing(!drawingPresent);
+
+        boolean planPresent = wr.getPlanQty() != null;
+        wr.setPlanMissing(!planPresent);
+
+        boolean processPresent = hasText(wr.getProcessName());
+        wr.setProcessMissing(!processPresent);
+
+        boolean hoursMissing = wr.getHours() == null;
+        wr.setHoursMissing(hoursMissing);
+
+        boolean codePresent = hasText(wr.getProcessCode());
+        boolean codeMissing = Boolean.TRUE.equals(wr.getCodeMissing()) || !codePresent;
+        wr.setCodeMissing(codeMissing);
+
+        String sanitizedBarcode = wr.getBarcode() != null ? sanitizeBarcode(wr.getBarcode()) : null;
+        boolean barcodePresent = hasText(sanitizedBarcode);
+        wr.setBarcode(sanitizedBarcode);
+        wr.setBarcodeMissing(!barcodePresent);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private java.util.Set<String> fetchExistingBarcodes(java.util.Collection<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) {
+            return java.util.Collections.emptySet();
+        }
+        java.util.Set<String> unique = new java.util.LinkedHashSet<>();
+        for (String code : barcodes) {
+            if (code == null) {
+                continue;
+            }
+            String trimmed = code.trim();
+            if (!trimmed.isEmpty()) {
+                unique.add(trimmed);
+            }
+        }
+        if (unique.isEmpty()) {
+            return java.util.Collections.emptySet();
+        }
+        final int batchSize = 500;
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        java.util.List<String> batch = new java.util.ArrayList<>(batchSize);
+        for (String code : unique) {
+            batch.add(code);
+            if (batch.size() == batchSize) {
+                existing.addAll(repository.findExistingBarcodes(batch));
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            existing.addAll(repository.findExistingBarcodes(batch));
+        }
+        return existing;
     }
 
     private List<WorkRecord> parseExcel(MultipartFile file, String password) throws IOException {
@@ -702,8 +905,24 @@ public class WorkRecordController {
     }
 
     private String sanitizeBarcode(String text) {
-        if (text == null) return null;
-        return text.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\\s+", "");
+        if (text == null) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
+        StringBuilder builder = new StringBuilder();
+        normalized.codePoints().forEach(cp -> {
+            if (Character.isWhitespace(cp)) {
+                return;
+            }
+            int type = Character.getType(cp);
+            if (type == Character.CONTROL || type == Character.FORMAT
+                    || type == Character.PRIVATE_USE || type == Character.SURROGATE
+                    || type == Character.UNASSIGNED) {
+                return;
+            }
+            builder.appendCodePoint(cp);
+        });
+        return builder.toString();
     }
 
     private String n(String v) { return v == null ? "" : v; }
