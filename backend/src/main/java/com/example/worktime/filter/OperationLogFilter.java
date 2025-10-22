@@ -24,15 +24,47 @@ public class OperationLogFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String user = request.getHeader("X-User");
+        long start = System.currentTimeMillis();
         filterChain.doFilter(request, response);
         if (user != null && request.getAttribute("operationLogged") == null
                 && !request.getRequestURI().startsWith("/api/logs")) {
             OperationLog log = new OperationLog();
             log.setUsername(user);
             String path = request.getRequestURI().replaceFirst("^/api", "");
-            log.setAction(request.getMethod() + " " + path);
+            String query = request.getQueryString();
+            String action = request.getMethod() + " " + path + (query != null ? "?" + query : "");
+            log.setAction(action);
             log.setTimestamp(LocalDateTime.now());
+            log.setDetails(buildDetails(request, response, start));
             repository.save(log);
         }
+    }
+
+    private String buildDetails(HttpServletRequest request, HttpServletResponse response, long start) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Status: ").append(response.getStatus()).append('\n');
+        builder.append("Duration: ").append(System.currentTimeMillis() - start).append(" ms\n");
+        String client = request.getHeader("X-Forwarded-For");
+        if (client == null || client.isBlank()) {
+            client = request.getRemoteAddr();
+        }
+        if (client != null) {
+            builder.append("Client: ").append(client).append('\n');
+        }
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null && !userAgent.isBlank()) {
+            builder.append("User-Agent: ").append(userAgent).append('\n');
+        }
+        if (!request.getParameterMap().isEmpty()) {
+            builder.append("Parameters:\n");
+            request.getParameterMap().forEach((key, values) -> {
+                builder.append("  ").append(key).append("=");
+                if (values != null) {
+                    builder.append(String.join(",", values));
+                }
+                builder.append('\n');
+            });
+        }
+        return builder.toString().trim();
     }
 }
