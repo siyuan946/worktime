@@ -234,7 +234,6 @@ body {
 
 .print-text { display: none; }
 .print-only { display: none; }
-.print-footer { display: none; }
 
 .screen-only { display: block; }
 .print-area { display: none; }
@@ -255,18 +254,6 @@ body {
   .no-print { display: none !important; }
   .print-text { display: inline !important; }
   .print-only { display: table-cell !important; }
-  .print-footer {
-    display: block !important;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    text-align: left;
-    font-size: 9pt;
-    color: #6c757d;
-    padding-left: 8px;
-  }
-
   .navbar {
     display: none !important;
   }
@@ -337,7 +324,20 @@ body {
     page-break-inside: avoid;
     break-inside: avoid;
     position: relative;
-    padding-bottom: 22px;
+    padding-bottom: 28px;
+  }
+
+  #preview-table .preview-page::after {
+    content: attr(data-print-footer);
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 4mm;
+    font-size: 9pt;
+    color: #6c757d;
+    padding-left: 8px;
+    pointer-events: none;
   }
 
   #preview-table table {

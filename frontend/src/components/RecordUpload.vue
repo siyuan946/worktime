@@ -59,6 +59,7 @@
           <div
             class="preview-page"
             :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
+            :data-print-footer="formatPrintFooter(item.page.drawingNumber)"
           >
             <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
               <h3 class="h6 mb-0">图号：{{ item.page.drawingNumber || '（空）' }}</h3>
@@ -161,9 +162,6 @@
 
               </tbody>
             </table>
-            <div class="print-footer" aria-hidden="true">
-              图号：{{ item.page.drawingNumber || '（空）' }}
-            </div>
           </div>
         </template>
       </div>
@@ -735,6 +733,11 @@ export default {
         remark2: asText(record.remark2)
       }
       return payload
+    },
+    formatPrintFooter(drawingNumber) {
+      const sanitized = drawingNumber == null ? '' : this.sanitize(drawingNumber)
+      const drawing = sanitized && sanitized.length ? sanitized : '（空）'
+      return `图号：${drawing}`
     },
     async autoSaveRecord(record) {
       if (!record) return
