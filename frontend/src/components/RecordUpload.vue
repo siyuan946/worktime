@@ -59,7 +59,6 @@
           <div
             class="preview-page"
             :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
-            :data-print-footer="formatPrintFooter(item.page.drawingNumber)"
           >
             <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
               <h3 class="h6 mb-0">图号：{{ item.page.drawingNumber || '（空）' }}</h3>
@@ -162,6 +161,9 @@
 
               </tbody>
             </table>
+            <div class="print-page-footer" aria-hidden="true">
+              {{ formatPrintFooter(item.page.drawingNumber) }}
+            </div>
           </div>
         </template>
       </div>
