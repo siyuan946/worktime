@@ -28,6 +28,40 @@
           </select>
         </label>
       </div>
+      <div class="log-filter__row">
+        <label class="log-filter__field">
+          <span>模块</span>
+          <input v-model.trim="filters.module" type="text" class="form-control form-control-sm" placeholder="模块" />
+        </label>
+        <label class="log-filter__field">
+          <span>实体类型</span>
+          <input v-model.trim="filters.entityType" type="text" class="form-control form-control-sm" placeholder="实体类型" />
+        </label>
+        <label class="log-filter__field">
+          <span>实体ID</span>
+          <input v-model.trim="filters.entityId" type="text" class="form-control form-control-sm" placeholder="实体ID" />
+        </label>
+        <label class="log-filter__field">
+          <span>客户端IP</span>
+          <input v-model.trim="filters.clientIp" type="text" class="form-control form-control-sm" placeholder="客户端IP" />
+        </label>
+        <label class="log-filter__field">
+          <span>Trace ID</span>
+          <input v-model.trim="filters.traceId" type="text" class="form-control form-control-sm" placeholder="Trace ID" />
+        </label>
+        <label class="log-filter__field log-filter__field--size">
+          <span>状态码</span>
+          <input v-model.number="filters.statusCode" type="number" class="form-control form-control-sm" placeholder="200" />
+        </label>
+        <label class="log-filter__field log-filter__field--size">
+          <span>耗时≥(ms)</span>
+          <input v-model.number="filters.minDuration" type="number" min="0" class="form-control form-control-sm" />
+        </label>
+        <label class="log-filter__field log-filter__field--size">
+          <span>耗时≤(ms)</span>
+          <input v-model.number="filters.maxDuration" type="number" min="0" class="form-control form-control-sm" />
+        </label>
+      </div>
       <div class="log-filter__actions">
         <div class="log-filter__buttons">
           <button type="submit" class="btn btn-primary btn-sm" :disabled="loading">筛选</button>
@@ -46,39 +80,57 @@
         <button class="btn btn-outline-secondary btn-sm" :disabled="loading || page + 1 >= pageCount" @click="changePage(page + 1)">下一页</button>
       </div>
     </div>
-    <table class="table table-bordered table-sm table-striped">
+    <table class="table table-bordered table-sm table-striped log-table">
       <thead>
-        <tr><th>时间</th><th>操作者</th><th>操作</th></tr>
+        <tr>
+          <th>时间</th>
+          <th>模块</th>
+          <th>操作者</th>
+          <th>摘要</th>
+          <th>状态</th>
+          <th>耗时</th>
+          <th>客户端</th>
+        </tr>
       </thead>
       <tbody>
         <template v-for="log in logs" :key="log.id">
           <tr @click="toggleDetails(log)" style="cursor:pointer">
             <td>{{ formatTimestamp(log.timestamp) }}</td>
+            <td>{{ log.module || '-' }}</td>
             <td>{{ log.username }}</td>
-            <td class="wrap-text">{{ log.action }}</td>
+            <td class="wrap-text">{{ log.summary || log.action }}</td>
+            <td>{{ log.statusCode ?? '-' }}</td>
+            <td>{{ formatDuration(log.durationMs) }}</td>
+            <td class="wrap-text">{{ log.clientIp || '-' }}</td>
           </tr>
           <tr v-if="log.show" :key="log.id + '-details'">
-            <td colspan="3" class="pre-wrap">
+            <td colspan="7" class="pre-wrap">
               <div class="log-details__header">
                 <span>详细信息</span>
                 <button class="btn btn-outline-secondary btn-sm" @click.stop="copyDetails(log)">复制详情</button>
+              </div>
+              <div class="log-details__meta">
+                <div><span>Trace ID</span><strong>{{ log.traceId || '-' }}</strong></div>
+                <div><span>请求</span><strong>{{ formatRequest(log) }}</strong></div>
+                <div><span>实体</span><strong>{{ formatEntity(log) }}</strong></div>
+                <div><span>User-Agent</span><strong>{{ log.userAgent || '-' }}</strong></div>
               </div>
               <pre v-if="log.details" class="log-details__body">{{ log.details }}</pre>
               <div v-if="!log.details" class="text-muted">暂无详情</div>
               <div v-if="log.sub && log.sub.length" class="log-details__children">
                 <div class="log-details__child" v-for="s in log.sub" :key="s.id">
                   <div class="log-details__child-time">{{ formatTimestamp(s.timestamp) }}</div>
-                  <div class="log-details__child-text">{{ s.action }}</div>
+                  <div class="log-details__child-text">{{ s.summary || s.action }}</div>
                 </div>
               </div>
             </td>
           </tr>
         </template>
         <tr v-if="!logs.length && !loading">
-          <td colspan="3" class="text-center text-muted">暂无符合条件的记录</td>
+          <td colspan="7" class="text-center text-muted">暂无符合条件的记录</td>
         </tr>
         <tr v-if="loading">
-          <td colspan="3" class="text-center text-muted">加载中...</td>
+          <td colspan="7" class="text-center text-muted">加载中...</td>
         </tr>
       </tbody>
     </table>
@@ -103,7 +155,15 @@ export default {
         username: '',
         keyword: '',
         start: '',
-        end: ''
+        end: '',
+        module: '',
+        entityType: '',
+        entityId: '',
+        clientIp: '',
+        traceId: '',
+        statusCode: null,
+        minDuration: null,
+        maxDuration: null
       }
     }
   },
@@ -134,6 +194,14 @@ export default {
       if (this.filters.keyword) params.set('keyword', this.filters.keyword)
       if (this.filters.start) params.set('startDate', this.filters.start)
       if (this.filters.end) params.set('endDate', this.filters.end)
+      if (this.filters.module) params.set('module', this.filters.module)
+      if (this.filters.entityType) params.set('entityType', this.filters.entityType)
+      if (this.filters.entityId) params.set('entityId', this.filters.entityId)
+      if (this.filters.clientIp) params.set('clientIp', this.filters.clientIp)
+      if (this.filters.traceId) params.set('traceId', this.filters.traceId)
+      if (Number.isInteger(this.filters.statusCode)) params.set('statusCode', this.filters.statusCode)
+      if (Number.isInteger(this.filters.minDuration)) params.set('minDuration', this.filters.minDuration)
+      if (Number.isInteger(this.filters.maxDuration)) params.set('maxDuration', this.filters.maxDuration)
       try {
         const res = await axios.get('/api/logs', { headers, params })
         const payload = res.data || {}
@@ -151,16 +219,17 @@ export default {
     },
     groupLogs(raw) {
       const grouped = []
-      let current = null
+      const traceGroups = new Map()
       for (const log of raw) {
         log.show = false
         log.sub = log.sub || []
-        const isApi = /^(GET|POST|PUT|DELETE|PATCH) /.test(log.action) && !log.details
-        if (isApi && current) {
-          current.sub.push(log)
-        } else {
-          grouped.push(log)
-          current = log
+        if (log.traceId && traceGroups.has(log.traceId)) {
+          traceGroups.get(log.traceId).sub.push(log)
+          continue
+        }
+        grouped.push(log)
+        if (log.traceId) {
+          traceGroups.set(log.traceId, log)
         }
       }
       return grouped
@@ -168,6 +237,26 @@ export default {
     formatTimestamp(value) {
       if (!value) return ''
       return value.replace('T', ' ').slice(0, 19)
+    },
+    formatDuration(value) {
+      if (value === null || value === undefined) return '-'
+      if (value >= 1000) {
+        return (value / 1000).toFixed(2) + ' s'
+      }
+      return value + ' ms'
+    },
+    formatRequest(log) {
+      const method = log.method || '-'
+      const path = log.path || ''
+      const query = log.query ? `?${log.query}` : ''
+      return `${method} ${path}${query}`.trim()
+    },
+    formatEntity(log) {
+      if (!log.entityType && !log.entityId) return '-'
+      if (log.entityType && log.entityId) {
+        return `${log.entityType}#${log.entityId}`
+      }
+      return log.entityType || log.entityId
     },
     toggleDetails(log) {
       log.show = !log.show
@@ -181,7 +270,20 @@ export default {
       this.fetchLogs(true)
     },
     resetFilters() {
-      this.filters = { username: '', keyword: '', start: '', end: '' }
+      this.filters = {
+        username: '',
+        keyword: '',
+        start: '',
+        end: '',
+        module: '',
+        entityType: '',
+        entityId: '',
+        clientIp: '',
+        traceId: '',
+        statusCode: null,
+        minDuration: null,
+        maxDuration: null
+      }
       this.fetchLogs(true)
     },
     refresh() {
@@ -201,7 +303,15 @@ export default {
       }
     },
     async copyDetails(log) {
-      const text = [log.action, log.details].filter(Boolean).join('\n')
+      const text = [
+        `时间: ${this.formatTimestamp(log.timestamp)}`,
+        `用户: ${log.username}`,
+        `模块: ${log.module || '-'}`,
+        `摘要: ${log.summary || log.action}`,
+        `Trace: ${log.traceId || '-'}`,
+        `请求: ${this.formatRequest(log)}`,
+        log.details
+      ].filter(Boolean).join('\n')
       if (!text) return
       try {
         await navigator.clipboard.writeText(text)
@@ -242,6 +352,10 @@ export default {
   flex-direction: column;
   gap: .25rem;
   min-width: 140px;
+}
+.log-table th,
+.log-table td {
+  vertical-align: middle;
 }
 .log-filter__field--size {
   width: 120px;
@@ -287,6 +401,25 @@ export default {
   border-radius: .25rem;
   padding: .5rem .75rem;
   white-space: pre-wrap;
+}
+.log-details__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: .5rem .75rem;
+  margin-bottom: .5rem;
+  font-size: .85rem;
+}
+.log-details__meta span {
+  display: block;
+  color: #6c757d;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.log-details__meta strong {
+  display: block;
+  font-weight: 600;
+  word-break: break-word;
 }
 .log-details__children {
   margin-top: .5rem;

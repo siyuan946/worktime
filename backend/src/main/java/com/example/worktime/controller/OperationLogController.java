@@ -33,6 +33,14 @@ public class OperationLogController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String clientIp,
+            @RequestParam(required = false) String traceId,
+            @RequestParam(required = false) Integer statusCode,
+            @RequestParam(required = false) Long minDuration,
+            @RequestParam(required = false) Long maxDuration,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         int pageIndex = Math.max(page, 0);
@@ -48,8 +56,34 @@ public class OperationLogController {
                 String like = "%" + keyword.trim().toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("action")), like),
-                        cb.like(cb.lower(root.get("details")), like)
+                        cb.like(cb.lower(root.get("details")), like),
+                        cb.like(cb.lower(root.get("summary")), like)
                 ));
+            }
+            if (StringUtils.hasText(module)) {
+                predicates.add(cb.equal(cb.lower(root.get("module")), module.trim().toLowerCase()));
+            }
+            if (StringUtils.hasText(entityType)) {
+                predicates.add(cb.equal(cb.lower(root.get("entityType")), entityType.trim().toLowerCase()));
+            }
+            if (StringUtils.hasText(entityId)) {
+                predicates.add(cb.equal(root.get("entityId"), entityId.trim()));
+            }
+            if (StringUtils.hasText(clientIp)) {
+                String likeIp = "%" + clientIp.trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("clientIp")), likeIp));
+            }
+            if (StringUtils.hasText(traceId)) {
+                predicates.add(cb.equal(root.get("traceId"), traceId.trim()));
+            }
+            if (statusCode != null) {
+                predicates.add(cb.equal(root.get("statusCode"), statusCode));
+            }
+            if (minDuration != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("durationMs"), minDuration));
+            }
+            if (maxDuration != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("durationMs"), maxDuration));
             }
             if (startDate != null) {
                 LocalDateTime start = startDate.atStartOfDay();

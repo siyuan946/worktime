@@ -2,6 +2,7 @@ package com.example.worktime.controller;
 
 import com.example.worktime.model.ProcessCode;
 import com.example.worktime.repository.ProcessCodeRepository;
+import com.example.worktime.service.OperationLogContext;
 import com.example.worktime.service.OperationLogService;
 import com.example.worktime.service.ProcessCodeService;
 import org.springframework.http.HttpStatus;
@@ -18,13 +19,16 @@ public class ProcessCodeController {
     private final ProcessCodeRepository repository;
     private final OperationLogService logService;
     private final ProcessCodeService processService;
+    private final OperationLogContext logContext;
 
     public ProcessCodeController(ProcessCodeRepository repository,
                                  OperationLogService logService,
-                                 ProcessCodeService processService) {
+                                 ProcessCodeService processService,
+                                 OperationLogContext logContext) {
         this.repository = repository;
         this.logService = logService;
         this.processService = processService;
+        this.logContext = logContext;
     }
 
     @GetMapping
@@ -67,8 +71,16 @@ public class ProcessCodeController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序名称和工序代号均不能为空");
         }
         if (existing == null) {
+            logContext.setModule("工序管理");
+            logContext.setEntity("ProcessCode", saved.getId() != null ? saved.getId().toString() : null);
+            logContext.setSummary("新增工序");
+            logContext.appendDetail("code=" + trimmedCode);
             logService.log(user, "新增工序 " + saved.getName(), "id=" + saved.getId());
         } else {
+            logContext.setModule("工序管理");
+            logContext.setEntity("ProcessCode", existing.getId() != null ? existing.getId().toString() : null);
+            logContext.setSummary("更新工序");
+            logContext.appendDetail("code=" + trimmedCode);
             logService.log(user, "更新工序 " + existing.getId(), null);
         }
         return saved;
@@ -78,6 +90,10 @@ public class ProcessCodeController {
     public ProcessCode create(@RequestBody ProcessCode pc, @RequestHeader("X-User") String user) {
         validate(pc);
         ProcessCode saved = repository.save(pc);
+        logContext.setModule("工序管理");
+        logContext.setEntity("ProcessCode", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("新增工序");
+        logContext.appendDetail("code=" + pc.getCode());
         logService.log(user, "新增工序 " + pc.getName(), "id=" + saved.getId());
         return saved;
     }
@@ -87,6 +103,10 @@ public class ProcessCodeController {
         pc.setId(id);
         validate(pc);
         ProcessCode saved = repository.save(pc);
+        logContext.setModule("工序管理");
+        logContext.setEntity("ProcessCode", id != null ? id.toString() : null);
+        logContext.setSummary("更新工序");
+        logContext.appendDetail("code=" + pc.getCode());
         logService.log(user, "更新工序 " + id, null);
         return saved;
     }
@@ -94,6 +114,9 @@ public class ProcessCodeController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
+        logContext.setModule("工序管理");
+        logContext.setEntity("ProcessCode", id != null ? id.toString() : null);
+        logContext.setSummary("删除工序");
         logService.log(user, "删除工序 " + id, null);
     }
 

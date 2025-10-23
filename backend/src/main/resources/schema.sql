@@ -84,5 +84,17 @@ CREATE TABLE IF NOT EXISTS operation_log (
     username VARCHAR(255),
     action VARCHAR(255),
     timestamp DATETIME,
+    summary VARCHAR(255),
+    module VARCHAR(255),
+    entity_type VARCHAR(255),
+    entity_id VARCHAR(255),
+    status_code INT,
+    duration_ms BIGINT,
+    client_ip VARCHAR(255),
+    user_agent VARCHAR(512),
+    method VARCHAR(32),
+    path VARCHAR(255),
+    query VARCHAR(512),
+    trace_id VARCHAR(64),
     details TEXT
 );

@@ -4,6 +4,7 @@ import com.example.worktime.model.WorkRecord;
 import com.example.worktime.model.UploadedFile;
 import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.repository.UploadedFileRepository;
+import com.example.worktime.service.OperationLogContext;
 import com.example.worktime.service.OperationLogService;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
@@ -51,17 +52,19 @@ public class WorkRecordController {
     private final WorkerService workerService;
     private final UploadedFileRepository fileRepository;
     private final OperationLogService logService;
+    private final OperationLogContext logContext;
     @PersistenceContext
     private EntityManager entityManager;
 
     public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService,
                                 WorkerService workerService, UploadedFileRepository fileRepository,
-                                OperationLogService logService) {
+                                OperationLogService logService, OperationLogContext logContext) {
         this.repository = repository;
         this.processService = processService;
         this.workerService = workerService;
         this.fileRepository = fileRepository;
         this.logService = logService;
+        this.logContext = logContext;
     }
 
     @GetMapping
@@ -396,6 +399,9 @@ public class WorkRecordController {
             result.add(repository.save(record));
         }
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setSummary("批量更新记录");
+        logContext.appendDetail("count=" + result.size());
         logService.log(user, "批量更新记录", "count=" + result.size());
         return result;
     }
@@ -463,6 +469,10 @@ public class WorkRecordController {
         }
         WorkRecord saved = repository.save(record);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("自动保存记录");
+        logContext.appendDetail("drawing=" + saved.getDrawingNumber());
         logService.log(user, "自动保存记录", "id=" + saved.getId());
         flagIssues(saved);
         return saved;
@@ -485,6 +495,10 @@ public class WorkRecordController {
         record.setNaturalMonth(ym != null ? ym.toString() : null);
         if (record.getQualifiedQty() != null) record.setFilled(true);
         WorkRecord updated = repository.save(record);
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", id != null ? id.toString() : null);
+        logContext.setSummary("更新记录");
+        logContext.appendDetail("drawing=" + saved.getDrawingNumber());
         logService.log(user, "更新记录 " + id, null);
         return updated;
     }
@@ -513,6 +527,10 @@ public class WorkRecordController {
         YearMonth ym = determineNaturalMonth(copy);
         copy.setNaturalMonth(ym != null ? ym.toString() : null);
         WorkRecord saved = repository.save(copy);
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("复制记录");
+        logContext.appendDetail("sourceId=" + id);
         logService.log(user, "复制记录 " + id, "newId=" + saved.getId());
         return saved;
     }
@@ -522,6 +540,9 @@ public class WorkRecordController {
     public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", id != null ? id.toString() : null);
+        logContext.setSummary("删除记录");
         logService.log(user, "删除记录 " + id, null);
     }
 
@@ -555,6 +576,10 @@ public class WorkRecordController {
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setSummary("新增记录");
+        logContext.setEntity("UploadedFile", fileId != null ? fileId.toString() : null);
+        logContext.appendDetail("count=" + saved.size());
         logService.log(user, "新增记录" , "fileId=" + fileId + " count=" + saved.size());
         return saved;
     }
@@ -616,6 +641,11 @@ public class WorkRecordController {
         result.put("codeMissing", codeMissing);
         result.put("hoursMissing", hoursMissing);
         result.put("records", parsed);
+        logContext.setModule("工时记录");
+        logContext.setEntity("UploadedFile", uf.getId() != null ? uf.getId().toString() : null);
+        logContext.setSummary("上传文件");
+        logContext.appendDetail("fileName=" + uf.getFileName());
+        logContext.appendDetail("records=" + parsed.size());
         logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
     }
