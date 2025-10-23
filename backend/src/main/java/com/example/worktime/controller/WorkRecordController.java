@@ -498,7 +498,7 @@ public class WorkRecordController {
         logContext.setModule("工时记录");
         logContext.setEntity("WorkRecord", id != null ? id.toString() : null);
         logContext.setSummary("更新记录");
-        logContext.appendDetail("drawing=" + saved.getDrawingNumber());
+        logContext.appendDetail("drawing=" + updated.getDrawingNumber());
         logService.log(user, "更新记录 " + id, null);
         return updated;
     }
