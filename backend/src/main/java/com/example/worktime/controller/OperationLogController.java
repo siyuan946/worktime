@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.persistence.criteria.Predicate;
@@ -40,10 +41,10 @@ public class OperationLogController {
 
         Specification<OperationLog> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (username != null && !username.isBlank()) {
+            if (StringUtils.hasText(username)) {
                 predicates.add(cb.equal(cb.lower(root.get("username")), username.trim().toLowerCase()));
             }
-            if (keyword != null && !keyword.isBlank()) {
+            if (StringUtils.hasText(keyword)) {
                 String like = "%" + keyword.trim().toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("action")), like),

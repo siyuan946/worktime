@@ -3,6 +3,7 @@ package com.example.worktime.filter;
 import com.example.worktime.model.OperationLog;
 import com.example.worktime.repository.OperationLogRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -45,14 +46,14 @@ public class OperationLogFilter extends OncePerRequestFilter {
         builder.append("Status: ").append(response.getStatus()).append('\n');
         builder.append("Duration: ").append(System.currentTimeMillis() - start).append(" ms\n");
         String client = request.getHeader("X-Forwarded-For");
-        if (client == null || client.isBlank()) {
+        if (!StringUtils.hasText(client)) {
             client = request.getRemoteAddr();
         }
         if (client != null) {
             builder.append("Client: ").append(client).append('\n');
         }
         String userAgent = request.getHeader("User-Agent");
-        if (userAgent != null && !userAgent.isBlank()) {
+        if (StringUtils.hasText(userAgent)) {
             builder.append("User-Agent: ").append(userAgent).append('\n');
         }
         if (!request.getParameterMap().isEmpty()) {
