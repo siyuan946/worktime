@@ -31,15 +31,23 @@
       </tbody>
     </table>
     <!-- 新增人员模态框 -->
-    <div class="modal fade" tabindex="-1" ref="addModal">
-      <div class="modal-dialog modal-dialog-centered">
+    <div
+      class="modal fade show"
+      tabindex="-1"
+      role="dialog"
+      v-if="showAddModal"
+      style="display: block"
+      aria-modal="true"
+      @click.self="closeModal"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">新增人员</h5>
             <button type="button" class="btn-close" @click="closeModal"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.code" placeholder="工号" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.code" placeholder="工号" ref="codeInput" /></div>
             <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.name" placeholder="姓名" /></div>
             <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.workshop" placeholder="车间" /></div>
             <div class="mb-2"><input class="form-control form-control-sm" v-model="newWorker.team" placeholder="班组" /></div>
@@ -53,6 +61,7 @@
         </div>
       </div>
     </div>
+    <div v-if="showAddModal" class="modal-backdrop fade show"></div>
   </section>
 </template>
 
@@ -64,7 +73,7 @@ export default {
       workers: [],
       search: '',
       newWorker: { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' },
-      modal: null
+      showAddModal: false
     }
   },
   computed: {
@@ -75,21 +84,38 @@ export default {
   watch: {
     search(val) {
       this.fetchWorkers(val)
+    },
+    showAddModal(val) {
+      if (typeof document !== 'undefined' && document.body) {
+        if (val) {
+          document.body.classList.add('modal-open')
+        } else {
+          this.$nextTick(() => {
+            const remaining = document.querySelectorAll('.modal.fade.show')
+            if (!remaining.length) {
+              document.body.classList.remove('modal-open')
+            }
+          })
+        }
+      }
     }
   },
   created() {
     this.fetchWorkers('')
   },
-  mounted() {
-    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
-  },
   methods: {
     openModal() {
       this.newWorker = { code: '', name: '', workshop: '', team: '', entryDate: '', leaveDate: '' }
-      this.modal.show()
+      this.showAddModal = true
+      this.$nextTick(() => {
+        const input = this.$refs.codeInput
+        if (input && typeof input.focus === 'function') {
+          input.focus()
+        }
+      })
     },
     closeModal() {
-      this.modal.hide()
+      this.showAddModal = false
     },
     async fetchWorkers(term) {
       const url = term
@@ -110,6 +136,16 @@ export default {
     async deleteWorker(id) {
       await axios.delete(`/api/workers/${id}`)
       this.fetchWorkers(this.search)
+    }
+  },
+  beforeUnmount() {
+    if (typeof document !== 'undefined' && document.body) {
+      this.$nextTick(() => {
+        const remaining = document.querySelectorAll('.modal.fade.show')
+        if (!remaining.length) {
+          document.body.classList.remove('modal-open')
+        }
+      })
     }
   }
 }
