@@ -709,6 +709,17 @@ public class WorkRecordController {
             wr.setProcessCode(null);
         }
         boolean codePresent = normalizedCode != null;
+        if (codePresent) {
+            String processName = wr.getProcessName() != null ? wr.getProcessName().trim() : null;
+            if (processName != null && !processName.isEmpty()) {
+                if (normalizedCode.equals(processName)) {
+                    if (!processService.isKnownCode(normalizedCode)) {
+                        codePresent = false;
+                        wr.setProcessCode(null);
+                    }
+                }
+            }
+        }
         boolean codeMissing = Boolean.TRUE.equals(wr.getCodeMissing()) || !codePresent;
         wr.setCodeMissing(codeMissing);
         if (codeMissing) {
@@ -821,13 +832,12 @@ public class WorkRecordController {
                                 }
                             }
                         }
+                        if (code == null && processService.isKnownCode(normalizedProcess)) {
+                            code = normalizedProcess;
+                        }
                     }
-                    boolean codeMissing = false;
-                    if (code == null || code.trim().isEmpty() || "0".equals(code.trim())) {
-                        code = normalizedProcess != null && !normalizedProcess.isEmpty() ? normalizedProcess : process;
-                        codeMissing = true;
-                    }
-                    wr.setProcessCode(code);
+                    boolean codeMissing = code == null || code.trim().isEmpty() || "0".equals(code.trim());
+                    wr.setProcessCode(codeMissing ? null : code);
                     wr.setCodeMissing(codeMissing);
 
                     if (drawing != null && notification != null && code != null && !codeMissing) {
