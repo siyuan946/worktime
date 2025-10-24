@@ -375,57 +375,67 @@ export default {
       deep: true
     }
   },
-  methods: {
-    hasText(value) {
-      if (value === null || value === undefined) return false
-      return String(value).trim().length > 0
-    },
-    decorateRecord(raw) {
-      const record = { ...raw }
-      record.notificationNumber = record.notificationNumber != null ? String(record.notificationNumber).trim() : ''
-      record.productName = record.productName != null ? String(record.productName).trim() : ''
-      record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
-      record.partName = record.partName != null ? String(record.partName).trim() : ''
-      record.processName = record.processName != null ? String(record.processName).trim() : ''
-      record.processCode = record.processCode != null ? String(record.processCode).trim() : ''
-      if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
-        const num = Number(record.planQty)
-        record.planQty = Number.isNaN(num) ? null : num
-      } else {
-        record.planQty = null
-      }
-      if (record.hours !== null && record.hours !== undefined && record.hours !== '') {
-        const num = Number(record.hours)
-        record.hours = Number.isNaN(num) ? null : num
-      } else {
-        record.hours = null
-      }
-      const rawBarcode = record.barcode != null ? String(record.barcode).trim() : ''
-      record.barcode = this.sanitize(rawBarcode)
-      record.barcodeImage = record.barcodeImage || ''
-      record.workerCodes = record.workerCodes || ''
-      record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
-      record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
-      const sourceCodeMissing = record.codeMissing === true
-      record.codeMissing = sourceCodeMissing
-      record.serverCodeMissing = sourceCodeMissing
-      record.hoursMissing = record.hoursMissing === true
-      record.notificationMissing = record.notificationMissing === true
-      record.productMissing = record.productMissing === true
-      record.partMissing = record.partMissing === true
-      record.drawingMissing = record.drawingMissing === true
-      record.planMissing = record.planMissing === true
-      record.processMissing = record.processMissing === true
-      record.barcodeMissing = record.barcodeMissing === true
-      record.issueSummary = ''
-      record.hasIssue = false
-      record.issueTypes = []
-      record._lastAcceptedProcessCode = record.processCode
-      record._lastAcceptedBarcode = record.barcode
-      record._lastAcceptedBarcodeImage = record.barcodeImage
-      this.updateIssueFlags(record)
-      return record
-    },
+    methods: {
+      hasText(value) {
+        if (value === null || value === undefined) return false
+        return String(value).trim().length > 0
+      },
+      normalizeProcessCode(value) {
+        if (value === null || value === undefined) return ''
+        const text = String(value).trim()
+        if (!text || text === '0') return ''
+        return text
+      },
+      isValidProcessCode(value) {
+        return this.normalizeProcessCode(value) !== ''
+      },
+      decorateRecord(raw) {
+        const record = { ...raw }
+        record.notificationNumber = record.notificationNumber != null ? String(record.notificationNumber).trim() : ''
+        record.productName = record.productName != null ? String(record.productName).trim() : ''
+        record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
+        record.partName = record.partName != null ? String(record.partName).trim() : ''
+        record.processName = record.processName != null ? String(record.processName).trim() : ''
+        const normalizedCode = this.normalizeProcessCode(record.processCode)
+        record.processCode = normalizedCode
+        if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
+          const num = Number(record.planQty)
+          record.planQty = Number.isNaN(num) ? null : num
+        } else {
+          record.planQty = null
+        }
+        if (record.hours !== null && record.hours !== undefined && record.hours !== '') {
+          const num = Number(record.hours)
+          record.hours = Number.isNaN(num) ? null : num
+        } else {
+          record.hours = null
+        }
+        const rawBarcode = record.barcode != null ? String(record.barcode).trim() : ''
+        record.barcode = this.sanitize(rawBarcode)
+        record.barcodeImage = record.barcodeImage || ''
+        record.workerCodes = record.workerCodes || ''
+        record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
+        record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
+        const sourceCodeMissing = record.codeMissing === true || !normalizedCode
+        record.codeMissing = sourceCodeMissing
+        record.serverCodeMissing = sourceCodeMissing
+        record.hoursMissing = record.hoursMissing === true
+        record.notificationMissing = record.notificationMissing === true
+        record.productMissing = record.productMissing === true
+        record.partMissing = record.partMissing === true
+        record.drawingMissing = record.drawingMissing === true
+        record.planMissing = record.planMissing === true
+        record.processMissing = record.processMissing === true
+        record.barcodeMissing = record.barcodeMissing === true
+        record.issueSummary = ''
+        record.hasIssue = false
+        record.issueTypes = []
+        record._lastAcceptedProcessCode = record.processCode
+        record._lastAcceptedBarcode = record.barcode
+        record._lastAcceptedBarcodeImage = record.barcodeImage
+        this.updateIssueFlags(record)
+        return record
+      },
     updateIssueFlags(record) {
       if (!record) return
       const issues = []
@@ -450,7 +460,11 @@ export default {
       record.hoursMissing = record.hours === null || record.hours === undefined || record.hours === '' || Number.isNaN(record.hours)
       if (record.hoursMissing) issues.push('单件工时')
 
-      const hasProcessCode = this.hasText(record.processCode)
+      const normalizedCode = this.normalizeProcessCode(record.processCode)
+      if (normalizedCode !== record.processCode) {
+        record.processCode = normalizedCode
+      }
+      const hasProcessCode = this.isValidProcessCode(normalizedCode)
       const codeMissingFlag = record.serverCodeMissing === true || !hasProcessCode
       if (!codeMissingFlag) {
         record.serverCodeMissing = false
@@ -782,7 +796,7 @@ export default {
     async rememberProcessCode(record) {
       if (!record) return false
       const name = record.processName != null ? String(record.processName).trim() : ''
-      const code = record.processCode != null ? String(record.processCode).trim() : ''
+      const code = this.normalizeProcessCode(record.processCode)
       if (!name || !code) return false
       const key = `${name}|||${code}`
       if (this.rememberedPairs[key]) {
@@ -795,9 +809,12 @@ export default {
         return true
       }
       let headers
-      try { headers = this.requireUserHeaders() }
-      catch (err) { return false }
-      const previousCode = record._lastAcceptedProcessCode != null ? String(record._lastAcceptedProcessCode).trim() : ''
+      try {
+        headers = this.requireUserHeaders()
+      } catch (err) {
+        return false
+      }
+      const previousCode = this.normalizeProcessCode(record._lastAcceptedProcessCode)
       const previousBarcode = record._lastAcceptedBarcode || ''
       const previousImage = record._lastAcceptedBarcodeImage || ''
       try {
@@ -848,7 +865,7 @@ export default {
           for (const item of res.data) {
             if (!item || !item.name || !item.code) continue
             const name = String(item.name).trim()
-            const code = String(item.code).trim()
+            const code = this.normalizeProcessCode(item.code)
             if (!name || !code) continue
             map[name] = code
           }
@@ -868,7 +885,8 @@ export default {
     handleProcessCodeTyping(record) {
       if (!record) return
       const value = record.processCode != null ? String(record.processCode) : ''
-      const hasValue = this.hasText(value)
+      const normalized = this.normalizeProcessCode(value)
+      const hasValue = normalized !== ''
       record.serverCodeMissing = !hasValue
       record.codeMissing = !hasValue
       if (!hasValue) {
@@ -880,8 +898,9 @@ export default {
     async handleProcessCodeBlur(record) {
       if (!record) return
       const value = record.processCode != null ? String(record.processCode).trim() : ''
-      record.processCode = value
-      if (!value) {
+      const normalized = this.normalizeProcessCode(value)
+      record.processCode = normalized
+      if (!normalized) {
         record.serverCodeMissing = true
         record.codeMissing = true
         record.barcode = ''
@@ -923,50 +942,55 @@ export default {
       await this.updateProcess(record)
       await this.autoSaveRecord(record)
     },
-    async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
-      if (!cacheReady) await this.ensureProcessCache()
-      const rawName = r.processName || ''
-      const name = rawName.trim()
-      const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
-      let shouldRemember = false
-      if (!name) {
-        r.processCode = ''
-        r.serverCodeMissing = false
-        r.codeMissing = true
+      async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
+        if (!cacheReady) await this.ensureProcessCache()
+        const rawName = r.processName || ''
+        const name = rawName.trim()
+        const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
+        let shouldRemember = false
+        if (!name) {
+          r.processCode = ''
+          r.serverCodeMissing = false
+          r.codeMissing = true
+          await this.updateBarcode(r, fetchBarcodeImage)
+          this.updateIssueFlags(r)
+          return
+        }
+        let code = this.normalizeProcessCode(this.processCache[name])
+        if (!code && allowFetch) {
+          try {
+            const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
+            if (res.data && res.data.code) {
+              const normalized = this.normalizeProcessCode(res.data.code)
+              if (normalized) {
+                code = normalized
+                this.$set(this.processCache, name, normalized)
+              }
+            }
+          } catch (e) { /* ignore */ }
+        }
+        const manualCode = this.normalizeProcessCode(existingCode)
+        if (code) {
+          r.processCode = code
+          r.serverCodeMissing = false
+        } else if (manualCode) {
+          r.processCode = manualCode
+          r.serverCodeMissing = false
+          if (!this.processCache[name] || this.processCache[name] !== manualCode) {
+            this.$set(this.processCache, name, manualCode)
+          }
+          shouldRemember = true
+        } else {
+          r.processCode = ''
+          r.serverCodeMissing = true
+        }
+        r.codeMissing = !this.isValidProcessCode(r.processCode)
         await this.updateBarcode(r, fetchBarcodeImage)
         this.updateIssueFlags(r)
-        return
-      }
-      let code = this.processCache[name]
-      if (!code && allowFetch) {
-        try {
-          const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
-          if (res.data && res.data.code) {
-            code = String(res.data.code).trim()
-            if (code) this.$set(this.processCache, name, code)
-          }
-        } catch (e) { /* ignore */ }
-      }
-      const manualCode = this.hasText(existingCode) ? existingCode : ''
-      if (code) {
-        r.processCode = code
-        r.serverCodeMissing = false
-      } else if (manualCode) {
-        r.processCode = manualCode
-        r.serverCodeMissing = false
-        if (!this.processCache[name]) this.$set(this.processCache, name, manualCode)
-        shouldRemember = true
-      } else {
-        r.processCode = ''
-        r.serverCodeMissing = true
-      }
-      r.codeMissing = !this.hasText(r.processCode)
-      await this.updateBarcode(r, fetchBarcodeImage)
-      this.updateIssueFlags(r)
-      if (shouldRemember && !r.codeMissing) {
-        await this.rememberProcessCode(r)
-      }
-    },
+        if (shouldRemember && !r.codeMissing) {
+          await this.rememberProcessCode(r)
+        }
+      },
     checkHours(r) {
       r.hoursMissing = r.hours == null || r.hours === ''
       this.updateIssueFlags(r)
@@ -1155,8 +1179,14 @@ export default {
             if (!key) return
             const value = data[key]
             if (value == null) return
-            const code = String(value).trim()
-            if (code) this.$set(this.processCache, key, code)
+            const code = this.normalizeProcessCode(value)
+            if (code) {
+              this.$set(this.processCache, key, code)
+            } else if (this.$delete) {
+              this.$delete(this.processCache, key)
+            } else {
+              delete this.processCache[key]
+            }
           })
         } catch (error) {
           console.error('批量加载工序失败', error)
@@ -1166,8 +1196,13 @@ export default {
       await Promise.all(tasks)
     },
     async updateBarcode(r, fetchImage = true) {
-      if (r.drawingNumber && r.notificationNumber && r.processCode) {
-        const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
+      const normalizedCode = this.normalizeProcessCode(r.processCode)
+      if (normalizedCode !== r.processCode) {
+        r.processCode = normalizedCode
+      }
+      const canUseCode = normalizedCode && r.serverCodeMissing !== true
+      if (r.drawingNumber && r.notificationNumber && canUseCode) {
+        const bar = `${r.drawingNumber}-${r.notificationNumber}-${normalizedCode}`
         const clean = this.sanitize(bar)
         r.barcode = clean
         if (!clean) { r.barcodeImage = ''; return }
@@ -1283,21 +1318,21 @@ export default {
     },
     getBulkConfig(type) {
       switch (type) {
-        case '工序代码':
-          return {
-            prompt: '请输入工序代码（将应用到当前筛选的所有记录）',
-            prepare(input) {
-              const value = String(input || '').trim()
-              if (!value) {
-                alert('请输入有效的工序代码')
-                return undefined
-              }
-              return value
-            },
-            apply(record, value) {
-              record.processCode = value
-              record.serverCodeMissing = false
-              record.codeMissing = false
+          case '工序代码':
+            return {
+              prompt: '请输入工序代码（将应用到当前筛选的所有记录）',
+              prepare(input) {
+                const normalized = this.normalizeProcessCode(input)
+                if (!normalized) {
+                  alert('请输入有效的工序代码（不可为空或为0）')
+                  return undefined
+                }
+                return normalized
+              },
+              apply(record, value) {
+                record.processCode = value
+                record.serverCodeMissing = false
+                record.codeMissing = false
               return this.updateBarcode(record)
             }
           }
@@ -1434,17 +1469,17 @@ export default {
             break
           }
           case '工序代码': {
-            const code = item.processCode != null ? String(item.processCode).trim() : ''
+            const code = this.normalizeProcessCode(item.processCode)
             record.processCode = code
-            record.serverCodeMissing = !this.hasText(code)
-            record.codeMissing = !this.hasText(code)
-            if (!this.hasText(code)) {
+            record.serverCodeMissing = !code
+            record.codeMissing = !code
+            if (!code) {
               record.barcode = ''
               record.barcodeImage = ''
               this.updateIssueFlags(record)
             } else {
               const name = record.processName != null ? String(record.processName).trim() : ''
-              if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
+              if (name && (!this.processCache[name] || this.processCache[name] !== code)) this.$set(this.processCache, name, code)
               const previousBarcode = record.barcode
               const previousImage = record.barcodeImage
               await this.updateBarcode(record)

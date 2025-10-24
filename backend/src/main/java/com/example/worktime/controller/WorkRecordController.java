@@ -702,9 +702,19 @@ public class WorkRecordController {
         boolean hoursMissing = wr.getHours() == null;
         wr.setHoursMissing(hoursMissing);
 
-        boolean codePresent = hasText(wr.getProcessCode());
+        String normalizedCode = normalizeProcessCode(wr.getProcessCode());
+        if (normalizedCode != null) {
+            wr.setProcessCode(normalizedCode);
+        } else {
+            wr.setProcessCode(null);
+        }
+        boolean codePresent = normalizedCode != null;
         boolean codeMissing = Boolean.TRUE.equals(wr.getCodeMissing()) || !codePresent;
         wr.setCodeMissing(codeMissing);
+        if (codeMissing) {
+            wr.setBarcode(null);
+            wr.setBarcodeImage(null);
+        }
 
         String sanitizedBarcode = wr.getBarcode() != null ? sanitizeBarcode(wr.getBarcode()) : null;
         boolean barcodePresent = hasText(sanitizedBarcode);
@@ -714,6 +724,21 @@ public class WorkRecordController {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String normalizeProcessCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String trimmed = code.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return "0".equals(trimmed) ? null : trimmed;
+    }
+
+    private boolean hasValidProcessCode(String code) {
+        return normalizeProcessCode(code) != null;
     }
 
     private java.util.Set<String> fetchExistingBarcodes(java.util.Collection<String> barcodes) {
@@ -786,21 +811,26 @@ public class WorkRecordController {
                         code = codeCache.get(normalizedProcess);
                         if (code == null) {
                             code = processService.getCode(normalizedProcess);
-                            if (code != null && !code.trim().isEmpty()) {
-                                code = code.trim();
-                                codeCache.put(normalizedProcess, code);
+                            if (code != null) {
+                                String trimmed = code.trim();
+                                if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                                    code = trimmed;
+                                    codeCache.put(normalizedProcess, code);
+                                } else {
+                                    code = null;
+                                }
                             }
                         }
                     }
                     boolean codeMissing = false;
-                    if (code == null || code.trim().isEmpty()) {
+                    if (code == null || code.trim().isEmpty() || "0".equals(code.trim())) {
                         code = normalizedProcess != null && !normalizedProcess.isEmpty() ? normalizedProcess : process;
                         codeMissing = true;
                     }
                     wr.setProcessCode(code);
                     wr.setCodeMissing(codeMissing);
 
-                    if (drawing != null && notification != null && code != null) {
+                    if (drawing != null && notification != null && code != null && !codeMissing) {
                         String bar = drawing + "-" + notification + "-" + code;
                         String clean = sanitizeBarcode(bar);
                         wr.setBarcode(clean);
@@ -912,7 +942,7 @@ public class WorkRecordController {
     }
 
     private void validate(WorkRecord record) {
-        if (record.getProcessCode() == null || record.getProcessCode().trim().isEmpty()) {
+        if (!hasValidProcessCode(record.getProcessCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代码不能为空");
         }
         if (record.getBarcode() == null || record.getBarcode().trim().isEmpty()) {
