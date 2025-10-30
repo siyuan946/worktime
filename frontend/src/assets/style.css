@@ -23,6 +23,10 @@ body {
   min-width: 0;
 }
 
+#preview-table .print-page-footer {
+  display: none;
+}
+
 .issue-panel {
   position: sticky;
   top: 1rem;
@@ -254,7 +258,6 @@ body {
   .no-print { display: none !important; }
   .print-text { display: inline !important; }
   .print-only { display: table-cell !important; }
-
   .navbar {
     display: none !important;
   }
@@ -324,6 +327,24 @@ body {
     margin-right: 0 !important;
     page-break-inside: avoid;
     break-inside: avoid;
+    position: relative;
+    padding-bottom: 36px;
+  }
+
+  #preview-table .print-page-footer {
+    display: block;
+    position: absolute;
+    left: 0;
+    bottom: -14mm;
+    width: calc(100% + 20mm);
+    margin-left: -10mm;
+    padding-left: 10mm;
+    font-size: 9pt;
+    color: #6c757d;
+    pointer-events: none;
+    white-space: nowrap;
+    background: #fff;
+    z-index: 5;
   }
 
   #preview-table table {

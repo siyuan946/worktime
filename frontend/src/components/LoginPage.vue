@@ -13,6 +13,18 @@
           <label class="form-label visually-hidden" for="password">密码</label>
           <input id="password" type="password" class="form-control form-control-lg" v-model.trim="password" placeholder="密码" autocomplete="current-password" />
         </div>
+        <div class="mb-4">
+          <label class="form-label" for="department">请选择部门</label>
+          <select
+            id="department"
+            class="form-select form-select-lg"
+            v-model="department"
+          >
+            <option disabled value="">请选择登录部门</option>
+            <option value="production">生产部门</option>
+            <option value="process">工艺部门</option>
+          </select>
+        </div>
         <button class="btn btn-primary btn-lg w-100" :disabled="loading || !canSubmit">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
           登录
@@ -31,13 +43,14 @@ export default {
     return {
       username: '',
       password: '',
+      department: '',
       loading: false,
       error: ''
     };
   },
   computed: {
     canSubmit() {
-      return this.username && this.password;
+      return this.username && this.password && this.department;
     }
   },
   methods: {
@@ -46,17 +59,21 @@ export default {
       this.loading = true;
       this.error = '';
       try {
-        await axios.post(
+        const { data } = await axios.post(
           '/api/auth/login',
           {
             username: this.username,
-            password: this.password
+            password: this.password,
+            department: this.department
           },
           { headers: { 'X-User': this.username } }
         );
+        const resolvedDepartment = data?.department || this.department;
+        const resolvedUsername = data?.username || this.username;
         localStorage.setItem('loggedIn', 'true');
-        localStorage.setItem('username', this.username);
-        this.$emit('logged-in');
+        localStorage.setItem('username', resolvedUsername);
+        localStorage.setItem('department', resolvedDepartment);
+        this.$emit('logged-in', { department: resolvedDepartment, username: resolvedUsername });
       } catch (e) {
         this.error = e.response?.data?.message || '登录失败，请稍后再试';
       } finally {
