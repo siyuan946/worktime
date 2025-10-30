@@ -4,6 +4,7 @@ import com.example.worktime.model.WorkRecord;
 import com.example.worktime.model.UploadedFile;
 import com.example.worktime.repository.WorkRecordRepository;
 import com.example.worktime.repository.UploadedFileRepository;
+import com.example.worktime.service.OperationLogContext;
 import com.example.worktime.service.OperationLogService;
 import com.example.worktime.service.ProcessCodeService;
 import com.example.worktime.service.WorkerService;
@@ -51,17 +52,19 @@ public class WorkRecordController {
     private final WorkerService workerService;
     private final UploadedFileRepository fileRepository;
     private final OperationLogService logService;
+    private final OperationLogContext logContext;
     @PersistenceContext
     private EntityManager entityManager;
 
     public WorkRecordController(WorkRecordRepository repository, ProcessCodeService processService,
                                 WorkerService workerService, UploadedFileRepository fileRepository,
-                                OperationLogService logService) {
+                                OperationLogService logService, OperationLogContext logContext) {
         this.repository = repository;
         this.processService = processService;
         this.workerService = workerService;
         this.fileRepository = fileRepository;
         this.logService = logService;
+        this.logContext = logContext;
     }
 
     @GetMapping
@@ -396,6 +399,9 @@ public class WorkRecordController {
             result.add(repository.save(record));
         }
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setSummary("批量更新记录");
+        logContext.appendDetail("count=" + result.size());
         logService.log(user, "批量更新记录", "count=" + result.size());
         return result;
     }
@@ -463,6 +469,10 @@ public class WorkRecordController {
         }
         WorkRecord saved = repository.save(record);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("自动保存记录");
+        logContext.appendDetail("drawing=" + saved.getDrawingNumber());
         logService.log(user, "自动保存记录", "id=" + saved.getId());
         flagIssues(saved);
         return saved;
@@ -485,6 +495,10 @@ public class WorkRecordController {
         record.setNaturalMonth(ym != null ? ym.toString() : null);
         if (record.getQualifiedQty() != null) record.setFilled(true);
         WorkRecord updated = repository.save(record);
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", id != null ? id.toString() : null);
+        logContext.setSummary("更新记录");
+        logContext.appendDetail("drawing=" + updated.getDrawingNumber());
         logService.log(user, "更新记录 " + id, null);
         return updated;
     }
@@ -513,6 +527,10 @@ public class WorkRecordController {
         YearMonth ym = determineNaturalMonth(copy);
         copy.setNaturalMonth(ym != null ? ym.toString() : null);
         WorkRecord saved = repository.save(copy);
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("复制记录");
+        logContext.appendDetail("sourceId=" + id);
         logService.log(user, "复制记录 " + id, "newId=" + saved.getId());
         return saved;
     }
@@ -522,6 +540,9 @@ public class WorkRecordController {
     public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setEntity("WorkRecord", id != null ? id.toString() : null);
+        logContext.setSummary("删除记录");
         logService.log(user, "删除记录 " + id, null);
     }
 
@@ -555,6 +576,10 @@ public class WorkRecordController {
         }
         java.util.List<WorkRecord> saved = repository.saveAll(records);
         repository.flush();
+        logContext.setModule("工时记录");
+        logContext.setSummary("新增记录");
+        logContext.setEntity("UploadedFile", fileId != null ? fileId.toString() : null);
+        logContext.appendDetail("count=" + saved.size());
         logService.log(user, "新增记录" , "fileId=" + fileId + " count=" + saved.size());
         return saved;
     }
@@ -615,9 +640,12 @@ public class WorkRecordController {
         result.put("total", parsed.size());
         result.put("codeMissing", codeMissing);
         result.put("hoursMissing", hoursMissing);
-        if (!store) {
-            result.put("records", parsed);
-        }
+        result.put("records", parsed);
+        logContext.setModule("工时记录");
+        logContext.setEntity("UploadedFile", uf.getId() != null ? uf.getId().toString() : null);
+        logContext.setSummary("上传文件");
+        logContext.appendDetail("fileName=" + uf.getFileName());
+        logContext.appendDetail("records=" + parsed.size());
         logService.log(user, "上传文件 " + uf.getFileName(), "records=" + parsed.size());
         return result;
     }
@@ -674,9 +702,30 @@ public class WorkRecordController {
         boolean hoursMissing = wr.getHours() == null;
         wr.setHoursMissing(hoursMissing);
 
-        boolean codePresent = hasText(wr.getProcessCode());
+        String normalizedCode = normalizeProcessCode(wr.getProcessCode());
+        if (normalizedCode != null) {
+            wr.setProcessCode(normalizedCode);
+        } else {
+            wr.setProcessCode(null);
+        }
+        boolean codePresent = normalizedCode != null;
+        if (codePresent) {
+            String processName = wr.getProcessName() != null ? wr.getProcessName().trim() : null;
+            if (processName != null && !processName.isEmpty()) {
+                if (normalizedCode.equals(processName)) {
+                    if (!processService.isKnownCode(normalizedCode)) {
+                        codePresent = false;
+                        wr.setProcessCode(null);
+                    }
+                }
+            }
+        }
         boolean codeMissing = Boolean.TRUE.equals(wr.getCodeMissing()) || !codePresent;
         wr.setCodeMissing(codeMissing);
+        if (codeMissing) {
+            wr.setBarcode(null);
+            wr.setBarcodeImage(null);
+        }
 
         String sanitizedBarcode = wr.getBarcode() != null ? sanitizeBarcode(wr.getBarcode()) : null;
         boolean barcodePresent = hasText(sanitizedBarcode);
@@ -686,6 +735,21 @@ public class WorkRecordController {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String normalizeProcessCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String trimmed = code.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return "0".equals(trimmed) ? null : trimmed;
+    }
+
+    private boolean hasValidProcessCode(String code) {
+        return normalizeProcessCode(code) != null;
     }
 
     private java.util.Set<String> fetchExistingBarcodes(java.util.Collection<String> barcodes) {
@@ -758,21 +822,25 @@ public class WorkRecordController {
                         code = codeCache.get(normalizedProcess);
                         if (code == null) {
                             code = processService.getCode(normalizedProcess);
-                            if (code != null && !code.trim().isEmpty()) {
-                                code = code.trim();
-                                codeCache.put(normalizedProcess, code);
+                            if (code != null) {
+                                String trimmed = code.trim();
+                                if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                                    code = trimmed;
+                                    codeCache.put(normalizedProcess, code);
+                                } else {
+                                    code = null;
+                                }
                             }
                         }
+                        if (code == null && processService.isKnownCode(normalizedProcess)) {
+                            code = normalizedProcess;
+                        }
                     }
-                    boolean codeMissing = false;
-                    if (code == null || code.trim().isEmpty()) {
-                        code = normalizedProcess != null && !normalizedProcess.isEmpty() ? normalizedProcess : process;
-                        codeMissing = true;
-                    }
-                    wr.setProcessCode(code);
+                    boolean codeMissing = code == null || code.trim().isEmpty() || "0".equals(code.trim());
+                    wr.setProcessCode(codeMissing ? null : code);
                     wr.setCodeMissing(codeMissing);
 
-                    if (drawing != null && notification != null && code != null) {
+                    if (drawing != null && notification != null && code != null && !codeMissing) {
                         String bar = drawing + "-" + notification + "-" + code;
                         String clean = sanitizeBarcode(bar);
                         wr.setBarcode(clean);
@@ -884,7 +952,7 @@ public class WorkRecordController {
     }
 
     private void validate(WorkRecord record) {
-        if (record.getProcessCode() == null || record.getProcessCode().trim().isEmpty()) {
+        if (!hasValidProcessCode(record.getProcessCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "工序代码不能为空");
         }
         if (record.getBarcode() == null || record.getBarcode().trim().isEmpty()) {

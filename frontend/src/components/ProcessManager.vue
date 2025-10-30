@@ -29,15 +29,23 @@
       </tbody>
     </table>
     <!-- 新增工序代码模态框 -->
-    <div class="modal fade" tabindex="-1" ref="addModal">
-      <div class="modal-dialog modal-dialog-centered">
+    <div
+      class="modal fade show"
+      tabindex="-1"
+      role="dialog"
+      v-if="showAddModal"
+      style="display: block"
+      aria-modal="true"
+      @click.self="closeModal"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">新增工序代码</h5>
             <button type="button" class="btn-close" @click="closeModal"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" /></div>
+            <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.code" placeholder="代号" ref="codeInput" /></div>
             <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.name" placeholder="工序名称" /></div>
             <div class="mb-2"><input class="form-control form-control-sm" v-model="newProcess.category" placeholder="大类" /></div>
             <div><input class="form-control form-control-sm" v-model="newProcess.content" placeholder="内容" /></div>
@@ -49,6 +57,7 @@
         </div>
       </div>
     </div>
+    <div v-if="showAddModal" class="modal-backdrop fade show"></div>
   </section>
 </template>
 
@@ -60,7 +69,7 @@ export default {
       processCodes: [],
       search: '',
       newProcess: { code: '', name: '', category: '', content: '' },
-      modal: null
+      showAddModal: false
     }
   },
   computed: {
@@ -74,21 +83,38 @@ export default {
   watch: {
     search(val) {
       this.fetchProcesses(val)
+    },
+    showAddModal(val) {
+      if (typeof document !== 'undefined' && document.body) {
+        if (val) {
+          document.body.classList.add('modal-open')
+        } else {
+          this.$nextTick(() => {
+            const remaining = document.querySelectorAll('.modal.fade.show')
+            if (!remaining.length) {
+              document.body.classList.remove('modal-open')
+            }
+          })
+        }
+      }
     }
   },
   created() {
     this.fetchProcesses('')
   },
-  mounted() {
-    this.modal = new window.bootstrap.Modal(this.$refs.addModal)
-  },
   methods: {
     openModal() {
       this.newProcess = { code: '', name: '', category: '', content: '' }
-      this.modal.show()
+      this.showAddModal = true
+      this.$nextTick(() => {
+        const input = this.$refs.codeInput
+        if (input && typeof input.focus === 'function') {
+          input.focus()
+        }
+      })
     },
     closeModal() {
-      this.modal.hide()
+      this.showAddModal = false
     },
     async fetchProcesses(term) {
       const url = term
@@ -157,6 +183,16 @@ export default {
         message = error.message
       }
       alert(message || fallback || '操作失败')
+    }
+  },
+  beforeUnmount() {
+    if (typeof document !== 'undefined' && document.body) {
+      this.$nextTick(() => {
+        const remaining = document.querySelectorAll('.modal.fade.show')
+        if (!remaining.length) {
+          document.body.classList.remove('modal-open')
+        }
+      })
     }
   }
 }

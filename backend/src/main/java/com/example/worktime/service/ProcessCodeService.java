@@ -21,6 +21,7 @@ public class ProcessCodeService {
 
     private final ProcessCodeRepository repository;
     private final ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> codeIndex = new ConcurrentHashMap<>();
 
     public ProcessCodeService(ProcessCodeRepository repository) {
         this.repository = repository;
@@ -43,6 +44,7 @@ public class ProcessCodeService {
                 continue;
             }
             cache.put(name, code);
+            indexCode(code);
             snapshot.put(name, code);
         }
         return snapshot;
@@ -58,6 +60,7 @@ public class ProcessCodeService {
         if (name.isEmpty()) return null;
         String existing = cache.get(name);
         if (existing != null) {
+            indexCode(existing);
             return existing;
         }
         ProcessCode pc = repository.findByName(name);
@@ -65,6 +68,7 @@ public class ProcessCodeService {
             String code = pc.getCode().trim();
             if (!code.isEmpty()) {
                 cache.put(name, code);
+                indexCode(code);
                 return code;
             }
         }
@@ -104,10 +108,35 @@ public class ProcessCodeService {
                     continue;
                 }
                 cache.put(name, code);
+                indexCode(code);
                 result.put(name, code);
             }
         }
         return result;
+    }
+
+    public boolean isKnownCode(String code) {
+        if (code == null) {
+            return false;
+        }
+        String trimmed = code.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        Boolean cached = codeIndex.get(trimmed);
+        if (cached != null) {
+            return cached;
+        }
+        ProcessCode pc = repository.findByCode(trimmed);
+        boolean known = pc != null && pc.getCode() != null && !pc.getCode().trim().isEmpty();
+        codeIndex.put(trimmed, known);
+        if (known && pc.getName() != null) {
+            String name = pc.getName().trim();
+            if (!name.isEmpty() && pc.getCode() != null) {
+                cache.putIfAbsent(name, pc.getCode().trim());
+            }
+        }
+        return known;
     }
 
     public ProcessCode rememberMapping(String name, String code) {
@@ -138,9 +167,21 @@ public class ProcessCodeService {
         }
         ProcessCode saved = repository.save(target);
         cache.put(trimmedName, trimmedCode);
+        indexCode(trimmedCode);
         if (!created && saved.getName() != null && !saved.getName().trim().isEmpty()) {
             cache.put(saved.getName().trim(), trimmedCode);
         }
         return saved;
+    }
+
+    private void indexCode(String code) {
+        if (code == null) {
+            return;
+        }
+        String trimmed = code.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        codeIndex.put(trimmed, Boolean.TRUE);
     }
 }

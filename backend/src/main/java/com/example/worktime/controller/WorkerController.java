@@ -2,6 +2,7 @@ package com.example.worktime.controller;
 
 import com.example.worktime.model.Worker;
 import com.example.worktime.repository.WorkerRepository;
+import com.example.worktime.service.OperationLogContext;
 import com.example.worktime.service.OperationLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +16,12 @@ import java.util.List;
 public class WorkerController {
     private final WorkerRepository repository;
     private final OperationLogService logService;
+    private final OperationLogContext logContext;
 
-    public WorkerController(WorkerRepository repository, OperationLogService logService) {
+    public WorkerController(WorkerRepository repository, OperationLogService logService, OperationLogContext logContext) {
         this.repository = repository;
         this.logService = logService;
+        this.logContext = logContext;
     }
 
     @GetMapping
@@ -46,6 +49,10 @@ public class WorkerController {
     public Worker create(@RequestBody Worker worker, @RequestHeader("X-User") String user) {
         validate(worker);
         Worker saved = repository.save(worker);
+        logContext.setModule("人员管理");
+        logContext.setEntity("Worker", saved.getId() != null ? saved.getId().toString() : null);
+        logContext.setSummary("新增人员");
+        logContext.appendDetail("name=" + worker.getName());
         logService.log(user, "新增人员 " + worker.getName(), "id=" + saved.getId());
         return saved;
     }
@@ -55,6 +62,10 @@ public class WorkerController {
         worker.setId(id);
         validate(worker);
         Worker saved = repository.save(worker);
+        logContext.setModule("人员管理");
+        logContext.setEntity("Worker", id != null ? id.toString() : null);
+        logContext.setSummary("更新人员");
+        logContext.appendDetail("name=" + worker.getName());
         logService.log(user, "更新人员 " + id, null);
         return saved;
     }
@@ -62,6 +73,9 @@ public class WorkerController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id, @RequestHeader("X-User") String user) {
         repository.deleteById(id);
+        logContext.setModule("人员管理");
+        logContext.setEntity("Worker", id != null ? id.toString() : null);
+        logContext.setSummary("删除人员");
         logService.log(user, "删除人员 " + id, null);
     }
 
