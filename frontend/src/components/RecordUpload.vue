@@ -22,6 +22,16 @@
       </div>
     </div>
 
+    <div
+      v-if="feedback.visible"
+      class="alert alert-dismissible fade show no-print"
+      :class="'alert-' + feedback.variant"
+      role="status"
+    >
+      <div>{{ feedback.message }}</div>
+      <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
+    </div>
+
     <div v-if="preview.length" id="preview-table" class="upload-preview-layout">
       <RecordIssuePanel
         class="no-print issue-panel-container"
@@ -211,7 +221,13 @@ export default {
         group: null,
         records: []
       },
-      rememberedPairs: Object.create(null)
+      rememberedPairs: Object.create(null),
+      feedback: {
+        visible: false,
+        message: '',
+        variant: 'info'
+      },
+      feedbackTimer: null
     }
   },
   created() {
@@ -223,6 +239,7 @@ export default {
   },
   beforeDestroy() {
     window.removeEventListener('afterprint', this.handleAfterPrint)
+    this.clearFeedbackTimer()
   },
   computed: {
     currentFileName() {
@@ -375,11 +392,37 @@ export default {
       deep: true
     }
   },
-    methods: {
-      hasText(value) {
-        if (value === null || value === undefined) return false
-        return String(value).trim().length > 0
-      },
+  methods: {
+    clearFeedbackTimer() {
+      if (this.feedbackTimer) {
+        clearTimeout(this.feedbackTimer)
+        this.feedbackTimer = null
+      }
+    },
+    hideFeedback() {
+      this.clearFeedbackTimer()
+      this.feedback.visible = false
+      this.feedback.message = ''
+    },
+    showFeedback(message, variant = 'info', duration = 3000) {
+      if (!message) {
+        this.hideFeedback()
+        return
+      }
+      this.clearFeedbackTimer()
+      this.feedback.variant = variant || 'info'
+      this.feedback.message = message
+      this.feedback.visible = true
+      if (duration > 0) {
+        this.feedbackTimer = setTimeout(() => {
+          this.hideFeedback()
+        }, duration)
+      }
+    },
+    hasText(value) {
+      if (value === null || value === undefined) return false
+      return String(value).trim().length > 0
+    },
       normalizeProcessCode(value) {
         if (value === null || value === undefined) return ''
         const text = String(value).trim()
@@ -514,7 +557,11 @@ export default {
       if (!message && error && typeof error.message === 'string') {
         message = error.message
       }
-      alert(message || fallback || '操作失败')
+      const final = message || fallback || '操作失败'
+      if (typeof this.showFeedback === 'function') {
+        this.showFeedback(final, 'danger', 5000)
+      }
+      alert(final)
     },
     requireUserHeaders() {
       const user = (localStorage.getItem('username') || '').trim()
@@ -639,6 +686,7 @@ export default {
       const chunkSize = 1000
       const url = `/api/workrecords?fileId=${this.fileId}`
       const responses = []
+      let partialNotice = ''
       try {
         for (let offset = 0; offset < valid.length; offset += chunkSize) {
           const chunk = valid.slice(offset, offset + chunkSize)
@@ -646,18 +694,27 @@ export default {
           const res = await axios.post(url, chunk, { headers })
           if (Array.isArray(res.data)) responses.push(...res.data)
         }
-        if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
+        if (valid.length < this.preview.length) {
+          partialNotice = '部分记录因缺少工序代码或条形码已被忽略'
+        }
         const hasSupp = responses.some(r => r && r.supplemental)
         this.preview = []
         this.file = null
         this.issueFilter = null
         this.issueCompletionNotified = false
-        alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
+        const notices = []
+        if (hasSupp) notices.push('部分记录为补录，请核查')
+        if (partialNotice) notices.push(partialNotice)
+        const baseMessage = '保存成功'
+        const finalMessage = notices.length ? `${baseMessage}，${notices.join('，')}` : baseMessage
+        const variant = notices.length ? 'warning' : 'success'
+        const duration = notices.length ? 6000 : 4000
+        this.showFeedback(finalMessage, variant, duration)
         await this.fetchFiles()
         this.$emit('saved')
       } catch (e) {
         console.error(e)
-        alert('保存失败')
+        this.showFeedback('保存失败，请稍后重试', 'danger', 5000)
         return
       } finally {
         this.loading = false
@@ -755,7 +812,8 @@ export default {
       const drawing = sanitized && sanitized.length ? sanitized : '（空）'
       return `图号：${drawing}`
     },
-    async autoSaveRecord(record) {
+    async autoSaveRecord(record, options = {}) {
+      const silent = options && options.silent === true
       if (!record) return
       if (!this.fileId) return
       if (record._autoSaving) {
@@ -783,13 +841,16 @@ export default {
             this.$set(record, key, updated[key])
           })
         }
+        if (!silent) {
+          this.showFeedback('单条记录已自动保存', 'success', 2000)
+        }
       } catch (error) {
         this.handleRequestError(error, '自动保存失败')
       } finally {
         record._autoSaving = false
         if (record._autoSavePending) {
           record._autoSavePending = false
-          this.autoSaveRecord(record)
+          this.autoSaveRecord(record, options)
         }
       }
     },
@@ -1412,7 +1473,7 @@ export default {
         if (result && typeof result.then === 'function') {
           await result
         }
-        await this.autoSaveRecord(record)
+        await this.autoSaveRecord(record, { silent: true })
       })())
       Promise.all(tasks).finally(() => {
         this.ensureCurrentPageContainsFilter()
@@ -1511,7 +1572,7 @@ export default {
             break
         }
         if (shouldSave) {
-          await this.autoSaveRecord(record)
+          await this.autoSaveRecord(record, { silent: true })
         }
       })())
       try {
