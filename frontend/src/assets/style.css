@@ -291,6 +291,10 @@ body {
     width: auto !important;
   }
 
+  #preview-table {
+    display: none !important;
+  }
+
   #preview-table table,
   #print-area table {
     table-layout: fixed;

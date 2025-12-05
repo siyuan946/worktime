@@ -32,7 +32,7 @@
       <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
     </div>
 
-    <div v-if="preview.length" id="preview-table" class="upload-preview-layout">
+    <div v-if="preview.length" id="preview-table" class="upload-preview-layout screen-only">
       <RecordIssuePanel
         class="no-print issue-panel-container"
         :groups="issueGroups"
@@ -178,6 +178,61 @@
         </template>
       </div>
     </div>
+    <div v-if="preview.length" id="print-area" class="print-area" aria-hidden="true">
+      <div
+        v-for="(page, index) in printPages"
+        :key="`print-${index}`"
+        class="preview-page"
+        :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
+      >
+        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+          <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
+        </div>
+        <table class="table table-bordered table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th class="notification-col">通知单号</th>
+              <th class="product-col">产品名称</th>
+              <th class="drawing-col">图号</th>
+              <th class="plan-col">计划数</th>
+              <th class="process-col">名称</th>
+              <th class="hours-col">单件工时</th>
+              <th class="process-col">工序代码</th>
+              <th class="process-col">工序</th>
+              <th class="worker-code-col">人员代码</th>
+              <th class="qualified-col">合格件数</th>
+              <th class="time-col">起始时间</th>
+              <th class="time-col">结束时间</th>
+              <th class="inspector-col">检验员</th>
+              <th class="barcode-cell">条形码</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in page.entries" :key="entry.index">
+              <td class="notification-col">{{ entry.record.notificationNumber }}</td>
+              <td class="product-col">{{ entry.record.productName }}</td>
+              <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
+              <td class="plan-col">{{ entry.record.planQty }}</td>
+              <td class="process-col">{{ entry.record.partName }}</td>
+              <td class="hours-col">{{ entry.record.hours }}</td>
+              <td class="process-col">{{ entry.record.processCode }}</td>
+              <td class="process-col">{{ entry.record.processName }}</td>
+              <td class="worker-code-col">{{ entry.record.workerCodes }}</td>
+              <td class="qualified-col">{{ entry.record.qualifiedQty }}</td>
+              <td class="time-col">{{ entry.record.startTime }}</td>
+              <td class="time-col">{{ entry.record.endTime }}</td>
+              <td class="inspector-col">{{ entry.record.inspector }}</td>
+              <td class="barcode-cell">
+                <div>{{ entry.record.barcode }}</div>
+                <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
+      </div>
+    </div>
     <BulkIssueModal
       :visible="bulkModal.visible"
       :type="bulkModal.type"
@@ -303,6 +358,7 @@ export default {
       return filtered
     },
     currentPageInfo() { return this.pages[this.currentPage] || null },
+    printPages() { return this.allPages },
     visiblePages() {
       if (!this.pages.length) return []
       if (this.renderAllPages) {
