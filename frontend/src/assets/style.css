@@ -13,20 +13,26 @@ body {
 }
 
 
+
 .upload-preview-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  display: flex;
   gap: 1.5rem;
-  align-items: start;
-  align-content: start;
+  align-items: flex-start;
   width: 100%;
+  flex-wrap: nowrap;
+}
+
+.issue-panel-column {
+  flex: 0 0 320px;
+  max-width: 360px;
+  min-width: 280px;
 }
 
 .issue-panel-container {
   position: sticky;
-  top: 0.5rem;
-  align-self: start;
-  z-index: 2;
+  top: 0.75rem;
+  align-self: flex-start;
+  z-index: 1;
 }
 
 .preview-pages-flow {
@@ -39,8 +45,12 @@ body {
 
 @media (max-width: 1200px) {
   .upload-preview-layout {
-    grid-template-columns: 1fr;
-    align-content: start;
+    flex-direction: column;
+  }
+
+  .issue-panel-column {
+    width: 100%;
+    max-width: none;
   }
 
   .issue-panel-container {
@@ -56,6 +66,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.preview-pages-flow {
+  width: 100%;
 }
 
 #preview-table .print-page-footer {

@@ -33,15 +33,17 @@
     </div>
 
     <div v-if="preview.length" id="preview-table" class="upload-preview-layout screen-only" :class="codeModeClass">
-      <div class="issue-panel-container no-print">
-        <RecordIssuePanel
-          :groups="issueGroups"
-          :active-group="issueFilter"
-          @select="selectIssueGroup"
-          @clear="clearIssueFilter"
-          @bulk="handleBulkFill"
-        />
-      </div>
+      <aside class="issue-panel-column no-print">
+        <div class="issue-panel-container">
+          <RecordIssuePanel
+            :groups="issueGroups"
+            :active-group="issueFilter"
+            @select="selectIssueGroup"
+            @clear="clearIssueFilter"
+            @bulk="handleBulkFill"
+          />
+        </div>
+      </aside>
       <div class="preview-main">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
           <h2 class="h5 mb-0">预览</h2>
