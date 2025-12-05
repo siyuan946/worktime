@@ -65,8 +65,10 @@
         </div>
 
         <!-- 保持不变：force-new-page 确保新图号必换页 -->
-        <template v-for="item in visiblePages" :key="item.index">
+        <div class="preview-pages-flow">
           <div
+            v-for="item in visiblePages"
+            :key="item.index"
             class="preview-page"
             :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
           >
@@ -175,7 +177,7 @@
               {{ formatPrintFooter(item.page.drawingNumber) }}
             </div>
           </div>
-        </template>
+        </div>
       </div>
     </div>
     <div v-if="preview.length" id="print-area" class="print-area" :class="codeModeClass" aria-hidden="true">

@@ -13,9 +13,36 @@ body {
 }
 
 .upload-preview-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(250px, 280px) 1fr;
   gap: 1.5rem;
   align-items: flex-start;
+  width: 100%;
+}
+
+.issue-panel-container {
+  position: sticky;
+  top: 1rem;
+  align-self: flex-start;
+  z-index: 2;
+}
+
+.preview-pages-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .upload-preview-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .issue-panel-container {
+    position: static;
+    width: 100%;
+  }
 }
 
 .preview-main {
