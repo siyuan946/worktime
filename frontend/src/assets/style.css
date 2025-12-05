@@ -180,6 +180,12 @@ body {
   max-height: 70px;
   width: 100%;
 }
+.code-mode-qr .barcode-cell { min-width: 180px; }
+.code-mode-qr .barcode-cell img {
+  max-height: 150px;
+  width: 150px;
+  margin: 4px auto;
+}
 
 /* allow table cells to wrap long text without widening the table */
 .wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
@@ -405,6 +411,9 @@ body {
   #preview-table .inspector-col { width: 9% !important; }
   #preview-table .barcode-cell { width: 17% !important; }
 
+  #preview-table.code-mode-qr .barcode-cell,
+  #print-area.code-mode-qr .barcode-cell { width: 22% !important; }
+
   #preview-table .preview-page:not(:last-child) {
     page-break-after: always;
     break-after: page;
@@ -428,6 +437,11 @@ body {
     max-height: 70px;
     max-width: 100%;
     width: 100%;
+  }
+  #preview-table.code-mode-qr .barcode-cell img,
+  #print-area.code-mode-qr .barcode-cell img {
+    max-height: 180px;
+    width: 180px;
   }
   #print-area .barcode-cell div { word-break: break-all; }
 

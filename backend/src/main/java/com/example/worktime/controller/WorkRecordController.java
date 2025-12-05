@@ -14,10 +14,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.worktime.model.Worker;
 import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
+import com.google.zxing.qrcode.QRCodeWriter;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -348,13 +350,16 @@ public class WorkRecordController {
     }
 
     @GetMapping("/generateBarcode")
-    public String generateBarcodeEndpoint(@RequestParam("text") String text) {
-        byte[] img = generateBarcode(sanitizeBarcode(text));
+    public String generateBarcodeEndpoint(@RequestParam("text") String text,
+                                          @RequestParam(value = "type", required = false, defaultValue = "barcode") String type) {
+        byte[] img = generateCodeImage(sanitizeBarcode(text), CodeImageType.from(type));
         return img == null ? null : java.util.Base64.getEncoder().encodeToString(img);
     }
 
     @PostMapping("/generateBarcodes")
-    public Map<String, String> generateBarcodes(@RequestBody List<String> barcodes) {
+    public Map<String, String> generateBarcodes(@RequestBody List<String> barcodes,
+                                                @RequestParam(value = "type", required = false, defaultValue = "barcode") String type) {
+        CodeImageType imageType = CodeImageType.from(type);
         Map<String, String> result = new LinkedHashMap<>();
         if (barcodes == null) {
             return result;
@@ -365,7 +370,7 @@ public class WorkRecordController {
             if (clean == null || clean.isEmpty() || result.containsKey(clean)) {
                 continue;
             }
-            byte[] img = generateBarcode(clean);
+            byte[] img = generateCodeImage(clean, imageType);
             if (img != null) {
                 result.put(clean, java.util.Base64.getEncoder().encodeToString(img));
             }
@@ -960,10 +965,58 @@ public class WorkRecordController {
         }
     }
 
+    private enum CodeImageType {
+        BARCODE("barcode"),
+        QR("qr"),
+        QRCODE("qr");
+
+        private final String code;
+
+        CodeImageType(String code) {
+            this.code = code;
+        }
+
+        public static CodeImageType from(String raw) {
+            if (raw == null) return QR; // 默认二维码
+            String normalized = raw.trim().toLowerCase();
+            for (CodeImageType type : values()) {
+                if (type.code.equals(normalized)) {
+                    return type == QRCODE ? QR : type;
+                }
+            }
+            return QR;
+        }
+    }
+
+    private byte[] generateCodeImage(String text, CodeImageType type) {
+        if (text == null || text.isEmpty()) {
+            return null;
+        }
+        if (type == CodeImageType.QR) {
+            return generateQrCode(text);
+        }
+        return generateBarcode(text);
+    }
+
     private byte[] generateBarcode(String text) {
         try {
             Code128Writer writer = new Code128Writer();
             BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, 300, 80);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(matrix, "png", out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private byte[] generateQrCode(String text) {
+        try {
+            QRCodeWriter writer = new QRCodeWriter();
+            java.util.Map<EncodeHintType, Object> hints = new java.util.EnumMap<>(EncodeHintType.class);
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            hints.put(EncodeHintType.MARGIN, 1);
+            BitMatrix matrix = writer.encode(text, BarcodeFormat.QR_CODE, 260, 260, hints);
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "png", out);
             return out.toByteArray();

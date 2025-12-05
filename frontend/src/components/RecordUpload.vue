@@ -1,5 +1,5 @@
 <template>
-  <section class="section-card">
+  <section class="section-card" :class="codeModeClass">
     <h2 class="h5 no-print">Excel上传</h2>
     <div class="input-group mb-2 no-print">
       <input class="form-control" type="file" @change="onFileChange">
@@ -32,7 +32,7 @@
       <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
     </div>
 
-    <div v-if="preview.length" id="preview-table" class="upload-preview-layout screen-only">
+    <div v-if="preview.length" id="preview-table" class="upload-preview-layout screen-only" :class="codeModeClass">
       <RecordIssuePanel
         class="no-print issue-panel-container"
         :groups="issueGroups"
@@ -92,7 +92,7 @@
                   <th class="print-only time-col">起始时间</th>
                   <th class="print-only time-col">结束时间</th>
                   <th class="print-only inspector-col">检验员</th>
-                  <th class="barcode-cell">条形码</th>
+                  <th class="barcode-cell">{{ codeLabel }}</th>
                   <th class="no-print"></th>
                 </tr>
               </thead>
@@ -178,7 +178,7 @@
         </template>
       </div>
     </div>
-    <div v-if="preview.length" id="print-area" class="print-area" aria-hidden="true">
+    <div v-if="preview.length" id="print-area" class="print-area" :class="codeModeClass" aria-hidden="true">
       <div
         v-for="(page, index) in printPages"
         :key="`print-${index}`"
@@ -205,7 +205,7 @@
               <th class="time-col">起始时间</th>
               <th class="time-col">结束时间</th>
               <th class="inspector-col">检验员</th>
-              <th class="barcode-cell">条形码</th>
+              <th class="barcode-cell">{{ codeLabel }}</th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +263,7 @@ export default {
       rowsPerPage: 12,
       processCache: {},
       processCacheLoaded: false,
-      barcodeCache: {},
+      barcodeCache: { qr: {}, barcode: {} },
       showProgress: false,
       parseProgress: 0,
       renderAllPages: false,
@@ -282,19 +282,28 @@ export default {
         message: '',
         variant: 'info'
       },
-      feedbackTimer: null
+      feedbackTimer: null,
+      codeMode: localStorage.getItem('codeMode') || 'qr'
     }
   },
   created() {
     this.fetchFiles()
     this.ensureProcessCache()
+    this.applyCodeMode(localStorage.getItem('codeMode') || 'qr', { skipFetch: true })
   },
   mounted() {
     window.addEventListener('afterprint', this.handleAfterPrint)
+    this.modeListener = (mode) => this.applyCodeMode(mode)
+    if (this.$root && this.$root.$on) {
+      this.$root.$on('code-mode-changed', this.modeListener)
+    }
   },
   beforeDestroy() {
     window.removeEventListener('afterprint', this.handleAfterPrint)
     this.clearFeedbackTimer()
+    if (this.$root && this.$root.$off && this.modeListener) {
+      this.$root.$off('code-mode-changed', this.modeListener)
+    }
   },
   computed: {
     currentFileName() {
@@ -408,7 +417,10 @@ export default {
         if (aDrawing !== bDrawing) return aDrawing.localeCompare(bDrawing, 'zh-Hans')
         return a.type.localeCompare(b.type, 'zh-Hans')
       })
-    }
+    },
+    codeModeClass() { return `code-mode-${this.codeMode}` },
+    codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
+    activeCodeCache() { return this.barcodeCache[this.codeMode] || {} }
   },
   watch: {
     pages(newPages) {
@@ -627,12 +639,42 @@ export default {
       }
       return { 'X-User': user }
     },
+    ensureCodeCache(mode = this.codeMode) {
+      if (!this.barcodeCache[mode]) {
+        if (this.$set) this.$set(this.barcodeCache, mode, {})
+        else this.barcodeCache[mode] = {}
+      }
+      return this.barcodeCache[mode]
+    },
+    applyCodeMode(mode, options = {}) {
+      const target = mode || 'qr'
+      const skipFetch = options && options.skipFetch
+      if (this.codeMode === target && !options.force) {
+        if (!skipFetch) this.refreshCodeImagesForMode()
+        return
+      }
+      this.codeMode = target
+      localStorage.setItem('codeMode', target)
+      this.ensureCodeCache(target)
+      if (!skipFetch) {
+        this.refreshCodeImagesForMode()
+        this.prefetchAllBarcodes()
+      }
+    },
+    refreshCodeImagesForMode() {
+      this.preview.forEach(r => { r.barcodeImage = '' })
+    },
     onFileChange(e) { this.file = e.target.files[0] },
-    async fetchFiles() { const res = await axios.get('/api/files'); this.files = res.data },
+    async fetchFiles() {
+      const res = await axios.get('/api/files')
+      this.files = res.data
+      this.barcodeCache = { qr: {}, barcode: {} }
+      this.ensureCodeCache()
+    },
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
-      this.barcodeCache = {}
+      this.barcodeCache = { qr: {}, barcode: {} }
       try {
         const res = await axios.get(`/api/workrecords/file/${this.selectedFileId}`)
         if (!Array.isArray(res.data) || !res.data.length) {
@@ -687,7 +729,7 @@ export default {
       let headers
       try { headers = this.requireUserHeaders() }
       catch (err) { return }
-      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}; this.issueFilter = null; this.issueCompletionNotified = false
+      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = { qr: {}, barcode: {} }; this.issueFilter = null; this.issueCompletionNotified = false
       try {
         const data = new FormData(); data.append('file', this.file)
         const res = await axios.post('/api/workrecords/parse', data, { headers })
@@ -1203,6 +1245,7 @@ export default {
       const page = this.pages[pageIndex]; if (!page) return
       if (!this._barcodeLoading) this._barcodeLoading = new Set()
       if (this._barcodeLoading.has(pageIndex)) return
+      const cache = this.ensureCodeCache()
       const missing = []
       for (const entry of page.entries) {
         const code = this.sanitize(entry.record.barcode)
@@ -1211,13 +1254,13 @@ export default {
           this.updateIssueFlags(entry.record)
         }
         if (!code) continue
-        if (!this.barcodeCache[code] && !entry.record.barcodeImage) missing.push(code)
+        if (!cache[code] && !entry.record.barcodeImage) missing.push(code)
       }
       if (!missing.length) {
         for (const entry of page.entries) {
           const code = this.sanitize(entry.record.barcode)
-          if (code && this.barcodeCache[code] && entry.record.barcodeImage !== this.barcodeCache[code]) {
-            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          if (code && cache[code] && entry.record.barcodeImage !== cache[code]) {
+            this.$set(entry.record, 'barcodeImage', cache[code])
           }
         }
         return
@@ -1225,10 +1268,11 @@ export default {
       this._barcodeLoading.add(pageIndex)
       try {
         await this.fetchBarcodes(missing)
+        const updatedCache = this.ensureCodeCache()
         for (const entry of page.entries) {
           const code = this.sanitize(entry.record.barcode)
-          if (code && this.barcodeCache[code]) {
-            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          if (code && updatedCache[code]) {
+            this.$set(entry.record, 'barcodeImage', updatedCache[code])
           }
         }
       } catch (e) { console.error('加载条码失败', e) }
@@ -1236,12 +1280,13 @@ export default {
     },
     async fetchBarcodes(codes) {
       if (!Array.isArray(codes) || !codes.length) return
+      const cache = this.ensureCodeCache()
       const unique = []
       const seen = new Set()
       for (const raw of codes) {
         const code = this.sanitize(raw)
         if (!code) continue
-        if (this.barcodeCache[code]) continue
+        if (cache[code]) continue
         if (seen.has(code)) continue
         seen.add(code)
         unique.push(code)
@@ -1252,11 +1297,13 @@ export default {
         const chunk = unique.slice(offset, offset + chunkSize)
         try {
           // eslint-disable-next-line no-await-in-loop
-          const res = await axios.post('/api/workrecords/generateBarcodes', chunk)
+          const res = await axios.post(`/api/workrecords/generateBarcodes?type=${this.codeMode}`, chunk)
           const data = res && res.data ? res.data : {}
           Object.keys(data || {}).forEach(key => {
             if (!key) return
-            this.$set(this.barcodeCache, key, data[key])
+            const target = this.ensureCodeCache()
+            if (this.$set) this.$set(target, key, data[key])
+            else target[key] = data[key]
           })
         } catch (error) {
           console.error('批量生成条码失败', error)
@@ -1274,8 +1321,9 @@ export default {
       await this.fetchBarcodes(codes)
       for (const record of this.preview) {
         const code = this.sanitize(record.barcode)
-        if (code && this.barcodeCache[code] && record.barcodeImage !== this.barcodeCache[code]) {
-          this.$set(record, 'barcodeImage', this.barcodeCache[code])
+        const cache = this.ensureCodeCache()
+        if (code && cache[code] && record.barcodeImage !== cache[code]) {
+          this.$set(record, 'barcodeImage', cache[code])
         }
         this.updateIssueFlags(record)
       }
@@ -1323,11 +1371,12 @@ export default {
         const clean = this.sanitize(bar)
         r.barcode = clean
         if (!clean) { r.barcodeImage = ''; return }
-        if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
+        const cache = this.ensureCodeCache()
+        if (cache[clean]) { r.barcodeImage = cache[clean]; return }
         if (!fetchImage) { r.barcodeImage = ''; return }
         try {
-          const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar } })
-          if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }
+          const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar, type: this.codeMode } })
+          if (res && res.data) { const target = this.ensureCodeCache(); this.$set(target, clean, res.data); r.barcodeImage = res.data }
           else { r.barcodeImage = '' }
         } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }
       } else { r.barcode = ''; r.barcodeImage = '' }
