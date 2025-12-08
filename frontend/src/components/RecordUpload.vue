@@ -33,7 +33,18 @@
           <div class="d-flex flex-wrap gap-2 align-items-center">
             <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
             <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
-            <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
+            <div class="d-flex align-items-center gap-2">
+              <select
+                class="form-select form-select-sm"
+                style="width: auto"
+                v-model="printLayout"
+                @change="persistPrintLayout"
+              >
+                <option value="horizontal">横向表头</option>
+                <option value="vertical">纵向表头</option>
+              </select>
+              <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
+            </div>
             <div class="spinner-border" v-if="loading"></div>
           </div>
         </div>
@@ -214,60 +225,118 @@
       </aside>
     </div>
 
-    <div v-if="preview.length" id="print-area" class="print-area" :class="codeModeClass" aria-hidden="true">
-      <div
-        v-for="(page, index) in printPages"
-        :key="`print-${index}`"
-        class="preview-page"
-        :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
-      >
-        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
-          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
-          <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
+    <div v-if="preview.length" id="print-area" class="print-area" :class="[codeModeClass, layoutClass]" aria-hidden="true">
+      <template v-if="printLayout === 'horizontal'">
+        <div
+          v-for="(page, index) in printPages"
+          :key="`print-horizontal-${index}`"
+          class="preview-page"
+          :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
+        >
+          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+            <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+            <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
+          </div>
+          <table class="table table-bordered table-sm table-striped mb-0">
+            <thead>
+              <tr>
+                <th class="notification-col">通知单号</th>
+                <th class="product-col">产品名称</th>
+                <th class="drawing-col">图号</th>
+                <th class="plan-col">计划数</th>
+                <th class="process-col">名称</th>
+                <th class="hours-col">单件工时</th>
+                <th class="process-col">工序代码</th>
+                <th class="process-col">工序</th>
+                <th class="worker-code-col">人员代码</th>
+                <th class="qualified-col">合格件数</th>
+                <th class="time-col">起始时间</th>
+                <th class="time-col">结束时间</th>
+                <th class="inspector-col">检验员</th>
+                <th class="barcode-cell">{{ codeLabel }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in page.entries" :key="entry.index">
+                <td class="notification-col">{{ entry.record.notificationNumber }}</td>
+                <td class="product-col">{{ entry.record.productName }}</td>
+                <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
+                <td class="plan-col">{{ entry.record.planQty }}</td>
+                <td class="process-col">{{ entry.record.partName }}</td>
+                <td class="hours-col">{{ entry.record.hours }}</td>
+                <td class="process-col">{{ entry.record.processCode }}</td>
+                <td class="process-col">{{ entry.record.processName }}</td>
+                <td class="worker-code-col">{{ entry.record.workerCodes }}</td>
+                <td class="qualified-col">{{ entry.record.qualifiedQty }}</td>
+                <td class="time-col">{{ entry.record.startTime }}</td>
+                <td class="time-col">{{ entry.record.endTime }}</td>
+                <td class="inspector-col">{{ entry.record.inspector }}</td>
+                <td class="barcode-cell">
+                  <div>{{ entry.record.barcode }}</div>
+                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
         </div>
-        <table class="table table-bordered table-sm table-striped mb-0">
-          <thead>
-            <tr>
-              <th class="notification-col">通知单号</th>
-              <th class="product-col">产品名称</th>
-              <th class="drawing-col">图号</th>
-              <th class="plan-col">计划数</th>
-              <th class="process-col">名称</th>
-              <th class="hours-col">单件工时</th>
-              <th class="process-col">工序代码</th>
-              <th class="process-col">工序</th>
-              <th class="worker-code-col">人员代码</th>
-              <th class="qualified-col">合格件数</th>
-              <th class="time-col">起始时间</th>
-              <th class="time-col">结束时间</th>
-              <th class="inspector-col">检验员</th>
-              <th class="barcode-cell">{{ codeLabel }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in page.entries" :key="entry.index">
-              <td class="notification-col">{{ entry.record.notificationNumber }}</td>
-              <td class="product-col">{{ entry.record.productName }}</td>
-              <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
-              <td class="plan-col">{{ entry.record.planQty }}</td>
-              <td class="process-col">{{ entry.record.partName }}</td>
-              <td class="hours-col">{{ entry.record.hours }}</td>
-              <td class="process-col">{{ entry.record.processCode }}</td>
-              <td class="process-col">{{ entry.record.processName }}</td>
-              <td class="worker-code-col">{{ entry.record.workerCodes }}</td>
-              <td class="qualified-col">{{ entry.record.qualifiedQty }}</td>
-              <td class="time-col">{{ entry.record.startTime }}</td>
-              <td class="time-col">{{ entry.record.endTime }}</td>
-              <td class="inspector-col">{{ entry.record.inspector }}</td>
-              <td class="barcode-cell">
-                <div>{{ entry.record.barcode }}</div>
-                <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
-      </div>
+      </template>
+
+      <template v-else>
+        <div
+          v-for="(page, index) in printPages"
+          :key="`print-vertical-${index}`"
+          class="preview-page vertical-preview"
+          :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
+        >
+          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+            <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+            <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
+          </div>
+          <table class="table table-bordered table-sm mb-0 vertical-table">
+            <thead>
+              <tr>
+                <th><span class="vertical-text">通知单号</span></th>
+                <th><span class="vertical-text">产品名称</span></th>
+                <th><span class="vertical-text">图号</span></th>
+                <th><span class="vertical-text">计划数</span></th>
+                <th><span class="vertical-text">名称</span></th>
+                <th><span class="vertical-text">单件工时</span></th>
+                <th><span class="vertical-text">工序代码</span></th>
+                <th><span class="vertical-text">工序</span></th>
+                <th><span class="vertical-text">人员代码</span></th>
+                <th><span class="vertical-text">合格件数</span></th>
+                <th><span class="vertical-text">起始时间</span></th>
+                <th><span class="vertical-text">结束时间</span></th>
+                <th><span class="vertical-text">检验员</span></th>
+                <th><span class="vertical-text">{{ codeLabel }}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in page.entries" :key="entry.index">
+                <td>{{ entry.record.notificationNumber }}</td>
+                <td>{{ entry.record.productName }}</td>
+                <td>{{ entry.record.drawingNumber }}</td>
+                <td>{{ entry.record.planQty }}</td>
+                <td>{{ entry.record.partName }}</td>
+                <td>{{ entry.record.hours }}</td>
+                <td>{{ entry.record.processCode }}</td>
+                <td>{{ entry.record.processName }}</td>
+                <td>{{ entry.record.workerCodes }}</td>
+                <td>{{ entry.record.qualifiedQty }}</td>
+                <td>{{ entry.record.startTime }}</td>
+                <td>{{ entry.record.endTime }}</td>
+                <td>{{ entry.record.inspector }}</td>
+                <td class="barcode-cell">
+                  <div>{{ entry.record.barcode }}</div>
+                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
+        </div>
+      </template>
     </div>
     <BulkIssueModal
       :visible="bulkModal.visible"
@@ -319,7 +388,8 @@ export default {
         variant: 'info'
       },
       feedbackTimer: null,
-      codeMode: localStorage.getItem('codeMode') || 'qr'
+      codeMode: localStorage.getItem('codeMode') || 'qr',
+      printLayout: localStorage.getItem('printLayout') || 'horizontal'
     }
   },
   created() {
@@ -455,6 +525,7 @@ export default {
       })
     },
     codeModeClass() { return `code-mode-${this.codeMode}` },
+    layoutClass() { return `layout-${this.printLayout}` },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
     activeCodeCache() { return this.barcodeCache[this.codeMode] || {} }
   },
@@ -522,6 +593,13 @@ export default {
           this.hideFeedback()
         }, duration)
       }
+    },
+    persistPrintLayout() {
+      const allowed = ['horizontal', 'vertical']
+      if (!allowed.includes(this.printLayout)) {
+        this.printLayout = 'horizontal'
+      }
+      localStorage.setItem('printLayout', this.printLayout)
     },
     hasText(value) {
       if (value === null || value === undefined) return false

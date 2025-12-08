@@ -532,6 +532,37 @@ body {
     max-height: 180px;
     width: 180px;
   }
+  #print-area.layout-vertical .vertical-table {
+    table-layout: auto;
+  }
+  #print-area.layout-vertical .vertical-table th,
+  #print-area.layout-vertical .vertical-table td {
+    text-align: center;
+    vertical-align: middle;
+  }
+  #print-area.layout-vertical .vertical-text {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    letter-spacing: 1px;
+    font-size: 10px;
+  }
+  #print-area.layout-vertical .barcode-cell {
+    width: 18% !important;
+  }
+  #print-area.layout-vertical .barcode-cell img {
+    max-height: 220px;
+    width: auto;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+  }
+  #print-area.layout-vertical.code-mode-barcode .barcode-cell img {
+    max-height: 140px;
+  }
+  #print-area.layout-vertical.code-mode-barcode .barcode-cell {
+    width: 22% !important;
+  }
   #print-area .barcode-cell div { word-break: break-all; }
 
   .print-page { break-after: page; page-break-after: always; }
