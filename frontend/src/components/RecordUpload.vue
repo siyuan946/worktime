@@ -293,43 +293,22 @@
             <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
             <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
           </div>
-          <table class="table table-bordered table-sm mb-0 vertical-table">
-            <thead>
-              <tr>
-                <th><span class="vertical-text">通知单号</span></th>
-                <th><span class="vertical-text">产品名称</span></th>
-                <th><span class="vertical-text">图号</span></th>
-                <th><span class="vertical-text">计划数</span></th>
-                <th><span class="vertical-text">名称</span></th>
-                <th><span class="vertical-text">单件工时</span></th>
-                <th><span class="vertical-text">工序代码</span></th>
-                <th><span class="vertical-text">工序</span></th>
-                <th><span class="vertical-text">人员代码</span></th>
-                <th><span class="vertical-text">合格件数</span></th>
-                <th><span class="vertical-text">起始时间</span></th>
-                <th><span class="vertical-text">结束时间</span></th>
-                <th><span class="vertical-text">检验员</span></th>
-                <th><span class="vertical-text">{{ codeLabel }}</span></th>
-              </tr>
-            </thead>
+          <table class="table table-bordered table-sm mb-0 vertical-table vertical-transposed">
             <tbody>
-              <tr v-for="entry in page.entries" :key="entry.index">
-                <td>{{ entry.record.notificationNumber }}</td>
-                <td>{{ entry.record.productName }}</td>
-                <td>{{ entry.record.drawingNumber }}</td>
-                <td>{{ entry.record.planQty }}</td>
-                <td>{{ entry.record.partName }}</td>
-                <td>{{ entry.record.hours }}</td>
-                <td>{{ entry.record.processCode }}</td>
-                <td>{{ entry.record.processName }}</td>
-                <td>{{ entry.record.workerCodes }}</td>
-                <td>{{ entry.record.qualifiedQty }}</td>
-                <td>{{ entry.record.startTime }}</td>
-                <td>{{ entry.record.endTime }}</td>
-                <td>{{ entry.record.inspector }}</td>
-                <td class="barcode-cell">
-                  <div>{{ entry.record.barcode }}</div>
-                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+              <tr v-for="field in verticalFields" :key="field.key" class="field-row">
+                <th class="vertical-field">{{ field.label }}</th>
+                <td
+                  v-for="entry in page.entries"
+                  :key="`${field.key}-${entry.index}`"
+                  :class="[{ 'barcode-cell': field.key === 'barcode' }, field.className]"
+                >
+                  <template v-if="field.key === 'barcode'">
+                    <div>{{ entry.record.barcode }}</div>
+                    <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                  </template>
+                  <template v-else>
+                    {{ getFieldValue(entry.record, field.key) }}
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -527,6 +506,24 @@ export default {
     codeModeClass() { return `code-mode-${this.codeMode}` },
     layoutClass() { return `layout-${this.printLayout}` },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
+    verticalFields() {
+      return [
+        { key: 'notificationNumber', label: '通知单号' },
+        { key: 'productName', label: '产品名称' },
+        { key: 'drawingNumber', label: '图号' },
+        { key: 'planQty', label: '计划数' },
+        { key: 'partName', label: '名称' },
+        { key: 'hours', label: '单件工时' },
+        { key: 'processCode', label: '工序代码' },
+        { key: 'processName', label: '工序' },
+        { key: 'workerCodes', label: '人员代码' },
+        { key: 'qualifiedQty', label: '合格件数' },
+        { key: 'startTime', label: '起始时间' },
+        { key: 'endTime', label: '结束时间' },
+        { key: 'inspector', label: '检验员' },
+        { key: 'barcode', label: this.codeLabel, className: 'barcode-column' }
+      ]
+    },
     activeCodeCache() { return this.barcodeCache[this.codeMode] || {} }
   },
   watch: {
@@ -572,6 +569,25 @@ export default {
       if (this.feedbackTimer) {
         clearTimeout(this.feedbackTimer)
         this.feedbackTimer = null
+      }
+    },
+    getFieldValue(record, key) {
+      if (!record || !key) return ''
+      switch (key) {
+        case 'notificationNumber': return record.notificationNumber || ''
+        case 'productName': return record.productName || ''
+        case 'drawingNumber': return record.drawingNumber || ''
+        case 'planQty': return record.planQty
+        case 'partName': return record.partName || ''
+        case 'hours': return record.hours
+        case 'processCode': return record.processCode || ''
+        case 'processName': return record.processName || ''
+        case 'workerCodes': return record.workerCodes || ''
+        case 'qualifiedQty': return record.qualifiedQty
+        case 'startTime': return record.startTime || ''
+        case 'endTime': return record.endTime || ''
+        case 'inspector': return record.inspector || ''
+        default: return record[key] || ''
       }
     },
     hideFeedback() {
