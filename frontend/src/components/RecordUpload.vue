@@ -1,55 +1,74 @@
 <template>
-  <section class="section-card" :class="codeModeClass">
-    <h2 class="h5 no-print">Excel上传</h2>
-    <div class="input-group mb-2 no-print">
-      <input class="form-control" type="file" @change="onFileChange">
-      <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
-      <select class="form-select" style="max-width:180px" v-model="selectedFileId">
-        <option value="" disabled>选择历史文件</option>
-        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
-      </select>
-      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
-      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
-      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
-      <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
-      <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
-      <div class="spinner-border ms-2" v-if="loading"></div>
-    </div>
+  <section class="section-card upload-shell" :class="codeModeClass">
+    <header class="upload-header no-print">
+      <div>
+        <h2 class="h5 mb-1">Excel上传</h2>
+        <p class="text-muted small mb-0">从解析、校对到打印的完整录入流程</p>
+      </div>
+      <div class="upload-current-file" v-if="currentFileName">
+        <div class="label">当前文件</div>
+        <div class="value" :title="currentFileName">{{ currentFileName }}</div>
+      </div>
+    </header>
 
-    <div class="progress mb-2 no-print" v-if="showProgress" style="height: 0.75rem;">
-      <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
-        {{ parseProgress }}%
+    <div class="upload-toolbar no-print">
+      <div class="toolbar-row">
+        <div class="toolbar-block flex-grow-1">
+          <label class="form-label mb-1">选择或解析文件</label>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <input class="form-control" type="file" @change="onFileChange">
+            <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select" style="max-width:200px" v-model="selectedFileId">
+                <option value="" disabled>选择历史文件</option>
+                <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
+              </select>
+              <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
+              <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-block flex-grow-1">
+          <label class="form-label mb-1">数据清理与提交</label>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
+            <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
+            <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
+            <div class="spinner-border" v-if="loading"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="flex-grow-1">
+          <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
+            <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
+              {{ parseProgress }}%
+            </div>
+          </div>
+          <div
+            v-if="feedback.visible"
+            class="alert alert-dismissible fade show mb-0"
+            :class="'alert-' + feedback.variant"
+            role="status"
+          >
+            <div>{{ feedback.message }}</div>
+            <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div
-      v-if="feedback.visible"
-      class="alert alert-dismissible fade show no-print"
-      :class="'alert-' + feedback.variant"
-      role="status"
-    >
-      <div>{{ feedback.message }}</div>
-      <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
-    </div>
-
-    <div v-if="preview.length" id="preview-table" class="upload-preview-layout screen-only" :class="codeModeClass">
-      <aside class="issue-panel-column no-print">
-        <div class="issue-panel-container">
-          <RecordIssuePanel
-            :groups="issueGroups"
-            :active-group="issueFilter"
-            @select="selectIssueGroup"
-            @clear="clearIssueFilter"
-            @bulk="handleBulkFill"
-          />
-        </div>
-      </aside>
-      <div class="preview-main">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
-          <h2 class="h5 mb-0">预览</h2>
-          <div class="d-flex flex-wrap align-items-center gap-2">
+    <div v-if="preview.length" class="upload-body" :class="codeModeClass">
+      <div class="preview-column" id="preview-table">
+        <div class="preview-header no-print">
+          <div>
+            <h2 class="h5 mb-0">预览</h2>
+            <div class="text-muted small">按图号分页展示，右侧缺陷面板随时校对</div>
+          </div>
+          <div class="preview-actions">
             <div>当前图号：{{ currentPageInfo?.drawingNumber || '—' }}（第 {{ currentPage + 1 }} / {{ pages.length }} 页）</div>
-            <div class="input-group input-group-sm" style="width: 220px;">
+            <div class="input-group input-group-sm" style="width: 240px;">
               <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
               <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
             </div>
@@ -60,14 +79,13 @@
           </div>
         </div>
 
-        <div v-if="issueFilter" class="alert alert-warning py-2 px-3 mb-3 no-print issue-filter-alert">
+        <div v-if="issueFilter" class="alert alert-warning py-2 px-3 no-print issue-filter-alert">
           <div>
             正在处理图号「{{ issueFilter.drawingNumber || '（空图号）' }}」缺少「{{ issueFilter.type }}」的 {{ issueFilter.indexes.length }} 条记录。
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearIssueFilter">退出筛选</button>
         </div>
 
-        <!-- 保持不变：force-new-page 确保新图号必换页 -->
         <div class="preview-pages-flow">
           <div
             v-for="item in visiblePages"
@@ -182,7 +200,20 @@
           </div>
         </div>
       </div>
+
+      <aside class="issue-column no-print">
+        <div class="issue-panel-container">
+          <RecordIssuePanel
+            :groups="issueGroups"
+            :active-group="issueFilter"
+            @select="selectIssueGroup"
+            @clear="clearIssueFilter"
+            @bulk="handleBulkFill"
+          />
+        </div>
+      </aside>
     </div>
+
     <div v-if="preview.length" id="print-area" class="print-area" :class="codeModeClass" aria-hidden="true">
       <div
         v-for="(page, index) in printPages"
