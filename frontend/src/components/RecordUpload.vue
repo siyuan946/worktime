@@ -349,6 +349,7 @@ export default {
       currentPage: 0,
       drawingSearch: '',
       rowsPerPage: 12,
+      verticalColumnsPerPage: 10,
       processCache: {},
       processCacheLoaded: false,
       barcodeCache: { qr: {}, barcode: {} },
@@ -401,6 +402,10 @@ export default {
       const f = this.files.find(x => x.id === id)
       return f ? f.fileName : ''
     },
+    pageSize() {
+      if (this.printLayout === 'vertical') return this.verticalColumnsPerPage
+      return this.rowsPerPage
+    },
     allPages() {
       if (!this.preview.length) return []
       const grouped = []
@@ -414,7 +419,7 @@ export default {
         current.entries.push({ record, index })
       })
       const pages = []
-      const size = this.rowsPerPage
+      const size = this.pageSize || 1
       grouped.forEach(group => {
         if (!group.entries.length) {
           pages.push({
@@ -510,7 +515,7 @@ export default {
     codeModeClass() { return `code-mode-${this.codeMode}` },
     layoutClass() { return `layout-${this.printLayout}` },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
-    printColumnsPerPage() { return this.rowsPerPage || 12 },
+    printColumnsPerPage() { return this.pageSize || 12 },
     verticalTableStyle() {
       return { '--print-column-count': this.printColumnsPerPage }
     },

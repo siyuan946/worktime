@@ -513,6 +513,16 @@ body {
     break-before: page;
   }
 
+  #print-area .preview-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  #print-area .preview-page.force-new-page {
+    page-break-before: always;
+    break-before: page;
+  }
+
   #preview-table thead,
   #print-area thead { display: table-header-group; }
   #preview-table tr,
