@@ -257,7 +257,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="entry in page.entries" :key="entry.index">
+              <tr v-for="entry in getPaddedPrintEntries(page)" :key="entry.index">
                 <td class="notification-col">{{ entry.record.notificationNumber }}</td>
                 <td class="product-col">{{ entry.record.productName }}</td>
                 <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
@@ -293,14 +293,18 @@
             <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
             <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
           </div>
-          <table class="table table-bordered table-sm mb-0 vertical-table vertical-transposed">
+          <table
+            class="table table-bordered table-sm mb-0 vertical-table vertical-transposed"
+            :style="verticalTableStyle"
+          >
             <tbody>
               <tr v-for="field in verticalFields" :key="field.key" class="field-row">
                 <th class="vertical-field">{{ field.label }}</th>
                 <td
-                  v-for="entry in page.entries"
+                  v-for="entry in getPaddedPrintEntries(page)"
                   :key="`${field.key}-${entry.index}`"
-                  :class="[{ 'barcode-cell': field.key === 'barcode' }, field.className]"
+                  :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
+                  :style="verticalValueStyle"
                 >
                   <template v-if="field.key === 'barcode'">
                     <div>{{ entry.record.barcode }}</div>
@@ -506,6 +510,14 @@ export default {
     codeModeClass() { return `code-mode-${this.codeMode}` },
     layoutClass() { return `layout-${this.printLayout}` },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
+    printColumnsPerPage() { return this.rowsPerPage || 12 },
+    verticalTableStyle() {
+      return { '--print-column-count': this.printColumnsPerPage }
+    },
+    verticalValueStyle() {
+      const count = this.printColumnsPerPage || 1
+      return { width: `calc((100% - 80px) / ${count})` }
+    },
     verticalFields() {
       return [
         { key: 'notificationNumber', label: '通知单号' },
@@ -570,6 +582,35 @@ export default {
         clearTimeout(this.feedbackTimer)
         this.feedbackTimer = null
       }
+    },
+    createEmptyRecord() {
+      return {
+        notificationNumber: '',
+        productName: '',
+        drawingNumber: '',
+        planQty: '',
+        partName: '',
+        hours: '',
+        processCode: '',
+        processName: '',
+        workerCodes: '',
+        qualifiedQty: '',
+        startTime: '',
+        endTime: '',
+        inspector: '',
+        barcode: '',
+        barcodeImage: ''
+      }
+    },
+    getPaddedPrintEntries(page) {
+      const target = this.printColumnsPerPage
+      const entries = Array.isArray(page.entries) ? page.entries.slice() : []
+      if (!Number.isFinite(target) || target <= 0) return entries
+      const drawingKey = page && page.drawingNumber ? page.drawingNumber : 'blank'
+      for (let i = entries.length; i < target; i += 1) {
+        entries.push({ index: `placeholder-${drawingKey}-${i}`, record: this.createEmptyRecord(), placeholder: true })
+      }
+      return entries
     },
     getFieldValue(record, key) {
       if (!record || !key) return ''

@@ -533,7 +533,7 @@ body {
     width: 180px;
   }
   #print-area.layout-vertical .vertical-table {
-    table-layout: auto;
+    table-layout: fixed;
     width: 100%;
   }
   #print-area.layout-vertical .vertical-transposed .field-row {
@@ -551,6 +551,9 @@ body {
     vertical-align: middle;
     text-align: center;
     min-width: 110px;
+  }
+  #print-area.layout-vertical .vertical-transposed .vertical-value-cell {
+    width: calc((100% - 80px) / var(--print-column-count, 12));
   }
   #print-area.layout-vertical .vertical-transposed .barcode-cell {
     width: 180px;
