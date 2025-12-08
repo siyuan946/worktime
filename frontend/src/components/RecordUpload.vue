@@ -34,15 +34,6 @@
             <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
             <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
             <div class="d-flex align-items-center gap-2">
-              <select
-                class="form-select form-select-sm"
-                style="width: auto"
-                v-model="printLayout"
-                @change="persistPrintLayout"
-              >
-                <option value="horizontal">横向表头</option>
-                <option value="vertical">纵向表头</option>
-              </select>
               <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
             </div>
             <div class="spinner-border" v-if="loading"></div>
@@ -359,6 +350,8 @@ import BulkIssueModal from './BulkIssueModal.vue'
 export default {
   components: { RecordIssuePanel, BulkIssueModal },
   data() {
+    const savedLayout = localStorage.getItem('printLayout')
+    const initialLayout = savedLayout === 'horizontal' ? 'vertical' : (savedLayout || 'vertical')
     return {
       file: null,
       preview: [],
@@ -393,12 +386,13 @@ export default {
       },
       feedbackTimer: null,
       codeMode: localStorage.getItem('codeMode') || 'qr',
-      printLayout: localStorage.getItem('printLayout') || 'horizontal'
+      printLayout: initialLayout
     }
   },
   created() {
     this.fetchFiles()
     this.ensureProcessCache()
+    this.persistPrintLayout()
     this.applyCodeMode(localStorage.getItem('codeMode') || 'qr', { skipFetch: true })
   },
   mounted() {
@@ -679,7 +673,10 @@ export default {
     persistPrintLayout() {
       const allowed = ['horizontal', 'vertical']
       if (!allowed.includes(this.printLayout)) {
-        this.printLayout = 'horizontal'
+        this.printLayout = 'vertical'
+      }
+      if (this.printLayout === 'horizontal') {
+        this.printLayout = 'vertical'
       }
       localStorage.setItem('printLayout', this.printLayout)
     },
