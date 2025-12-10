@@ -522,6 +522,24 @@ body {
   #print-area.layout-horizontal .inspector-col { width: 6%; }
   #print-area.layout-horizontal .barcode-col { width: 13%; }
 
+  #print-area {
+    --rows-per-page: 12;
+    --vertical-column-count: 10;
+    --vertical-row-count: 14;
+  }
+
+  #print-area .preview-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  #print-area .page-heading {
+    margin-bottom: 0;
+  }
+
   #print-area .barcode-box {
     min-height: 120px;
     display: flex;
@@ -534,6 +552,15 @@ body {
   #print-area .barcode-box .barcode-text { word-break: break-all; max-width: 100%; }
   #print-area .barcode-box img { max-height: 120px; width: auto; max-width: 100%; }
   #print-area.code-mode-qr .barcode-box img { max-height: 150px; }
+
+  #print-area.layout-horizontal .print-table {
+    flex: 1 1 auto;
+    height: calc(100vh - 60px);
+  }
+
+  #print-area.layout-horizontal .print-table tbody tr {
+    height: calc((100vh - 110px) / var(--rows-per-page));
+  }
 
   #preview-table .preview-page:not(:last-child) {
     page-break-after: always;
@@ -595,6 +622,20 @@ body {
     vertical-align: middle;
     text-align: center;
     min-width: calc((100% - var(--vertical-label-width, 90px)) / var(--print-column-count, 10));
+  }
+  #print-area.layout-vertical .vertical-preview {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #print-area.layout-vertical .vertical-transposed {
+    flex: 1 1 auto;
+    height: calc(100vh - 60px);
+  }
+  #print-area.layout-vertical .vertical-transposed .field-row th,
+  #print-area.layout-vertical .vertical-transposed .field-row td {
+    height: calc((100vh - 100px) / var(--vertical-row-count));
   }
   #print-area.layout-vertical .vertical-transposed .vertical-value-cell {
     width: calc((100% - var(--vertical-label-width, 90px)) / var(--print-column-count, 10));

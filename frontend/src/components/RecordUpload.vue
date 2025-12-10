@@ -216,7 +216,14 @@
       </aside>
     </div>
 
-    <div v-if="preview.length" id="print-area" class="print-area" :class="[codeModeClass, layoutClass]" aria-hidden="true">
+    <div
+      v-if="preview.length"
+      id="print-area"
+      class="print-area"
+      :class="[codeModeClass, layoutClass]"
+      :style="printCssVars"
+      aria-hidden="true"
+    >
       <template v-if="printLayout === 'horizontal'">
         <div
           v-for="(page, index) in printPages"
@@ -555,7 +562,14 @@ export default {
         { key: 'barcode', label: this.codeLabel, className: 'barcode-column' }
       ]
     },
-    activeCodeCache() { return this.barcodeCache[this.codeMode] || {} }
+    activeCodeCache() { return this.barcodeCache[this.codeMode] || {} },
+    printCssVars() {
+      return {
+        '--rows-per-page': this.rowsPerPage,
+        '--vertical-column-count': this.printColumnsPerPage,
+        '--vertical-row-count': this.verticalFields.length
+      }
+    }
   },
   watch: {
     pages(newPages) {
