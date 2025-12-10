@@ -609,5 +609,6 @@ body {
   .print-page { break-after: page; page-break-after: always; }
   .print-page:last-child { break-after: auto; page-break-after: auto; }
 
-  @page { size: A4; margin: 10mm; }
+  /* 让打印机自行决定纸张规格，避免固定为 A4 导致铺满问题 */
+  /* @page { size: A4; margin: 10mm; } */
 }
