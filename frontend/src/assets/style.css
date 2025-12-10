@@ -533,7 +533,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 6px;
+    gap: 4px;
   }
 
   #print-area .page-heading {
@@ -541,17 +541,17 @@ body {
   }
 
   #print-area .barcode-box {
-    min-height: 120px;
+    min-height: 80px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
   }
-  #print-area.code-mode-qr .barcode-box { min-height: 160px; }
+  #print-area.code-mode-qr .barcode-box { min-height: 100px; }
   #print-area .barcode-box .barcode-text { word-break: break-all; max-width: 100%; }
-  #print-area .barcode-box img { max-height: 120px; width: auto; max-width: 100%; }
-  #print-area.code-mode-qr .barcode-box img { max-height: 150px; }
+  #print-area .barcode-box img { max-height: 90px; width: auto; max-width: 100%; }
+  #print-area.code-mode-qr .barcode-box img { max-height: 110px; }
 
   #print-area.layout-horizontal .print-table {
     flex: 1 1 auto;
@@ -643,8 +643,8 @@ body {
   #print-area.layout-vertical .vertical-transposed .barcode-cell {
     width: calc((100% - var(--vertical-label-width, 90px)) / var(--print-column-count, 10));
   }
-  #print-area.layout-vertical .vertical-transposed .barcode-box { min-height: 150px; }
-  #print-area.layout-vertical.code-mode-barcode .vertical-transposed .barcode-box { min-height: 120px; }
+  #print-area.layout-vertical .vertical-transposed .barcode-box { min-height: 110px; }
+  #print-area.layout-vertical.code-mode-barcode .vertical-transposed .barcode-box { min-height: 90px; }
   #print-area .barcode-cell div { word-break: break-all; }
 
   .print-page { break-after: page; page-break-after: always; }
