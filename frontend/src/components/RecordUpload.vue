@@ -309,32 +309,30 @@
             <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
             <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
           </div>
-          <table
-            class="table table-bordered table-sm mb-0 vertical-table vertical-transposed"
-            :style="verticalTableStyle"
-          >
-            <tbody>
-              <tr v-for="field in verticalFields" :key="field.key" class="field-row">
-                <th class="vertical-field">{{ field.label }}</th>
-                <td
-                  v-for="entry in getPaddedPrintEntries(page)"
-                  :key="`${field.key}-${entry.index}`"
-                  :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
-                  :style="verticalValueStyle"
-                >
-                  <template v-if="field.key === 'barcode'">
-                    <div class="barcode-box">
-                      <div class="barcode-text">{{ entry.record.barcode }}</div>
-                      <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
-                    </div>
-                  </template>
-                  <template v-else>
-                    {{ getFieldValue(entry.record, field.key) }}
-                  </template>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="vertical-grid" :style="verticalGridStyle">
+            <div
+              v-for="field in verticalFields"
+              :key="field.key"
+              class="vertical-row"
+            >
+              <div class="vertical-label">{{ field.label }}</div>
+              <div
+                v-for="entry in getPaddedPrintEntries(page)"
+                :key="`${field.key}-${entry.index}`"
+                :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
+              >
+                <template v-if="field.key === 'barcode'">
+                  <div class="barcode-box">
+                    <div class="barcode-text">{{ entry.record.barcode }}</div>
+                    <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                  </div>
+                </template>
+                <template v-else>
+                  {{ getFieldValue(entry.record, field.key) }}
+                </template>
+              </div>
+            </div>
+          </div>
           <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
         </div>
       </template>
@@ -537,12 +535,12 @@ export default {
     layoutClass() { return `layout-${this.printLayout}` },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
     printColumnsPerPage() { return this.pageSize || 12 },
-    verticalTableStyle() {
-      return { '--print-column-count': this.printColumnsPerPage }
-    },
-    verticalValueStyle() {
-      const count = this.printColumnsPerPage || 1
-      return { width: `calc((100% - 80px) / ${count})` }
+    verticalGridStyle() {
+      return {
+        '--print-column-count': this.printColumnsPerPage || 10,
+        '--vertical-label-width': '90px',
+        '--vertical-row-height': '44px'
+      }
     },
     verticalFields() {
       return [
