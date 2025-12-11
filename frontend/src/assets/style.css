@@ -424,6 +424,10 @@ body {
   }
 
   /* 收紧人员代码至检验员等窄列的行高与内边距，避免条码被挤到下一页 */
+  #preview-table .worker-code-col,
+  #preview-table .qualified-col,
+  #preview-table .time-col,
+  #preview-table .inspector-col,
   #print-area.layout-horizontal th.worker-code-col,
   #print-area.layout-horizontal th.qualified-col,
   #print-area.layout-horizontal th.time-col,
@@ -432,9 +436,9 @@ body {
   #print-area.layout-horizontal td.qualified-col,
   #print-area.layout-horizontal td.time-col,
   #print-area.layout-horizontal td.inspector-col {
-    padding-top: 1px;
-    padding-bottom: 1px;
-    line-height: 1.1;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    line-height: 1.05 !important;
   }
 
   .container,
@@ -572,8 +576,10 @@ body {
     height: calc(100vh - 60px);
   }
 
+  /* 允许行高跟随压缩后的单元格而自然收紧，同时保持最小可读高度 */
   #print-area.layout-horizontal .print-table tbody tr {
-    height: calc((100vh - 110px) / var(--rows-per-page));
+    height: auto;
+    min-height: 48px;
   }
 
   #preview-table .preview-page:not(:last-child) {
