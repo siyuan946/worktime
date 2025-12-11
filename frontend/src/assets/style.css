@@ -423,6 +423,20 @@ body {
     padding: 4px 6px;
   }
 
+  /* 收紧人员代码至检验员等窄列的行高与内边距，避免条码被挤到下一页 */
+  #print-area.layout-horizontal th.worker-code-col,
+  #print-area.layout-horizontal th.qualified-col,
+  #print-area.layout-horizontal th.time-col,
+  #print-area.layout-horizontal th.inspector-col,
+  #print-area.layout-horizontal td.worker-code-col,
+  #print-area.layout-horizontal td.qualified-col,
+  #print-area.layout-horizontal td.time-col,
+  #print-area.layout-horizontal td.inspector-col {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    line-height: 1.2;
+  }
+
   .container,
   .container-fluid {
     width: 100% !important;
