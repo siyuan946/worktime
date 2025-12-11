@@ -542,7 +542,7 @@ body {
 
   #print-area {
     --rows-per-page: 12;
-    --vertical-column-count: 10;
+    --vertical-column-count: 5;
     --vertical-row-count: 14;
     --vertical-barcode-height: 110px;
     --barcode-box-height: 70px;

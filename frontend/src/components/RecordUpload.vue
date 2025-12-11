@@ -367,7 +367,7 @@ export default {
       currentPage: 0,
       drawingSearch: '',
       rowsPerPage: 12,
-      verticalColumnsPerPage: 10,
+      verticalColumnsPerPage: 5,
       processCache: {},
       processCacheLoaded: false,
       barcodeCache: { qr: {}, barcode: {} },
