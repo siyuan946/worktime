@@ -537,9 +537,10 @@ export default {
     printColumnsPerPage() { return this.pageSize || 12 },
     verticalGridStyle() {
       return {
-        '--print-column-count': this.printColumnsPerPage || 10,
+        '--vertical-column-count': this.printColumnsPerPage || 10,
         '--vertical-label-width': '90px',
-        '--vertical-row-height': '44px'
+        '--vertical-row-height': '52px',
+        '--vertical-barcode-height': this.codeMode === 'qr' ? '120px' : '100px'
       }
     },
     verticalFields() {
@@ -565,7 +566,11 @@ export default {
       return {
         '--rows-per-page': this.rowsPerPage,
         '--vertical-column-count': this.printColumnsPerPage,
-        '--vertical-row-count': this.verticalFields.length
+        '--print-column-count': this.printColumnsPerPage,
+        '--vertical-row-count': this.verticalFields.length,
+        '--vertical-barcode-height': this.codeMode === 'qr' ? '120px' : '100px',
+        '--barcode-box-height': this.codeMode === 'qr' ? '90px' : '70px',
+        '--barcode-box-height-qr': this.codeMode === 'qr' ? '120px' : '90px'
       }
     }
   },

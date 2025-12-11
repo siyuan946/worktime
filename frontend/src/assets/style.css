@@ -544,13 +544,16 @@ body {
     --rows-per-page: 12;
     --vertical-column-count: 10;
     --vertical-row-count: 14;
+    --vertical-barcode-height: 110px;
+    --barcode-box-height: 70px;
+    --barcode-box-height-qr: 100px;
   }
 
   #print-area .preview-page {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 6mm 4mm;
+    padding: 4mm 3mm;
   }
 
   #print-area .page-heading {
@@ -558,17 +561,32 @@ body {
   }
 
   #print-area .barcode-box {
-    min-height: 60px;
+    min-height: var(--barcode-box-height, 60px);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    width: 100%;
   }
-  #print-area.code-mode-qr .barcode-box { min-height: 75px; }
-  #print-area .barcode-box .barcode-text { word-break: break-all; max-width: 100%; }
-  #print-area .barcode-box img { max-height: 75px; width: auto; max-width: 100%; }
-  #print-area.code-mode-qr .barcode-box img { max-height: 90px; }
+  #print-area.code-mode-qr .barcode-box { min-height: var(--barcode-box-height-qr, 90px); }
+  #print-area .barcode-box .barcode-text {
+    word-break: break-all;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  #print-area .barcode-box img {
+    max-height: calc(var(--barcode-box-height, 60px) - 10px);
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  #print-area.code-mode-qr .barcode-box img {
+    max-height: calc(var(--barcode-box-height-qr, 90px) - 10px);
+  }
 
   #print-area.layout-horizontal .print-table {
     flex: 1 1 auto;
@@ -627,11 +645,12 @@ body {
     }
     #print-area.layout-vertical .vertical-grid {
       display: grid;
-      grid-template-columns: var(--vertical-label-width, 90px) repeat(var(--print-column-count, 10), 1fr);
+      grid-template-columns: var(--vertical-label-width, 90px) repeat(var(--vertical-column-count, 10), 1fr);
       width: 100%;
       border: 1px solid #dee2e6;
       border-collapse: collapse;
-      grid-auto-rows: var(--vertical-row-height, 44px);
+      grid-auto-rows: minmax(var(--vertical-row-height, 48px), auto);
+      align-items: stretch;
     }
     #print-area.layout-vertical .vertical-row {
       display: contents;
@@ -655,11 +674,13 @@ body {
       padding: 6px 8px;
       border-bottom: 1px solid #dee2e6;
       border-right: 1px solid #dee2e6;
-      min-height: var(--vertical-row-height, 44px);
+      min-height: var(--vertical-row-height, 48px);
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
     #print-area.layout-vertical .vertical-row:last-child .vertical-label,
     #print-area.layout-vertical .vertical-row:last-child .vertical-value-cell {
@@ -667,9 +688,14 @@ body {
     }
     #print-area.layout-vertical .vertical-value-cell.barcode-cell .barcode-box {
       width: 100%;
-      min-height: 70px;
+      min-height: var(--vertical-barcode-height, 110px);
     }
-    #print-area.layout-vertical.code-mode-qr .vertical-value-cell.barcode-cell .barcode-box { min-height: 85px; }
+    #print-area.layout-vertical .vertical-value-cell.barcode-cell img {
+      max-height: calc(var(--vertical-barcode-height, 110px) - 12px);
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
     #print-area .barcode-cell div { word-break: break-all; }
 
   .print-page { break-after: page; page-break-after: always; }
