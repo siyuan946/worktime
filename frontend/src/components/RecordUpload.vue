@@ -34,6 +34,10 @@
             <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
             <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
             <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm" style="width: 140px;" v-model="printLayout" @change="persistPrintLayout">
+                <option value="vertical">纵向打印</option>
+                <option value="horizontal">横向打印</option>
+              </select>
               <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
             </div>
             <div class="spinner-border" v-if="loading"></div>
@@ -240,16 +244,10 @@
               <col class="notification-col" />
               <col class="product-col" />
               <col class="drawing-col" />
-              <col class="plan-col" />
-              <col class="process-col" />
-              <col class="hours-col" />
+              <col class="part-col" />
               <col class="process-code-col" />
               <col class="process-col" />
-              <col class="worker-code-col" />
-              <col class="qualified-col" />
-              <col class="time-col" />
-              <col class="time-col" />
-              <col class="inspector-col" />
+              <col class="hours-col" />
               <col class="barcode-col" />
             </colgroup>
             <thead>
@@ -257,16 +255,10 @@
                 <th class="notification-col">通知单号</th>
                 <th class="product-col">产品名称</th>
                 <th class="drawing-col">图号</th>
-                <th class="plan-col">计划数</th>
-                <th class="process-col">名称</th>
-                <th class="hours-col">单件工时</th>
+                <th class="part-col">名称</th>
                 <th class="process-code-col">工序代码</th>
                 <th class="process-col">工序</th>
-                <th class="worker-code-col">人员代码</th>
-                <th class="qualified-col">合格件数</th>
-                <th class="time-col">起始时间</th>
-                <th class="time-col">结束时间</th>
-                <th class="inspector-col">检验员</th>
+                <th class="hours-col">单件工时</th>
                 <th class="barcode-cell barcode-col">{{ codeLabel }}</th>
               </tr>
             </thead>
@@ -275,16 +267,10 @@
                 <td class="notification-col">{{ entry.record.notificationNumber }}</td>
                 <td class="product-col">{{ entry.record.productName }}</td>
                 <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
-                <td class="plan-col">{{ entry.record.planQty }}</td>
-                <td class="process-col">{{ entry.record.partName }}</td>
-                <td class="hours-col">{{ entry.record.hours }}</td>
+                <td class="part-col">{{ entry.record.partName }}</td>
                 <td class="process-code-col">{{ entry.record.processCode }}</td>
                 <td class="process-col">{{ entry.record.processName }}</td>
-                <td class="worker-code-col">{{ entry.record.workerCodes }}</td>
-                <td class="qualified-col">{{ entry.record.qualifiedQty }}</td>
-                <td class="time-col">{{ entry.record.startTime }}</td>
-                <td class="time-col">{{ entry.record.endTime }}</td>
-                <td class="inspector-col">{{ entry.record.inspector }}</td>
+                <td class="hours-col">{{ entry.record.hours }}</td>
                 <td class="barcode-cell barcode-col">
                   <div class="barcode-box">
                     <div class="barcode-text">{{ entry.record.barcode }}</div>
@@ -356,7 +342,7 @@ export default {
   components: { RecordIssuePanel, BulkIssueModal },
   data() {
     const savedLayout = localStorage.getItem('printLayout')
-    const initialLayout = savedLayout === 'horizontal' ? 'vertical' : (savedLayout || 'vertical')
+    const initialLayout = savedLayout === 'horizontal' || savedLayout === 'vertical' ? savedLayout : 'vertical'
     return {
       file: null,
       preview: [],
@@ -690,9 +676,6 @@ export default {
     persistPrintLayout() {
       const allowed = ['horizontal', 'vertical']
       if (!allowed.includes(this.printLayout)) {
-        this.printLayout = 'vertical'
-      }
-      if (this.printLayout === 'horizontal') {
         this.printLayout = 'vertical'
       }
       localStorage.setItem('printLayout', this.printLayout)

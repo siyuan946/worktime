@@ -527,18 +527,14 @@ body {
     table-layout: fixed;
     width: 100%;
   }
-  #print-area.layout-horizontal .notification-col { width: 8%; }
-  #print-area.layout-horizontal .product-col { width: 9%; }
-  #print-area.layout-horizontal .drawing-col { width: 9%; }
-  #print-area.layout-horizontal .plan-col { width: 4%; }
-  #print-area.layout-horizontal .process-col { width: 9%; }
-  #print-area.layout-horizontal .process-code-col { width: 8%; }
-  #print-area.layout-horizontal .hours-col { width: 5%; }
-  #print-area.layout-horizontal .worker-code-col { width: 6%; }
-  #print-area.layout-horizontal .qualified-col { width: 4%; }
-  #print-area.layout-horizontal .time-col { width: 5%; }
-  #print-area.layout-horizontal .inspector-col { width: 4%; }
-  #print-area.layout-horizontal .barcode-col { width: 25%; }
+  #print-area.layout-horizontal .notification-col { width: 12%; }
+  #print-area.layout-horizontal .product-col { width: 12%; }
+  #print-area.layout-horizontal .drawing-col { width: 12%; }
+  #print-area.layout-horizontal .part-col { width: 12%; }
+  #print-area.layout-horizontal .process-code-col { width: 12%; }
+  #print-area.layout-horizontal .process-col { width: 12%; }
+  #print-area.layout-horizontal .hours-col { width: 8%; }
+  #print-area.layout-horizontal .barcode-col { width: 20%; }
 
   #print-area {
     --rows-per-page: 12;
