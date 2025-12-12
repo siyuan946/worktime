@@ -33,13 +33,7 @@
           <div class="d-flex flex-wrap gap-2 align-items-center">
             <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
             <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
-            <div class="d-flex align-items-center gap-2">
-              <select class="form-select form-select-sm" style="width: 140px;" v-model="printLayout" @change="persistPrintLayout">
-                <option value="vertical">纵向打印</option>
-                <option value="horizontal">横向打印</option>
-              </select>
-              <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
-            </div>
+            <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
             <div class="spinner-border" v-if="loading"></div>
           </div>
         </div>
@@ -228,100 +222,42 @@
       :style="printCssVars"
       aria-hidden="true"
     >
-      <template v-if="printLayout === 'horizontal'">
-        <div
-          v-for="(page, index) in printPages"
-          :key="`print-horizontal-${index}`"
-          class="preview-page"
-          :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
-        >
-          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
-            <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
-            <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
-          </div>
-          <table class="table table-bordered table-sm table-striped mb-0 print-table">
-            <colgroup>
-              <col class="notification-col" />
-              <col class="product-col" />
-              <col class="drawing-col" />
-              <col class="part-col" />
-              <col class="process-code-col" />
-              <col class="process-col" />
-              <col class="hours-col" />
-              <col class="barcode-col" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th class="notification-col">通知单号</th>
-                <th class="product-col">产品名称</th>
-                <th class="drawing-col">图号</th>
-                <th class="part-col">名称</th>
-                <th class="process-code-col">工序代码</th>
-                <th class="process-col">工序</th>
-                <th class="hours-col">单件工时</th>
-                <th class="barcode-cell barcode-col">{{ codeLabel }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in getPaddedPrintEntries(page)" :key="entry.index">
-                <td class="notification-col">{{ entry.record.notificationNumber }}</td>
-                <td class="product-col">{{ entry.record.productName }}</td>
-                <td class="drawing-col">{{ entry.record.drawingNumber }}</td>
-                <td class="part-col">{{ entry.record.partName }}</td>
-                <td class="process-code-col">{{ entry.record.processCode }}</td>
-                <td class="process-col">{{ entry.record.processName }}</td>
-                <td class="hours-col">{{ entry.record.hours }}</td>
-                <td class="barcode-cell barcode-col">
-                  <div class="barcode-box">
-                    <div class="barcode-text">{{ entry.record.barcode }}</div>
-                    <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
+      <div
+        v-for="(page, index) in printPages"
+        :key="`print-vertical-${index}`"
+        class="preview-page vertical-preview"
+        :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
+      >
+        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+          <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
         </div>
-      </template>
-
-      <template v-else>
-        <div
-          v-for="(page, index) in printPages"
-          :key="`print-vertical-${index}`"
-          class="preview-page vertical-preview"
-          :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
-        >
-          <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
-            <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
-            <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
-          </div>
-          <div class="vertical-grid" :style="verticalGridStyle">
+        <div class="vertical-grid" :style="verticalGridStyle">
+          <div
+            v-for="field in verticalFields"
+            :key="field.key"
+            class="vertical-row"
+          >
+            <div class="vertical-label">{{ field.label }}</div>
             <div
-              v-for="field in verticalFields"
-              :key="field.key"
-              class="vertical-row"
+              v-for="entry in getPaddedPrintEntries(page)"
+              :key="`${field.key}-${entry.index}`"
+              :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
             >
-              <div class="vertical-label">{{ field.label }}</div>
-              <div
-                v-for="entry in getPaddedPrintEntries(page)"
-                :key="`${field.key}-${entry.index}`"
-                :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
-              >
-                <template v-if="field.key === 'barcode'">
-                  <div class="barcode-box">
-                    <div class="barcode-text">{{ entry.record.barcode }}</div>
-                    <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
-                  </div>
-                </template>
-                <template v-else>
-                  {{ getFieldValue(entry.record, field.key) }}
-                </template>
-              </div>
+              <template v-if="field.key === 'barcode'">
+                <div class="barcode-box">
+                  <div class="barcode-text">{{ entry.record.barcode }}</div>
+                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                </div>
+              </template>
+              <template v-else>
+                {{ getFieldValue(entry.record, field.key) }}
+              </template>
             </div>
           </div>
-          <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
         </div>
-      </template>
+        <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
+      </div>
     </div>
     <BulkIssueModal
       :visible="bulkModal.visible"
@@ -341,8 +277,6 @@ import BulkIssueModal from './BulkIssueModal.vue'
 export default {
   components: { RecordIssuePanel, BulkIssueModal },
   data() {
-    const savedLayout = localStorage.getItem('printLayout')
-    const initialLayout = savedLayout === 'horizontal' || savedLayout === 'vertical' ? savedLayout : 'vertical'
     return {
       file: null,
       preview: [],
@@ -353,7 +287,7 @@ export default {
       currentPage: 0,
       drawingSearch: '',
       rowsPerPage: 12,
-      verticalColumnsPerPage: 5,
+      verticalColumnsPerPage: 8,
       processCache: {},
       processCacheLoaded: false,
       barcodeCache: { qr: {}, barcode: {} },
@@ -377,7 +311,7 @@ export default {
       },
       feedbackTimer: null,
       codeMode: localStorage.getItem('codeMode') || 'qr',
-      printLayout: initialLayout
+      printLayout: 'vertical'
     }
   },
   created() {
@@ -408,8 +342,7 @@ export default {
       return f ? f.fileName : ''
     },
     pageSize() {
-      if (this.printLayout === 'vertical') return this.verticalColumnsPerPage
-      return this.rowsPerPage
+      return this.verticalColumnsPerPage
     },
     allPages() {
       if (!this.preview.length) return []
@@ -518,15 +451,15 @@ export default {
       })
     },
     codeModeClass() { return `code-mode-${this.codeMode}` },
-    layoutClass() { return `layout-${this.printLayout}` },
+    layoutClass() { return 'layout-vertical' },
     codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
     printColumnsPerPage() { return this.pageSize || 12 },
     verticalGridStyle() {
       return {
         '--vertical-column-count': this.printColumnsPerPage || 10,
         '--vertical-label-width': '90px',
-        '--vertical-row-height': '52px',
-        '--vertical-barcode-height': this.codeMode === 'qr' ? '120px' : '100px'
+        '--vertical-row-height': '44px',
+        '--vertical-barcode-height': this.codeMode === 'qr' ? '100px' : '90px'
       }
     },
     verticalFields() {
@@ -549,15 +482,15 @@ export default {
     },
     activeCodeCache() { return this.barcodeCache[this.codeMode] || {} },
     printCssVars() {
-      return {
-        '--rows-per-page': this.rowsPerPage,
-        '--vertical-column-count': this.printColumnsPerPage,
-        '--print-column-count': this.printColumnsPerPage,
-        '--vertical-row-count': this.verticalFields.length,
-        '--vertical-barcode-height': this.codeMode === 'qr' ? '120px' : '100px',
-        '--barcode-box-height': this.codeMode === 'qr' ? '90px' : '70px',
-        '--barcode-box-height-qr': this.codeMode === 'qr' ? '120px' : '90px'
-      }
+        return {
+          '--rows-per-page': this.rowsPerPage,
+          '--vertical-column-count': this.printColumnsPerPage,
+          '--print-column-count': this.printColumnsPerPage,
+          '--vertical-row-count': this.verticalFields.length,
+          '--vertical-barcode-height': this.codeMode === 'qr' ? '100px' : '90px',
+          '--barcode-box-height': this.codeMode === 'qr' ? '90px' : '70px',
+          '--barcode-box-height-qr': this.codeMode === 'qr' ? '100px' : '90px'
+        }
     }
   },
   watch: {
@@ -674,11 +607,8 @@ export default {
       }
     },
     persistPrintLayout() {
-      const allowed = ['horizontal', 'vertical']
-      if (!allowed.includes(this.printLayout)) {
-        this.printLayout = 'vertical'
-      }
-      localStorage.setItem('printLayout', this.printLayout)
+      this.printLayout = 'vertical'
+      localStorage.setItem('printLayout', 'vertical')
     },
     hasText(value) {
       if (value === null || value === undefined) return false

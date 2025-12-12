@@ -427,15 +427,7 @@ body {
   #preview-table .worker-code-col,
   #preview-table .qualified-col,
   #preview-table .time-col,
-  #preview-table .inspector-col,
-  #print-area.layout-horizontal th.worker-code-col,
-  #print-area.layout-horizontal th.qualified-col,
-  #print-area.layout-horizontal th.time-col,
-  #print-area.layout-horizontal th.inspector-col,
-  #print-area.layout-horizontal td.worker-code-col,
-  #print-area.layout-horizontal td.qualified-col,
-  #print-area.layout-horizontal td.time-col,
-  #print-area.layout-horizontal td.inspector-col {
+  #preview-table .inspector-col {
     padding-top: 2px !important;
     padding-bottom: 2px !important;
     line-height: 1.05 !important;
@@ -523,24 +515,11 @@ body {
   #preview-table.code-mode-qr .barcode-cell,
   #print-area.code-mode-qr .barcode-cell { width: 22% !important; }
 
-  #print-area .print-table {
-    table-layout: fixed;
-    width: 100%;
-  }
-  #print-area.layout-horizontal .notification-col { width: 12%; }
-  #print-area.layout-horizontal .product-col { width: 12%; }
-  #print-area.layout-horizontal .drawing-col { width: 12%; }
-  #print-area.layout-horizontal .part-col { width: 12%; }
-  #print-area.layout-horizontal .process-code-col { width: 12%; }
-  #print-area.layout-horizontal .process-col { width: 12%; }
-  #print-area.layout-horizontal .hours-col { width: 8%; }
-  #print-area.layout-horizontal .barcode-col { width: 20%; }
-
   #print-area {
     --rows-per-page: 12;
-    --vertical-column-count: 5;
+    --vertical-column-count: 8;
     --vertical-row-count: 14;
-    --vertical-barcode-height: 110px;
+    --vertical-barcode-height: 100px;
     --barcode-box-height: 70px;
     --barcode-box-height-qr: 100px;
   }
@@ -550,6 +529,8 @@ body {
     flex-direction: column;
     gap: 6px;
     padding: 4mm 3mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   #print-area .page-heading {
@@ -582,15 +563,6 @@ body {
   }
   #print-area.code-mode-qr .barcode-box img {
     max-height: calc(var(--barcode-box-height-qr, 90px) - 10px);
-  }
-
-  #print-area.layout-horizontal .print-table {
-    flex: 1 1 auto;
-  }
-
-  #print-area.layout-horizontal .print-table tbody tr {
-    height: auto;
-    min-height: 36px;
   }
 
   #preview-table .preview-page:not(:last-child) {
@@ -634,58 +606,58 @@ body {
       max-height: 90px;
       width: auto;
     }
-    #print-area.layout-vertical .vertical-preview {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    #print-area.layout-vertical .vertical-grid {
-      display: grid;
-      grid-template-columns: var(--vertical-label-width, 90px) repeat(var(--vertical-column-count, 10), 1fr);
-      width: 100%;
-      border: 1px solid #dee2e6;
-      border-collapse: collapse;
-      grid-auto-rows: minmax(var(--vertical-row-height, 48px), auto);
-      align-items: stretch;
-    }
-    #print-area.layout-vertical .vertical-row {
-      display: contents;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    #print-area.layout-vertical .vertical-label {
-      background: #f7f7f7;
-      white-space: nowrap;
-      padding: 6px 8px;
-      text-align: right;
-      border-bottom: 1px solid #dee2e6;
-      border-right: 1px solid #dee2e6;
-      font-weight: 600;
-      min-height: var(--vertical-row-height, 44px);
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    #print-area.layout-vertical .vertical-value-cell {
-      padding: 6px 8px;
-      border-bottom: 1px solid #dee2e6;
-      border-right: 1px solid #dee2e6;
-      min-height: var(--vertical-row-height, 48px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      word-break: break-all;
-      overflow-wrap: anywhere;
-    }
-    #print-area.layout-vertical .vertical-row:last-child .vertical-label,
-    #print-area.layout-vertical .vertical-row:last-child .vertical-value-cell {
-      border-bottom: none;
-    }
-    #print-area.layout-vertical .vertical-value-cell.barcode-cell .barcode-box {
-      width: 100%;
-      min-height: var(--vertical-barcode-height, 110px);
-    }
+      #print-area.layout-vertical .vertical-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #print-area.layout-vertical .vertical-grid {
+        display: grid;
+          grid-template-columns: var(--vertical-label-width, 90px) repeat(var(--vertical-column-count, 8), 1fr);
+        width: 100%;
+        border: 1px solid #dee2e6;
+        border-collapse: collapse;
+        grid-auto-rows: minmax(var(--vertical-row-height, 44px), auto);
+        align-items: stretch;
+      }
+      #print-area.layout-vertical .vertical-row {
+        display: contents;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      #print-area.layout-vertical .vertical-label {
+        background: #f7f7f7;
+        white-space: nowrap;
+        padding: 6px 8px;
+        text-align: right;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        font-weight: 600;
+        min-height: var(--vertical-row-height, 44px);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      #print-area.layout-vertical .vertical-value-cell {
+        padding: 6px 8px;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        min-height: var(--vertical-row-height, 44px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        word-break: break-all;
+        overflow-wrap: anywhere;
+      }
+      #print-area.layout-vertical .vertical-row:last-child .vertical-label,
+      #print-area.layout-vertical .vertical-row:last-child .vertical-value-cell {
+        border-bottom: none;
+      }
+      #print-area.layout-vertical .vertical-value-cell.barcode-cell .barcode-box {
+        width: 100%;
+        min-height: var(--vertical-barcode-height, 100px);
+      }
     #print-area.layout-vertical .vertical-value-cell.barcode-cell img {
       max-height: calc(var(--vertical-barcode-height, 110px) - 12px);
       width: 100%;
