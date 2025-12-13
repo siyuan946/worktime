@@ -34,6 +34,16 @@
         <button class="btn btn-outline-primary btn-sm" @click="exportByDrawing" :disabled="!exportDrawingReady">按图号导出</button>
       </div>
     </div>
+    <div
+      v-if="feedback.visible"
+      class="alert alert-dismissible fade show"
+      :class="'alert-' + feedback.variant"
+      role="status"
+    >
+      <div>{{ feedback.message }}</div>
+      <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
+    </div>
+
     <div class="mb-2" v-if="records.length">
       计划数:
       <input type="number" class="form-control form-control-sm d-inline-block" style="width:80px" v-model.number="planQtyInput" @change="updatePlanQty" :disabled="viewOnly" />
@@ -178,7 +188,13 @@ export default {
       viewOnly: false,
       scanBuffer: '',
       planQtyInput: null,
-      savingAll: false
+      savingAll: false,
+      feedback: {
+        visible: false,
+        variant: 'success',
+        message: ''
+      },
+      feedbackTimer: null
     }
   },
   created() {
@@ -189,6 +205,10 @@ export default {
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleScanKey)
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer)
+      this.feedbackTimer = null
+    }
   },
   computed: {
     planQty() {
@@ -285,9 +305,11 @@ export default {
       try {
         const res = await axios.put(`/api/workrecords/${rec.id}`, payload)
         await this.processRecords([res.data], { replace: false })
+        const identifier = res.data?.notificationNumber || rec.notificationNumber || `ID ${res.data?.id || rec.id}`
+        this.showFeedback(`记录已保存：${identifier}`)
       } catch (e) {
         console.error(e)
-        alert('保存失败')
+        this.showFeedback('保存失败，请稍后重试', 'danger')
       }
     },
     async saveAllRecords() {
@@ -319,9 +341,12 @@ export default {
       try {
         const res = await axios.put('/api/workrecords/bulk', payloads)
         await this.processRecords(res.data, { replace: false })
+        const savedCount = Array.isArray(res.data) ? res.data.length : 0
+        const message = savedCount > 0 ? `成功保存 ${savedCount} 条记录` : '保存成功'
+        this.showFeedback(message)
       } catch (e) {
         console.error(e)
-        alert('保存失败')
+        this.showFeedback('保存失败，请稍后重试', 'danger')
       } finally {
         this.savingAll = false
       }
@@ -339,6 +364,7 @@ export default {
         const idx = this.records.indexOf(rec)
         if (idx !== -1) this.records.splice(idx, 1)
         if (!this.records.length) this.planQtyInput = null
+        this.showFeedback('记录已删除', 'info')
       } catch (e) {
         console.error(e)
         alert('删除失败')
@@ -371,6 +397,29 @@ export default {
           this.planQtyInput = this.planQty
         }
       }
+    },
+    showFeedback(message, variant = 'success', duration = 4000) {
+      this.feedback.visible = true
+      this.feedback.variant = variant
+      this.feedback.message = message
+      if (this.feedbackTimer) {
+        clearTimeout(this.feedbackTimer)
+      }
+      if (duration !== null) {
+        this.feedbackTimer = setTimeout(() => {
+          this.hideFeedback()
+        }, duration)
+      } else {
+        this.feedbackTimer = null
+      }
+    },
+    hideFeedback() {
+      if (this.feedbackTimer) {
+        clearTimeout(this.feedbackTimer)
+        this.feedbackTimer = null
+      }
+      this.feedback.visible = false
+      this.feedback.message = ''
     },
     decorateRecord(raw) {
       return {

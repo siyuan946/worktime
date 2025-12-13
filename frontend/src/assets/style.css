@@ -12,15 +12,136 @@ body {
   box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
-.upload-preview-layout {
+
+
+
+.upload-shell {
   display: flex;
-  gap: 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.upload-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.upload-current-file {
+  min-width: 220px;
+  max-width: 360px;
+  padding: .5rem .75rem;
+  background: #f8f9fa;
+  border-radius: .5rem;
+  border: 1px solid #e9ecef;
+}
+
+.upload-current-file .label {
+  font-size: .85rem;
+  color: #6c757d;
+  margin-bottom: .25rem;
+}
+
+.upload-current-file .value {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-end;
+}
+
+.toolbar-block {
+  min-width: 280px;
+  flex: 1 1 320px;
+}
+
+.upload-toolbar .spinner-border {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.upload-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.25rem;
   align-items: flex-start;
 }
 
-.preview-main {
-  flex: 1 1 auto;
+.preview-column {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.preview-pages-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.issue-column {
+  min-width: 280px;
+  max-width: 360px;
+}
+
+.issue-panel-container {
+  position: sticky;
+  top: 1rem;
+  align-self: flex-start;
+  z-index: 1;
+}
+
+@media (max-width: 1200px) {
+  .upload-body {
+    grid-template-columns: 1fr;
+  }
+
+  .issue-column {
+    max-width: none;
+  }
+
+  .issue-panel-container {
+    position: static;
+  }
+}
+
+#preview-table .print-page-footer {
+  display: none;
 }
 
 .issue-panel {
@@ -36,6 +157,8 @@ body {
   box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05);
   min-width: 230px;
   max-width: 260px;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
 }
 
 .issue-panel__header {
@@ -61,6 +184,11 @@ body {
   gap: .75rem;
   margin: 0;
   padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: .25rem;
+  scrollbar-gutter: stable both-edges;
 }
 
 .issue-panel__item {
@@ -133,12 +261,14 @@ body {
 
 .notification-col { min-width: 90px; max-width: 120px; }
 .drawing-col { min-width: 120px; max-width: 150px; }
-.plan-col { width: 70px; max-width: 80px; }
-.hours-col { width: 80px; max-width: 90px; }
+.plan-col { width: 60px; max-width: 70px; }
+.hours-col { width: 70px; max-width: 80px; }
 .process-col { min-width: 90px; max-width: 120px; }
+.process-code-col { min-width: 100px; max-width: 130px; }
 .worker-code-col { min-width: 160px; }
 .qualified-col { min-width: 140px; }
 .time-col { min-width: 140px; }
+.barcode-col { min-width: 170px; }
 
 .bulk-issue-modal .modal-dialog {
   max-width: 720px;
@@ -169,6 +299,12 @@ body {
   max-height: 70px;
   width: 100%;
 }
+.code-mode-qr .barcode-cell { min-width: 180px; }
+.code-mode-qr .barcode-cell img {
+  max-height: 150px;
+  width: 150px;
+  margin: 4px auto;
+}
 
 /* allow table cells to wrap long text without widening the table */
 .wrap-text { white-space: pre-wrap; word-break: break-word; max-width: 320px; }
@@ -193,43 +329,22 @@ body {
 
 
 @media (max-width: 991.98px) {
-  .upload-preview-layout {
-    flex-direction: column;
-  }
-
   .issue-panel {
     position: static;
     width: 100%;
     max-width: none;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .issue-panel__list {
+    max-height: none;
+    overflow: visible;
   }
 
   .issue-panel__drawing {
     max-width: none;
   }
-}
-
-
-.upload-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.toolbar-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-end;
-}
-
-.toolbar-block {
-  min-width: 220px;
-}
-
-.upload-toolbar .spinner-border {
-  width: 1.75rem;
-  height: 1.75rem;
 }
 
 .print-text { display: none; }
@@ -254,7 +369,6 @@ body {
   .no-print { display: none !important; }
   .print-text { display: inline !important; }
   .print-only { display: table-cell !important; }
-
   .navbar {
     display: none !important;
   }
@@ -272,6 +386,10 @@ body {
     left: auto !important;
     top: auto !important;
     width: auto !important;
+  }
+
+  #preview-table {
+    display: none !important;
   }
 
   #preview-table table,
@@ -305,6 +423,16 @@ body {
     padding: 4px 6px;
   }
 
+  /* 收紧人员代码至检验员等窄列的行高与内边距，避免条码被挤到下一页 */
+  #preview-table .worker-code-col,
+  #preview-table .qualified-col,
+  #preview-table .time-col,
+  #preview-table .inspector-col {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    line-height: 1.05 !important;
+  }
+
   .container,
   .container-fluid {
     width: 100% !important;
@@ -324,6 +452,24 @@ body {
     margin-right: 0 !important;
     page-break-inside: avoid;
     break-inside: avoid;
+    position: relative;
+    padding-bottom: 36px;
+  }
+
+  #preview-table .print-page-footer {
+    display: block;
+    position: absolute;
+    left: 0;
+    bottom: -14mm;
+    width: calc(100% + 20mm);
+    margin-left: -10mm;
+    padding-left: 10mm;
+    font-size: 9pt;
+    color: #6c757d;
+    pointer-events: none;
+    white-space: nowrap;
+    background: #fff;
+    z-index: 5;
   }
 
   #preview-table table {
@@ -366,12 +512,75 @@ body {
   #preview-table .inspector-col { width: 9% !important; }
   #preview-table .barcode-cell { width: 17% !important; }
 
+  #preview-table.code-mode-qr .barcode-cell,
+  #print-area.code-mode-qr .barcode-cell { width: 22% !important; }
+
+  #print-area {
+    --rows-per-page: 12;
+    --vertical-column-count: 8;
+    --vertical-row-count: 14;
+    --vertical-barcode-height: 100px;
+    --barcode-box-height: 70px;
+    --barcode-box-height-qr: 100px;
+  }
+
+  #print-area .preview-page {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4mm 3mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  #print-area .page-heading {
+    margin-bottom: 0;
+  }
+
+  #print-area .barcode-box {
+    min-height: var(--barcode-box-height, 60px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  #print-area.code-mode-qr .barcode-box { min-height: var(--barcode-box-height-qr, 90px); }
+  #print-area .barcode-box .barcode-text {
+    word-break: break-all;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  #print-area .barcode-box img {
+    max-height: calc(var(--barcode-box-height, 60px) - 10px);
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  #print-area.code-mode-qr .barcode-box img {
+    max-height: calc(var(--barcode-box-height-qr, 90px) - 10px);
+  }
+
   #preview-table .preview-page:not(:last-child) {
     page-break-after: always;
     break-after: page;
   }
 
   #preview-table .preview-page.force-new-page {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  #print-area .preview-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  #print-area .preview-page.force-new-page {
     page-break-before: always;
     break-before: page;
   }
@@ -383,17 +592,83 @@ body {
 
   .print-page table { margin-bottom: 0 !important; }
 
-  #preview-table .barcode-cell img,
-  #print-area .barcode-cell img {
-    height: auto;
-    max-height: 70px;
-    max-width: 100%;
-    width: 100%;
-  }
-  #print-area .barcode-cell div { word-break: break-all; }
+    #preview-table .barcode-cell img,
+    #print-area .barcode-cell img {
+      height: auto;
+      max-height: 60px;
+      max-width: 100%;
+      width: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    #preview-table.code-mode-qr .barcode-cell img,
+    #print-area.code-mode-qr .barcode-cell img {
+      max-height: 90px;
+      width: auto;
+    }
+      #print-area.layout-vertical .vertical-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #print-area.layout-vertical .vertical-grid {
+        display: grid;
+          grid-template-columns: var(--vertical-label-width, 90px) repeat(var(--vertical-column-count, 8), 1fr);
+        width: 100%;
+        border: 1px solid #dee2e6;
+        border-collapse: collapse;
+        grid-auto-rows: minmax(var(--vertical-row-height, 44px), auto);
+        align-items: stretch;
+      }
+      #print-area.layout-vertical .vertical-row {
+        display: contents;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      #print-area.layout-vertical .vertical-label {
+        background: #f7f7f7;
+        white-space: nowrap;
+        padding: 6px 8px;
+        text-align: right;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        font-weight: 600;
+        min-height: var(--vertical-row-height, 44px);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      #print-area.layout-vertical .vertical-value-cell {
+        padding: 6px 8px;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        min-height: var(--vertical-row-height, 44px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        word-break: break-all;
+        overflow-wrap: anywhere;
+      }
+      #print-area.layout-vertical .vertical-row:last-child .vertical-label,
+      #print-area.layout-vertical .vertical-row:last-child .vertical-value-cell {
+        border-bottom: none;
+      }
+      #print-area.layout-vertical .vertical-value-cell.barcode-cell .barcode-box {
+        width: 100%;
+        min-height: var(--vertical-barcode-height, 100px);
+      }
+    #print-area.layout-vertical .vertical-value-cell.barcode-cell img {
+      max-height: calc(var(--vertical-barcode-height, 110px) - 12px);
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    #print-area .barcode-cell div { word-break: break-all; }
 
   .print-page { break-after: page; page-break-after: always; }
   .print-page:last-child { break-after: auto; page-break-after: auto; }
 
-  @page { size: A4; margin: 10mm; }
+  /* 让打印机自行决定纸张规格，避免固定为 A4 导致铺满问题 */
+  /* @page { size: A4; margin: 10mm; } */
 }

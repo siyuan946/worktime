@@ -1,42 +1,74 @@
 <template>
-  <section class="section-card">
-    <h2 class="h5 no-print">Excel上传</h2>
-    <div class="input-group mb-2 no-print">
-      <input class="form-control" type="file" @change="onFileChange">
-      <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
-      <select class="form-select" style="max-width:180px" v-model="selectedFileId">
-        <option value="" disabled>选择历史文件</option>
-        <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
-      </select>
-      <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
-      <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
-      <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
-      <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
-      <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
-      <div class="spinner-border ms-2" v-if="loading"></div>
-    </div>
+  <section class="section-card upload-shell" :class="codeModeClass">
+    <header class="upload-header no-print">
+      <div>
+        <h2 class="h5 mb-1">Excel上传</h2>
+        <p class="text-muted small mb-0">从解析、校对到打印的完整录入流程</p>
+      </div>
+      <div class="upload-current-file" v-if="currentFileName">
+        <div class="label">当前文件</div>
+        <div class="value" :title="currentFileName">{{ currentFileName }}</div>
+      </div>
+    </header>
 
-    <div class="progress mb-2 no-print" v-if="showProgress" style="height: 0.75rem;">
-      <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
-        {{ parseProgress }}%
+    <div class="upload-toolbar no-print">
+      <div class="toolbar-row">
+        <div class="toolbar-block flex-grow-1">
+          <label class="form-label mb-1">选择或解析文件</label>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <input class="form-control" type="file" @change="onFileChange">
+            <button class="btn btn-outline-primary" @click="parse" :disabled="!file">解析</button>
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select" style="max-width:200px" v-model="selectedFileId">
+                <option value="" disabled>选择历史文件</option>
+                <option v-for="f in files" :key="f.id" :value="f.id">{{ f.fileName }} ({{ f.uploadTime ? f.uploadTime.slice(0,10) : '' }})</option>
+              </select>
+              <button class="btn btn-outline-secondary" @click="load" :disabled="!selectedFileId">加载</button>
+              <button class="btn btn-outline-danger" @click="remove" :disabled="!selectedFileId">删除</button>
+            </div>
+          </div>
+        </div>
+        <div class="toolbar-block flex-grow-1">
+          <label class="form-label mb-1">数据清理与提交</label>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-outline-warning" @click="deleteZero" :disabled="!preview.length">清除0工序</button>
+            <button class="btn btn-primary" @click="save" :disabled="!preview.length">保存</button>
+            <button class="btn btn-secondary" @click="print" :disabled="!preview.length">打印</button>
+            <div class="spinner-border" v-if="loading"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="flex-grow-1">
+          <div class="progress mb-2" v-if="showProgress" style="height: 0.75rem;">
+            <div class="progress-bar" role="progressbar" :style="{ width: parseProgress + '%' }">
+              {{ parseProgress }}%
+            </div>
+          </div>
+          <div
+            v-if="feedback.visible"
+            class="alert alert-dismissible fade show mb-0"
+            :class="'alert-' + feedback.variant"
+            role="status"
+          >
+            <div>{{ feedback.message }}</div>
+            <button type="button" class="btn-close" aria-label="关闭提示" @click="hideFeedback"></button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div v-if="preview.length" id="preview-table" class="upload-preview-layout">
-      <RecordIssuePanel
-        class="no-print issue-panel-container"
-        :groups="issueGroups"
-        :active-group="issueFilter"
-        @select="selectIssueGroup"
-        @clear="clearIssueFilter"
-        @bulk="handleBulkFill"
-      />
-      <div class="preview-main">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 no-print">
-          <h2 class="h5 mb-0">预览</h2>
-          <div class="d-flex flex-wrap align-items-center gap-2">
+    <div v-if="preview.length" class="upload-body" :class="codeModeClass">
+      <div class="preview-column" id="preview-table">
+        <div class="preview-header no-print">
+          <div>
+            <h2 class="h5 mb-0">预览</h2>
+            <div class="text-muted small">按图号分页展示，右侧缺陷面板随时校对</div>
+          </div>
+          <div class="preview-actions">
             <div>当前图号：{{ currentPageInfo?.drawingNumber || '—' }}（第 {{ currentPage + 1 }} / {{ pages.length }} 页）</div>
-            <div class="input-group input-group-sm" style="width: 220px;">
+            <div class="input-group input-group-sm" style="width: 240px;">
               <input class="form-control" placeholder="搜索图号" v-model.trim="drawingSearch" @keyup.enter="jumpToDrawing">
               <button class="btn btn-outline-secondary" @click="jumpToDrawing">跳转</button>
             </div>
@@ -47,16 +79,17 @@
           </div>
         </div>
 
-        <div v-if="issueFilter" class="alert alert-warning py-2 px-3 mb-3 no-print issue-filter-alert">
+        <div v-if="issueFilter" class="alert alert-warning py-2 px-3 no-print issue-filter-alert">
           <div>
             正在处理图号「{{ issueFilter.drawingNumber || '（空图号）' }}」缺少「{{ issueFilter.type }}」的 {{ issueFilter.indexes.length }} 条记录。
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearIssueFilter">退出筛选</button>
         </div>
 
-        <!-- 保持不变：force-new-page 确保新图号必换页 -->
-        <template v-for="item in visiblePages" :key="item.index">
+        <div class="preview-pages-flow">
           <div
+            v-for="item in visiblePages"
+            :key="item.index"
             class="preview-page"
             :class="{ 'active-page': item.index === currentPage, 'force-new-page': item.page.isFirstOfDrawing && item.index !== 0 }"
           >
@@ -82,7 +115,7 @@
                   <th class="print-only time-col">起始时间</th>
                   <th class="print-only time-col">结束时间</th>
                   <th class="print-only inspector-col">检验员</th>
-                  <th class="barcode-cell">条形码</th>
+                  <th class="barcode-cell">{{ codeLabel }}</th>
                   <th class="no-print"></th>
                 </tr>
               </thead>
@@ -161,8 +194,69 @@
 
               </tbody>
             </table>
+            <div class="print-page-footer" aria-hidden="true">
+              {{ formatPrintFooter(item.page.drawingNumber) }}
+            </div>
           </div>
-        </template>
+        </div>
+      </div>
+
+      <aside class="issue-column no-print">
+        <div class="issue-panel-container">
+          <RecordIssuePanel
+            :groups="issueGroups"
+            :active-group="issueFilter"
+            @select="selectIssueGroup"
+            @clear="clearIssueFilter"
+            @bulk="handleBulkFill"
+          />
+        </div>
+      </aside>
+    </div>
+
+    <div
+      v-if="preview.length"
+      id="print-area"
+      class="print-area"
+      :class="[codeModeClass, layoutClass]"
+      :style="printCssVars"
+      aria-hidden="true"
+    >
+      <div
+        v-for="(page, index) in printPages"
+        :key="`print-vertical-${index}`"
+        class="preview-page vertical-preview"
+        :class="{ 'force-new-page': page.isFirstOfDrawing && index !== 0 }"
+      >
+        <div class="d-flex justify-content-between align-items-center mb-2 page-heading">
+          <h3 class="h6 mb-0">图号：{{ page.drawingNumber || '（空）' }}</h3>
+          <span class="text-muted">第 {{ index + 1 }} 页 / 共 {{ printPages.length }} 页</span>
+        </div>
+        <div class="vertical-grid" :style="verticalGridStyle">
+          <div
+            v-for="field in verticalFields"
+            :key="field.key"
+            class="vertical-row"
+          >
+            <div class="vertical-label">{{ field.label }}</div>
+            <div
+              v-for="entry in getPaddedPrintEntries(page)"
+              :key="`${field.key}-${entry.index}`"
+              :class="[{ 'barcode-cell': field.key === 'barcode' }, 'vertical-value-cell', field.className]"
+            >
+              <template v-if="field.key === 'barcode'">
+                <div class="barcode-box">
+                  <div class="barcode-text">{{ entry.record.barcode }}</div>
+                  <img v-if="entry.record.barcodeImage" :src="'data:image/png;base64,' + entry.record.barcodeImage" />
+                </div>
+              </template>
+              <template v-else>
+                {{ getFieldValue(entry.record, field.key) }}
+              </template>
+            </div>
+          </div>
+        </div>
+        <div class="print-page-footer">{{ formatPrintFooter(page.drawingNumber) }}</div>
       </div>
     </div>
     <BulkIssueModal
@@ -193,9 +287,10 @@ export default {
       currentPage: 0,
       drawingSearch: '',
       rowsPerPage: 12,
+      verticalColumnsPerPage: 8,
       processCache: {},
       processCacheLoaded: false,
-      barcodeCache: {},
+      barcodeCache: { qr: {}, barcode: {} },
       showProgress: false,
       parseProgress: 0,
       renderAllPages: false,
@@ -208,18 +303,36 @@ export default {
         group: null,
         records: []
       },
-      rememberedPairs: Object.create(null)
+      rememberedPairs: Object.create(null),
+      feedback: {
+        visible: false,
+        message: '',
+        variant: 'info'
+      },
+      feedbackTimer: null,
+      codeMode: localStorage.getItem('codeMode') || 'qr',
+      printLayout: 'vertical'
     }
   },
   created() {
     this.fetchFiles()
     this.ensureProcessCache()
+    this.persistPrintLayout()
+    this.applyCodeMode(localStorage.getItem('codeMode') || 'qr', { skipFetch: true })
   },
   mounted() {
     window.addEventListener('afterprint', this.handleAfterPrint)
+    this.modeListener = (mode) => this.applyCodeMode(mode)
+    if (this.$root && this.$root.$on) {
+      this.$root.$on('code-mode-changed', this.modeListener)
+    }
   },
   beforeDestroy() {
     window.removeEventListener('afterprint', this.handleAfterPrint)
+    this.clearFeedbackTimer()
+    if (this.$root && this.$root.$off && this.modeListener) {
+      this.$root.$off('code-mode-changed', this.modeListener)
+    }
   },
   computed: {
     currentFileName() {
@@ -227,6 +340,9 @@ export default {
       const id = this.fileId || this.selectedFileId
       const f = this.files.find(x => x.id === id)
       return f ? f.fileName : ''
+    },
+    pageSize() {
+      return this.verticalColumnsPerPage
     },
     allPages() {
       if (!this.preview.length) return []
@@ -241,7 +357,7 @@ export default {
         current.entries.push({ record, index })
       })
       const pages = []
-      const size = this.rowsPerPage
+      const size = this.pageSize || 1
       grouped.forEach(group => {
         if (!group.entries.length) {
           pages.push({
@@ -283,6 +399,7 @@ export default {
       return filtered
     },
     currentPageInfo() { return this.pages[this.currentPage] || null },
+    printPages() { return this.allPages },
     visiblePages() {
       if (!this.pages.length) return []
       if (this.renderAllPages) {
@@ -332,6 +449,48 @@ export default {
         if (aDrawing !== bDrawing) return aDrawing.localeCompare(bDrawing, 'zh-Hans')
         return a.type.localeCompare(b.type, 'zh-Hans')
       })
+    },
+    codeModeClass() { return `code-mode-${this.codeMode}` },
+    layoutClass() { return 'layout-vertical' },
+    codeLabel() { return this.codeMode === 'barcode' ? '条形码' : '二维码' },
+    printColumnsPerPage() { return this.pageSize || 12 },
+    verticalGridStyle() {
+      return {
+        '--vertical-column-count': this.printColumnsPerPage || 10,
+        '--vertical-label-width': '90px',
+        '--vertical-row-height': '44px',
+        '--vertical-barcode-height': this.codeMode === 'qr' ? '100px' : '90px'
+      }
+    },
+    verticalFields() {
+      return [
+        { key: 'notificationNumber', label: '通知单号' },
+        { key: 'productName', label: '产品名称' },
+        { key: 'drawingNumber', label: '图号' },
+        { key: 'planQty', label: '计划数' },
+        { key: 'partName', label: '名称' },
+        { key: 'hours', label: '单件工时' },
+        { key: 'processCode', label: '工序代码' },
+        { key: 'processName', label: '工序' },
+        { key: 'workerCodes', label: '人员代码' },
+        { key: 'qualifiedQty', label: '合格件数' },
+        { key: 'startTime', label: '起始时间' },
+        { key: 'endTime', label: '结束时间' },
+        { key: 'inspector', label: '检验员' },
+        { key: 'barcode', label: this.codeLabel, className: 'barcode-column' }
+      ]
+    },
+    activeCodeCache() { return this.barcodeCache[this.codeMode] || {} },
+    printCssVars() {
+        return {
+          '--rows-per-page': this.rowsPerPage,
+          '--vertical-column-count': this.printColumnsPerPage,
+          '--print-column-count': this.printColumnsPerPage,
+          '--vertical-row-count': this.verticalFields.length,
+          '--vertical-barcode-height': this.codeMode === 'qr' ? '100px' : '90px',
+          '--barcode-box-height': this.codeMode === 'qr' ? '90px' : '70px',
+          '--barcode-box-height-qr': this.codeMode === 'qr' ? '100px' : '90px'
+        }
     }
   },
   watch: {
@@ -373,56 +532,144 @@ export default {
     }
   },
   methods: {
+    clearFeedbackTimer() {
+      if (this.feedbackTimer) {
+        clearTimeout(this.feedbackTimer)
+        this.feedbackTimer = null
+      }
+    },
+    createEmptyRecord() {
+      return {
+        notificationNumber: '',
+        productName: '',
+        drawingNumber: '',
+        planQty: '',
+        partName: '',
+        hours: '',
+        processCode: '',
+        processName: '',
+        workerCodes: '',
+        qualifiedQty: '',
+        startTime: '',
+        endTime: '',
+        inspector: '',
+        barcode: '',
+        barcodeImage: ''
+      }
+    },
+    getPaddedPrintEntries(page) {
+      const target = this.printColumnsPerPage
+      const entries = Array.isArray(page.entries) ? page.entries.slice() : []
+      if (!Number.isFinite(target) || target <= 0) return entries
+      const drawingKey = page && page.drawingNumber ? page.drawingNumber : 'blank'
+      for (let i = entries.length; i < target; i += 1) {
+        entries.push({ index: `placeholder-${drawingKey}-${i}`, record: this.createEmptyRecord(), placeholder: true })
+      }
+      return entries
+    },
+    getFieldValue(record, key) {
+      if (!record || !key) return ''
+      switch (key) {
+        case 'notificationNumber': return record.notificationNumber || ''
+        case 'productName': return record.productName || ''
+        case 'drawingNumber': return record.drawingNumber || ''
+        case 'planQty': return record.planQty
+        case 'partName': return record.partName || ''
+        case 'hours': return record.hours
+        case 'processCode': return record.processCode || ''
+        case 'processName': return record.processName || ''
+        case 'workerCodes': return record.workerCodes || ''
+        case 'qualifiedQty': return record.qualifiedQty
+        case 'startTime': return record.startTime || ''
+        case 'endTime': return record.endTime || ''
+        case 'inspector': return record.inspector || ''
+        default: return record[key] || ''
+      }
+    },
+    hideFeedback() {
+      this.clearFeedbackTimer()
+      this.feedback.visible = false
+      this.feedback.message = ''
+    },
+    showFeedback(message, variant = 'info', duration = 3000) {
+      if (!message) {
+        this.hideFeedback()
+        return
+      }
+      this.clearFeedbackTimer()
+      this.feedback.variant = variant || 'info'
+      this.feedback.message = message
+      this.feedback.visible = true
+      if (duration > 0) {
+        this.feedbackTimer = setTimeout(() => {
+          this.hideFeedback()
+        }, duration)
+      }
+    },
+    persistPrintLayout() {
+      this.printLayout = 'vertical'
+      localStorage.setItem('printLayout', 'vertical')
+    },
     hasText(value) {
       if (value === null || value === undefined) return false
       return String(value).trim().length > 0
     },
-    decorateRecord(raw) {
-      const record = { ...raw }
-      record.notificationNumber = record.notificationNumber != null ? String(record.notificationNumber).trim() : ''
-      record.productName = record.productName != null ? String(record.productName).trim() : ''
-      record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
-      record.partName = record.partName != null ? String(record.partName).trim() : ''
-      record.processName = record.processName != null ? String(record.processName).trim() : ''
-      record.processCode = record.processCode != null ? String(record.processCode).trim() : ''
-      if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
-        const num = Number(record.planQty)
-        record.planQty = Number.isNaN(num) ? null : num
-      } else {
-        record.planQty = null
-      }
-      if (record.hours !== null && record.hours !== undefined && record.hours !== '') {
-        const num = Number(record.hours)
-        record.hours = Number.isNaN(num) ? null : num
-      } else {
-        record.hours = null
-      }
-      const rawBarcode = record.barcode != null ? String(record.barcode).trim() : ''
-      record.barcode = this.sanitize(rawBarcode)
-      record.barcodeImage = record.barcodeImage || ''
-      record.workerCodes = record.workerCodes || ''
-      record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
-      record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
-      const sourceCodeMissing = record.codeMissing === true
-      record.codeMissing = sourceCodeMissing
-      record.serverCodeMissing = sourceCodeMissing
-      record.hoursMissing = record.hoursMissing === true
-      record.notificationMissing = record.notificationMissing === true
-      record.productMissing = record.productMissing === true
-      record.partMissing = record.partMissing === true
-      record.drawingMissing = record.drawingMissing === true
-      record.planMissing = record.planMissing === true
-      record.processMissing = record.processMissing === true
-      record.barcodeMissing = record.barcodeMissing === true
-      record.issueSummary = ''
-      record.hasIssue = false
-      record.issueTypes = []
-      record._lastAcceptedProcessCode = record.processCode
-      record._lastAcceptedBarcode = record.barcode
-      record._lastAcceptedBarcodeImage = record.barcodeImage
-      this.updateIssueFlags(record)
-      return record
-    },
+      normalizeProcessCode(value) {
+        if (value === null || value === undefined) return ''
+        const text = String(value).trim()
+        if (!text || text === '0') return ''
+        return text
+      },
+      isValidProcessCode(value) {
+        return this.normalizeProcessCode(value) !== ''
+      },
+      decorateRecord(raw) {
+        const record = { ...raw }
+        record.notificationNumber = record.notificationNumber != null ? String(record.notificationNumber).trim() : ''
+        record.productName = record.productName != null ? String(record.productName).trim() : ''
+        record.drawingNumber = record.drawingNumber != null ? String(record.drawingNumber).trim() : ''
+        record.partName = record.partName != null ? String(record.partName).trim() : ''
+        record.processName = record.processName != null ? String(record.processName).trim() : ''
+        const normalizedCode = this.normalizeProcessCode(record.processCode)
+        record.processCode = normalizedCode
+        if (record.planQty !== null && record.planQty !== undefined && record.planQty !== '') {
+          const num = Number(record.planQty)
+          record.planQty = Number.isNaN(num) ? null : num
+        } else {
+          record.planQty = null
+        }
+        if (record.hours !== null && record.hours !== undefined && record.hours !== '') {
+          const num = Number(record.hours)
+          record.hours = Number.isNaN(num) ? null : num
+        } else {
+          record.hours = null
+        }
+        const rawBarcode = record.barcode != null ? String(record.barcode).trim() : ''
+        record.barcode = this.sanitize(rawBarcode)
+        record.barcodeImage = record.barcodeImage || ''
+        record.workerCodes = record.workerCodes || ''
+        record.qualifiedQty = record.qualifiedQty != null ? Number(record.qualifiedQty) : null
+        record.hourSubtotal = record.hourSubtotal != null ? Number(record.hourSubtotal) : null
+        const sourceCodeMissing = record.codeMissing === true || !normalizedCode
+        record.codeMissing = sourceCodeMissing
+        record.serverCodeMissing = sourceCodeMissing
+        record.hoursMissing = record.hoursMissing === true
+        record.notificationMissing = record.notificationMissing === true
+        record.productMissing = record.productMissing === true
+        record.partMissing = record.partMissing === true
+        record.drawingMissing = record.drawingMissing === true
+        record.planMissing = record.planMissing === true
+        record.processMissing = record.processMissing === true
+        record.barcodeMissing = record.barcodeMissing === true
+        record.issueSummary = ''
+        record.hasIssue = false
+        record.issueTypes = []
+        record._lastAcceptedProcessCode = record.processCode
+        record._lastAcceptedBarcode = record.barcode
+        record._lastAcceptedBarcodeImage = record.barcodeImage
+        this.updateIssueFlags(record)
+        return record
+      },
     updateIssueFlags(record) {
       if (!record) return
       const issues = []
@@ -447,7 +694,11 @@ export default {
       record.hoursMissing = record.hours === null || record.hours === undefined || record.hours === '' || Number.isNaN(record.hours)
       if (record.hoursMissing) issues.push('单件工时')
 
-      const hasProcessCode = this.hasText(record.processCode)
+      const normalizedCode = this.normalizeProcessCode(record.processCode)
+      if (normalizedCode !== record.processCode) {
+        record.processCode = normalizedCode
+      }
+      const hasProcessCode = this.isValidProcessCode(normalizedCode)
       const codeMissingFlag = record.serverCodeMissing === true || !hasProcessCode
       if (!codeMissingFlag) {
         record.serverCodeMissing = false
@@ -497,7 +748,11 @@ export default {
       if (!message && error && typeof error.message === 'string') {
         message = error.message
       }
-      alert(message || fallback || '操作失败')
+      const final = message || fallback || '操作失败'
+      if (typeof this.showFeedback === 'function') {
+        this.showFeedback(final, 'danger', 5000)
+      }
+      alert(final)
     },
     requireUserHeaders() {
       const user = (localStorage.getItem('username') || '').trim()
@@ -507,12 +762,42 @@ export default {
       }
       return { 'X-User': user }
     },
+    ensureCodeCache(mode = this.codeMode) {
+      if (!this.barcodeCache[mode]) {
+        if (this.$set) this.$set(this.barcodeCache, mode, {})
+        else this.barcodeCache[mode] = {}
+      }
+      return this.barcodeCache[mode]
+    },
+    applyCodeMode(mode, options = {}) {
+      const target = mode || 'qr'
+      const skipFetch = options && options.skipFetch
+      if (this.codeMode === target && !options.force) {
+        if (!skipFetch) this.refreshCodeImagesForMode()
+        return
+      }
+      this.codeMode = target
+      localStorage.setItem('codeMode', target)
+      this.ensureCodeCache(target)
+      if (!skipFetch) {
+        this.refreshCodeImagesForMode()
+        this.prefetchAllBarcodes()
+      }
+    },
+    refreshCodeImagesForMode() {
+      this.preview.forEach(r => { r.barcodeImage = '' })
+    },
     onFileChange(e) { this.file = e.target.files[0] },
-    async fetchFiles() { const res = await axios.get('/api/files'); this.files = res.data },
+    async fetchFiles() {
+      const res = await axios.get('/api/files')
+      this.files = res.data
+      this.barcodeCache = { qr: {}, barcode: {} }
+      this.ensureCodeCache()
+    },
     async load() {
       if (!this.selectedFileId) return
       this.loading = true
-      this.barcodeCache = {}
+      this.barcodeCache = { qr: {}, barcode: {} }
       try {
         const res = await axios.get(`/api/workrecords/file/${this.selectedFileId}`)
         if (!Array.isArray(res.data) || !res.data.length) {
@@ -567,9 +852,9 @@ export default {
       let headers
       try { headers = this.requireUserHeaders() }
       catch (err) { return }
-      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = {}; this.issueFilter = null; this.issueCompletionNotified = false
+      this.loading = true; this.showProgress = true; this.parseProgress = 5; this.barcodeCache = { qr: {}, barcode: {} }; this.issueFilter = null; this.issueCompletionNotified = false
       try {
-        const data = new FormData(); data.append('file', this.file); data.append('store', 'false')
+        const data = new FormData(); data.append('file', this.file)
         const res = await axios.post('/api/workrecords/parse', data, { headers })
         const payload = res && res.data ? res.data : {}
         this.fileId = payload.fileId
@@ -622,6 +907,7 @@ export default {
       const chunkSize = 1000
       const url = `/api/workrecords?fileId=${this.fileId}`
       const responses = []
+      let partialNotice = ''
       try {
         for (let offset = 0; offset < valid.length; offset += chunkSize) {
           const chunk = valid.slice(offset, offset + chunkSize)
@@ -629,18 +915,27 @@ export default {
           const res = await axios.post(url, chunk, { headers })
           if (Array.isArray(res.data)) responses.push(...res.data)
         }
-        if (valid.length < this.preview.length) alert('部分记录因缺少工序代码或条形码已被忽略')
+        if (valid.length < this.preview.length) {
+          partialNotice = '部分记录因缺少工序代码或条形码已被忽略'
+        }
         const hasSupp = responses.some(r => r && r.supplemental)
         this.preview = []
         this.file = null
         this.issueFilter = null
         this.issueCompletionNotified = false
-        alert(hasSupp ? '保存成功，部分记录为补录，请核查。' : '保存成功')
+        const notices = []
+        if (hasSupp) notices.push('部分记录为补录，请核查')
+        if (partialNotice) notices.push(partialNotice)
+        const baseMessage = '保存成功'
+        const finalMessage = notices.length ? `${baseMessage}，${notices.join('，')}` : baseMessage
+        const variant = notices.length ? 'warning' : 'success'
+        const duration = notices.length ? 6000 : 4000
+        this.showFeedback(finalMessage, variant, duration)
         await this.fetchFiles()
         this.$emit('saved')
       } catch (e) {
         console.error(e)
-        alert('保存失败')
+        this.showFeedback('保存失败，请稍后重试', 'danger', 5000)
         return
       } finally {
         this.loading = false
@@ -733,7 +1028,13 @@ export default {
       }
       return payload
     },
-    async autoSaveRecord(record) {
+    formatPrintFooter(drawingNumber) {
+      const sanitized = drawingNumber == null ? '' : this.sanitize(drawingNumber)
+      const drawing = sanitized && sanitized.length ? sanitized : '（空）'
+      return `图号：${drawing}`
+    },
+    async autoSaveRecord(record, options = {}) {
+      const silent = options && options.silent === true
       if (!record) return
       if (!this.fileId) return
       if (record._autoSaving) {
@@ -761,20 +1062,23 @@ export default {
             this.$set(record, key, updated[key])
           })
         }
+        if (!silent) {
+          this.showFeedback('单条记录已自动保存', 'success', 2000)
+        }
       } catch (error) {
         this.handleRequestError(error, '自动保存失败')
       } finally {
         record._autoSaving = false
         if (record._autoSavePending) {
           record._autoSavePending = false
-          this.autoSaveRecord(record)
+          this.autoSaveRecord(record, options)
         }
       }
     },
     async rememberProcessCode(record) {
       if (!record) return false
       const name = record.processName != null ? String(record.processName).trim() : ''
-      const code = record.processCode != null ? String(record.processCode).trim() : ''
+      const code = this.normalizeProcessCode(record.processCode)
       if (!name || !code) return false
       const key = `${name}|||${code}`
       if (this.rememberedPairs[key]) {
@@ -787,9 +1091,12 @@ export default {
         return true
       }
       let headers
-      try { headers = this.requireUserHeaders() }
-      catch (err) { return false }
-      const previousCode = record._lastAcceptedProcessCode != null ? String(record._lastAcceptedProcessCode).trim() : ''
+      try {
+        headers = this.requireUserHeaders()
+      } catch (err) {
+        return false
+      }
+      const previousCode = this.normalizeProcessCode(record._lastAcceptedProcessCode)
       const previousBarcode = record._lastAcceptedBarcode || ''
       const previousImage = record._lastAcceptedBarcodeImage || ''
       try {
@@ -840,7 +1147,7 @@ export default {
           for (const item of res.data) {
             if (!item || !item.name || !item.code) continue
             const name = String(item.name).trim()
-            const code = String(item.code).trim()
+            const code = this.normalizeProcessCode(item.code)
             if (!name || !code) continue
             map[name] = code
           }
@@ -860,7 +1167,8 @@ export default {
     handleProcessCodeTyping(record) {
       if (!record) return
       const value = record.processCode != null ? String(record.processCode) : ''
-      const hasValue = this.hasText(value)
+      const normalized = this.normalizeProcessCode(value)
+      const hasValue = normalized !== ''
       record.serverCodeMissing = !hasValue
       record.codeMissing = !hasValue
       if (!hasValue) {
@@ -872,8 +1180,9 @@ export default {
     async handleProcessCodeBlur(record) {
       if (!record) return
       const value = record.processCode != null ? String(record.processCode).trim() : ''
-      record.processCode = value
-      if (!value) {
+      const normalized = this.normalizeProcessCode(value)
+      record.processCode = normalized
+      if (!normalized) {
         record.serverCodeMissing = true
         record.codeMissing = true
         record.barcode = ''
@@ -915,56 +1224,74 @@ export default {
       await this.updateProcess(record)
       await this.autoSaveRecord(record)
     },
-    async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
-      if (!cacheReady) await this.ensureProcessCache()
-      const rawName = r.processName || ''
-      const name = rawName.trim()
-      const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
-      let shouldRemember = false
-      if (!name) {
-        r.processCode = ''
-        r.serverCodeMissing = false
-        r.codeMissing = true
+      async updateProcess(r, cacheReady = false, allowFetch = true, fetchBarcodeImage = true) {
+        if (!cacheReady) await this.ensureProcessCache()
+        const rawName = r.processName || ''
+        const name = rawName.trim()
+        const existingCode = r.processCode != null ? String(r.processCode).trim() : ''
+        let shouldRemember = false
+        if (!name) {
+          r.processCode = ''
+          r.serverCodeMissing = false
+          r.codeMissing = true
+          await this.updateBarcode(r, fetchBarcodeImage)
+          this.updateIssueFlags(r)
+          return
+        }
+        let code = this.normalizeProcessCode(this.processCache[name])
+        if (!code && allowFetch) {
+          try {
+            const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
+            if (res.data && res.data.code) {
+              const normalized = this.normalizeProcessCode(res.data.code)
+              if (normalized) {
+                code = normalized
+                this.$set(this.processCache, name, normalized)
+              }
+            }
+          } catch (e) { /* ignore */ }
+        }
+        const manualCode = this.normalizeProcessCode(existingCode)
+        if (code) {
+          r.processCode = code
+          r.serverCodeMissing = false
+        } else if (manualCode) {
+          r.processCode = manualCode
+          r.serverCodeMissing = false
+          if (!this.processCache[name] || this.processCache[name] !== manualCode) {
+            this.$set(this.processCache, name, manualCode)
+          }
+          shouldRemember = true
+        } else {
+          r.processCode = ''
+          r.serverCodeMissing = true
+        }
+        r.codeMissing = !this.isValidProcessCode(r.processCode)
         await this.updateBarcode(r, fetchBarcodeImage)
         this.updateIssueFlags(r)
-        return
-      }
-      let code = this.processCache[name]
-      if (!code && allowFetch) {
-        try {
-          const res = await axios.get(`/api/processcodes/name/${encodeURIComponent(name)}`)
-          if (res.data && res.data.code) {
-            code = String(res.data.code).trim()
-            if (code) this.$set(this.processCache, name, code)
-          }
-        } catch (e) { /* ignore */ }
-      }
-      const manualCode = this.hasText(existingCode) ? existingCode : ''
-      if (code) {
-        r.processCode = code
-        r.serverCodeMissing = false
-      } else if (manualCode) {
-        r.processCode = manualCode
-        r.serverCodeMissing = false
-        if (!this.processCache[name]) this.$set(this.processCache, name, manualCode)
-        shouldRemember = true
-      } else {
-        r.processCode = ''
-        r.serverCodeMissing = true
-      }
-      r.codeMissing = !this.hasText(r.processCode)
-      await this.updateBarcode(r, fetchBarcodeImage)
-      this.updateIssueFlags(r)
-      if (shouldRemember && !r.codeMissing) {
-        await this.rememberProcessCode(r)
-      }
-    },
+        if (shouldRemember && !r.codeMissing) {
+          await this.rememberProcessCode(r)
+        }
+      },
     checkHours(r) {
       r.hoursMissing = r.hours == null || r.hours === ''
       this.updateIssueFlags(r)
     },
-    deleteRow(index) {
+    async deleteRow(index) {
+      const record = this.preview[index]
+      if (!record) return
       if (!confirm('确定删除该行? 删除后不可恢复')) return
+      if (record.id) {
+        let headers
+        try { headers = this.requireUserHeaders() }
+        catch (err) { return }
+        try {
+          await axios.delete(`/api/workrecords/${record.id}`, { headers })
+        } catch (error) {
+          this.handleRequestError(error, '删除记录失败')
+          return
+        }
+      }
       this.preview.splice(index, 1)
       this.$nextTick(() => this.ensurePageInRange())
     },
@@ -993,22 +1320,55 @@ export default {
       this.preview.splice(index + 1, 0, decorated)
       this.$nextTick(() => this.ensurePageInRange())
     },
-    deleteZero() {
+    async deleteZero() {
       if (!this.preview.length) return
       if (!confirm('确定删除所有工序为0的行?')) return
       const before = this.preview.length
+      const toRemove = this.preview.filter(r => {
+        const code = r.processCode != null ? String(r.processCode).trim() : ''
+        return code === '0'
+      })
+      if (!toRemove.length) {
+        alert('未找到工序为0的记录')
+        return
+      }
+      const idsToDelete = toRemove.map(r => r.id).filter(Boolean)
+      let headers = null
+      if (idsToDelete.length) {
+        try { headers = this.requireUserHeaders() }
+        catch (err) { return }
+      }
+      const failedIds = new Set()
+      let firstError = null
+      for (const id of idsToDelete) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await axios.delete(`/api/workrecords/${id}`, { headers })
+        } catch (error) {
+          if (!firstError) firstError = error
+          failedIds.add(id)
+        }
+      }
       this.preview = this.preview.filter(r => {
         const code = r.processCode != null ? String(r.processCode).trim() : ''
-        return code !== '0'
+        if (code !== '0') return true
+        if (r.id && failedIds.has(r.id)) return true
+        return false
       })
       this.preview.forEach(r => this.updateIssueFlags(r))
       const removed = before - this.preview.length
-      alert(`已删除${removed}行`)
+      if (firstError) {
+        this.handleRequestError(firstError, '部分记录删除失败')
+      }
+      const extra = failedIds.size ? '，部分记录删除失败' : ''
+      alert(`已删除${removed}行${extra}`)
+      this.$nextTick(() => this.ensurePageInRange())
     },
     async loadBarcodesForPage(pageIndex) {
       const page = this.pages[pageIndex]; if (!page) return
       if (!this._barcodeLoading) this._barcodeLoading = new Set()
       if (this._barcodeLoading.has(pageIndex)) return
+      const cache = this.ensureCodeCache()
       const missing = []
       for (const entry of page.entries) {
         const code = this.sanitize(entry.record.barcode)
@@ -1017,13 +1377,13 @@ export default {
           this.updateIssueFlags(entry.record)
         }
         if (!code) continue
-        if (!this.barcodeCache[code] && !entry.record.barcodeImage) missing.push(code)
+        if (!cache[code] && !entry.record.barcodeImage) missing.push(code)
       }
       if (!missing.length) {
         for (const entry of page.entries) {
           const code = this.sanitize(entry.record.barcode)
-          if (code && this.barcodeCache[code] && entry.record.barcodeImage !== this.barcodeCache[code]) {
-            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          if (code && cache[code] && entry.record.barcodeImage !== cache[code]) {
+            this.$set(entry.record, 'barcodeImage', cache[code])
           }
         }
         return
@@ -1031,10 +1391,11 @@ export default {
       this._barcodeLoading.add(pageIndex)
       try {
         await this.fetchBarcodes(missing)
+        const updatedCache = this.ensureCodeCache()
         for (const entry of page.entries) {
           const code = this.sanitize(entry.record.barcode)
-          if (code && this.barcodeCache[code]) {
-            this.$set(entry.record, 'barcodeImage', this.barcodeCache[code])
+          if (code && updatedCache[code]) {
+            this.$set(entry.record, 'barcodeImage', updatedCache[code])
           }
         }
       } catch (e) { console.error('加载条码失败', e) }
@@ -1042,12 +1403,13 @@ export default {
     },
     async fetchBarcodes(codes) {
       if (!Array.isArray(codes) || !codes.length) return
+      const cache = this.ensureCodeCache()
       const unique = []
       const seen = new Set()
       for (const raw of codes) {
         const code = this.sanitize(raw)
         if (!code) continue
-        if (this.barcodeCache[code]) continue
+        if (cache[code]) continue
         if (seen.has(code)) continue
         seen.add(code)
         unique.push(code)
@@ -1058,11 +1420,13 @@ export default {
         const chunk = unique.slice(offset, offset + chunkSize)
         try {
           // eslint-disable-next-line no-await-in-loop
-          const res = await axios.post('/api/workrecords/generateBarcodes', chunk)
+          const res = await axios.post(`/api/workrecords/generateBarcodes?type=${this.codeMode}`, chunk)
           const data = res && res.data ? res.data : {}
           Object.keys(data || {}).forEach(key => {
             if (!key) return
-            this.$set(this.barcodeCache, key, data[key])
+            const target = this.ensureCodeCache()
+            if (this.$set) this.$set(target, key, data[key])
+            else target[key] = data[key]
           })
         } catch (error) {
           console.error('批量生成条码失败', error)
@@ -1080,8 +1444,9 @@ export default {
       await this.fetchBarcodes(codes)
       for (const record of this.preview) {
         const code = this.sanitize(record.barcode)
-        if (code && this.barcodeCache[code] && record.barcodeImage !== this.barcodeCache[code]) {
-          this.$set(record, 'barcodeImage', this.barcodeCache[code])
+        const cache = this.ensureCodeCache()
+        if (code && cache[code] && record.barcodeImage !== cache[code]) {
+          this.$set(record, 'barcodeImage', cache[code])
         }
         this.updateIssueFlags(record)
       }
@@ -1102,8 +1467,14 @@ export default {
             if (!key) return
             const value = data[key]
             if (value == null) return
-            const code = String(value).trim()
-            if (code) this.$set(this.processCache, key, code)
+            const code = this.normalizeProcessCode(value)
+            if (code) {
+              this.$set(this.processCache, key, code)
+            } else if (this.$delete) {
+              this.$delete(this.processCache, key)
+            } else {
+              delete this.processCache[key]
+            }
           })
         } catch (error) {
           console.error('批量加载工序失败', error)
@@ -1113,16 +1484,22 @@ export default {
       await Promise.all(tasks)
     },
     async updateBarcode(r, fetchImage = true) {
-      if (r.drawingNumber && r.notificationNumber && r.processCode) {
-        const bar = `${r.drawingNumber}-${r.notificationNumber}-${r.processCode}`
+      const normalizedCode = this.normalizeProcessCode(r.processCode)
+      if (normalizedCode !== r.processCode) {
+        r.processCode = normalizedCode
+      }
+      const canUseCode = normalizedCode && r.serverCodeMissing !== true
+      if (r.drawingNumber && r.notificationNumber && canUseCode) {
+        const bar = `${r.drawingNumber}-${r.notificationNumber}-${normalizedCode}`
         const clean = this.sanitize(bar)
         r.barcode = clean
         if (!clean) { r.barcodeImage = ''; return }
-        if (this.barcodeCache[clean]) { r.barcodeImage = this.barcodeCache[clean]; return }
+        const cache = this.ensureCodeCache()
+        if (cache[clean]) { r.barcodeImage = cache[clean]; return }
         if (!fetchImage) { r.barcodeImage = ''; return }
         try {
-          const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar } })
-          if (res && res.data) { this.$set(this.barcodeCache, clean, res.data); r.barcodeImage = res.data }
+          const res = await axios.get('/api/workrecords/generateBarcode', { params: { text: bar, type: this.codeMode } })
+          if (res && res.data) { const target = this.ensureCodeCache(); this.$set(target, clean, res.data); r.barcodeImage = res.data }
           else { r.barcodeImage = '' }
         } catch (e) { console.error('获取条码失败', e); r.barcodeImage = '' }
       } else { r.barcode = ''; r.barcodeImage = '' }
@@ -1230,21 +1607,21 @@ export default {
     },
     getBulkConfig(type) {
       switch (type) {
-        case '工序代码':
-          return {
-            prompt: '请输入工序代码（将应用到当前筛选的所有记录）',
-            prepare(input) {
-              const value = String(input || '').trim()
-              if (!value) {
-                alert('请输入有效的工序代码')
-                return undefined
-              }
-              return value
-            },
-            apply(record, value) {
-              record.processCode = value
-              record.serverCodeMissing = false
-              record.codeMissing = false
+          case '工序代码':
+            return {
+              prompt: '请输入工序代码（将应用到当前筛选的所有记录）',
+              prepare(input) {
+                const normalized = this.normalizeProcessCode(input)
+                if (!normalized) {
+                  alert('请输入有效的工序代码（不可为空或为0）')
+                  return undefined
+                }
+                return normalized
+              },
+              apply(record, value) {
+                record.processCode = value
+                record.serverCodeMissing = false
+                record.codeMissing = false
               return this.updateBarcode(record)
             }
           }
@@ -1324,7 +1701,7 @@ export default {
         if (result && typeof result.then === 'function') {
           await result
         }
-        await this.autoSaveRecord(record)
+        await this.autoSaveRecord(record, { silent: true })
       })())
       Promise.all(tasks).finally(() => {
         this.ensureCurrentPageContainsFilter()
@@ -1381,17 +1758,17 @@ export default {
             break
           }
           case '工序代码': {
-            const code = item.processCode != null ? String(item.processCode).trim() : ''
+            const code = this.normalizeProcessCode(item.processCode)
             record.processCode = code
-            record.serverCodeMissing = !this.hasText(code)
-            record.codeMissing = !this.hasText(code)
-            if (!this.hasText(code)) {
+            record.serverCodeMissing = !code
+            record.codeMissing = !code
+            if (!code) {
               record.barcode = ''
               record.barcodeImage = ''
               this.updateIssueFlags(record)
             } else {
               const name = record.processName != null ? String(record.processName).trim() : ''
-              if (name && !this.processCache[name]) this.$set(this.processCache, name, code)
+              if (name && (!this.processCache[name] || this.processCache[name] !== code)) this.$set(this.processCache, name, code)
               const previousBarcode = record.barcode
               const previousImage = record.barcodeImage
               await this.updateBarcode(record)
@@ -1423,7 +1800,7 @@ export default {
             break
         }
         if (shouldSave) {
-          await this.autoSaveRecord(record)
+          await this.autoSaveRecord(record, { silent: true })
         }
       })())
       try {
